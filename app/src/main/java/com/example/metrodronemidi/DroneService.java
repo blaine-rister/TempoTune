@@ -16,7 +16,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     // Create midi driver
     protected MidiDriverHelper midi;
-    protected MediaPlayer player;
+    protected MediaPlayer player; // TODO do we need this?
 
     private Timer noteTimer;
 
@@ -66,7 +66,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         final long msPerMinute = 60 * 1000;
         final double msPerBeat = msPerMinute / bpm;
         noteTimer = new Timer();
-        TimerTask playNote = new PlayNoteTask(midi, pitch, octave); // TODO extend TimerTask
+        TimerTask playNote = new PlayNoteTask(midi, pitch, octave);
         noteTimer.scheduleAtFixedRate(playNote, 0, (long) msPerBeat);
         isPlaying = true;
     }
