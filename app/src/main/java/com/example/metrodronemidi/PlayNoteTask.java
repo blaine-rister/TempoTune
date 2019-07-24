@@ -30,7 +30,7 @@ class PlayNoteTask extends TimerTask {
     protected void startNote() {
         // Note start message
         final int noteOnByte = 0x90; // Starts the note
-        final int volumeByte = 0x40; // Medium loud
+        final int volumeByte = 0x60; // Loud
         midi.send(noteOnByte, MidiDriverHelper.encodePitch(pitch, octave), volumeByte);
     }
 
