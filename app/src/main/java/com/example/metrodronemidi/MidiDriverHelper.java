@@ -29,7 +29,7 @@ public class MidiDriverHelper extends MidiDriver {
     // Converts a pitch class (0-11) using the octave setting
     public static int encodePitch(int pitch, int octave) {
         final int firstPitch = 21; // MIDI number of A0
-        final int pitchesPerOctave = 11; // 11 pitches in an octave
+        final int pitchesPerOctave = 12; // 12 pitches in an octave
         return pitch + pitchesPerOctave * octave + firstPitch;
     }
 }
