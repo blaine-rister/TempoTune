@@ -36,8 +36,8 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     // Interface for the main activity
     public class DroneBinder extends Binder {
-        void play(double bpm, int pitch, int octave, int instrument) {
-            DroneService.this.play(bpm, pitch, octave, instrument);
+        void play(double bpm, int pitch, int octave, int instrument, NoteSettingsReader settings) {
+            DroneService.this.play(bpm, pitch, octave, instrument, settings);
         }
         void pause() {
             DroneService.this.pause();
@@ -51,7 +51,8 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     }
 
 
-    public void play(double bpm, int pitch, int octave, int instrument) {
+    public void play(double bpm, int pitch, int octave, int instrument,
+                     NoteSettingsReader settings) {
         // Reset the state, cancelling old notes
         if (isPlaying) pause();
 
@@ -66,7 +67,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         final long msPerMinute = 60 * 1000;
         final double msPerBeat = msPerMinute / bpm;
         noteTimer = new Timer();
-        TimerTask playNote = new PlayNoteTask(midi, pitch, octave);
+        TimerTask playNote = new PlayNoteTask(midi, pitch, octave, settings);
         noteTimer.scheduleAtFixedRate(playNote, 0, (long) msPerBeat);
         isPlaying = true;
     }

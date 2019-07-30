@@ -9,11 +9,13 @@ class PlayNoteTask extends TimerTask {
     MidiDriverHelper midi;
     int pitch;
     int octave;
+    NoteSettingsReader settings;
 
-    public PlayNoteTask(MidiDriverHelper midi, int pitch, int octave) {
+    public PlayNoteTask(MidiDriverHelper midi, int pitch, int octave, NoteSettingsReader settings) {
         this.pitch = pitch;
         this.octave = octave;
         this.midi = midi;
+        this.settings = settings;
     }
 
     public void run() {
@@ -30,7 +32,7 @@ class PlayNoteTask extends TimerTask {
     protected void startNote() {
         // Note start message
         final int noteOnByte = 0x90; // Starts the note
-        final int volumeByte = 0x60; // Loud
+        final int volumeByte = (int) Math.floor(settings.getVelocity() * 127.); // 0-127
         midi.send(noteOnByte, MidiDriverHelper.encodePitch(pitch, octave), volumeByte);
     }
 

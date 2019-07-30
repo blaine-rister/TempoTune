@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -30,6 +31,8 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Spinner;
+import android.widget.SeekBar;
+import android.widget.ExpandableListView;
 
 import android.content.Context;
 
@@ -45,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     int pitch = 0; // 0-11
     int octave = 2;
     int instrument = 0; // Piano
+    NoteSettings settings = new NoteSettings(); // Global settings varying smoothly, incl. velocity
 
     // State
     boolean isPlaying = false;
@@ -137,6 +141,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // BPM text
+        // TODO make this type-able
         bpmTextView = findViewById(R.id.bpmNumberTextView);
         displayBpm();
 
@@ -178,22 +183,103 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Load the instruments
-        List<String> instrumentNames = new ArrayList<String>();
-        List<Integer> instrumentCodes = new ArrayList<Integer>();
-        try {
-            readCsv(instrumentNames, instrumentCodes);
-        } catch (IOException ie) {
-            ie.printStackTrace();
-            fatalErrorDialog("Failed to read the CSV file!");
+        // Velocity bar
+        SeekBar velocitySeekBar = findViewById(R.id.velocitySeekBar);
+        velocitySeekBar.setProgress(velocitySeekBar.getMax()); // Start on max velocity
+        velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                settings.velocity = (double) progress / seekBar.getMax(); // Assumes min is 0, to
+                    // check this requires higher API level
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // Do nothing
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // Do nothing
+            }
+        });
+
+        // Load the instruments and families from the CSV files
+        List<NameValPair> instruments = readCsv(R.raw.instruments);
+        List<NameValPair> families = readCsv(R.raw.families);
+
+        // Sort the lists by their codes
+        Collections.sort(instruments);
+        Collections.sort(families);
+
+        // Group the instruments into families
+        List<List<NameValPair>> groupedInstruments = new ArrayList<>();
+        for (int i = 0; i < instruments.size(); i++) {
+            // Get the current item
+            final NameValPair instrument = instruments.get(i);
+
+            // Check if we need to bump up to the next family
+            final int currentNumGroups = groupedInstruments.size();
+            if (currentNumGroups < families.size()) {
+                final NameValPair nextFamily = families.get(currentNumGroups);
+                if (instrument.i >= nextFamily.i) {
+                    groupedInstruments.add(new ArrayList<NameValPair>());
+                }
+            }
+
+            // Add this item to the current sub-list, which is the most recent one
+            groupedInstruments.get(groupedInstruments.size() - 1).add(instrument);
         }
 
-        //TODO group the intruments into families, and choose from them with an expandable recycler
-        // view, as in this article
-        // https://www.bignerdranch.com/blog/expand-a-recyclerview-in-four-steps/?utm_source=Android+Weekly&utm_campaign=8f0cc3ff1f-Android_Weekly_165&utm_medium=email&utm_term=0_4eb677ad19-8f0cc3ff1f-337834121
-        // Probably the easiest way to implement families is to hard-code the separating numbers, since
-        // MIDI families are grouped in adjacent codes. Can write a function to sort out all the
-        // instruments from the CSV into families
+        // Set up array adapters for each group
+        final List<ArrayAdapter<NameValPair>> groupedInstrumentAdapters = new ArrayList<>();
+        for (int i = 0; i < groupedInstruments.size(); i++) {
+            ArrayAdapter<NameValPair> adapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_item, groupedInstruments.get(i));
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
+            groupedInstrumentAdapters.add(adapter);
+        }
+
+        // Instrument name spinner
+        final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
+        instrumentSpinner.setAdapter(groupedInstrumentAdapters.get(0));
+        instrumentSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
+                instrument = ((NameValPair) adapterView.getItemAtPosition(pos)).i - 1;
+                update();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                // Do nothing
+            }
+        });
+
+        // Extract the family names
+        List<String> familyNames = new ArrayList<>();
+        for (int i = 0; i < families.size(); i++) {
+            familyNames.add(families.get(i).s);
+        }
+
+        // Instrument family spinner
+        Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
+        ArrayAdapter<String> familyAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, familyNames);
+        familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
+        familySpinner.setAdapter(familyAdapter);
+        familySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
+                // Change the data of the instrument name spinner
+                instrumentSpinner.setAdapter(groupedInstrumentAdapters.get(pos));
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                // Do nothing
+            }
+        });
 
         //TODO probably remove this, not sure what a floating action button does
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -213,27 +299,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Method to handle reading the instrument CSV file. Returns the results in these lists.
-    protected void readCsv(List<String> names, List<Integer> codes)
-            throws IOException  {
+    protected List<NameValPair> readCsv(int resourceId) {
+        try {
+            return readCsvHelper(resourceId);
+        } catch (IOException ie) {
+            ie.printStackTrace();
+            fatalErrorDialog("Failed to read the CSV file!");
+            return null;
+        }
+    }
+
+    // Does the work of readCsv, wrapped to catch exceptions
+    protected List<NameValPair> readCsvHelper(int resourceId) throws IOException  {
+
+        List<NameValPair> list = new ArrayList<>();
 
         final int itemsPerLine = 2;
-        InputStream inputStream = getResources().openRawResource(R.raw.instruments);
+        InputStream inputStream = getResources().openRawResource(resourceId);
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 
         String line = bufferedReader.readLine(); // CSV header
         while ((line = bufferedReader.readLine()) != null) {
             String[] items = line.split(",");
             if (items.length != itemsPerLine) fatalErrorDialog("Invalid CSV line: " + line);
-            codes.add(Integer.parseInt(items[0].trim()));
-            names.add(items[1].trim());
+            String name = items[1].trim();
+            int code = Integer.parseInt(items[0].trim());
+            list.add(new NameValPair(name, code));
         }
+
+        return list;
     }
 
     // Tell the service to start playing sound
     protected void play() {
         if (!isBound) return;
 
-        droneBinder.play(bpm, pitch, octave, instrument);
+        droneBinder.play(bpm, pitch, octave, instrument, settings.getReader());
         isPlaying = true;
     }
 
