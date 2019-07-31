@@ -68,7 +68,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         final double msPerBeat = msPerMinute / bpm;
         noteTimer = new Timer();
         TimerTask playNote = new PlayNoteTask(midi, pitch, octave, settings);
-        noteTimer.scheduleAtFixedRate(playNote, 0, (long) msPerBeat);
+        noteTimer.schedule(playNote, 0, (long) msPerBeat);
         isPlaying = true;
     }
 
