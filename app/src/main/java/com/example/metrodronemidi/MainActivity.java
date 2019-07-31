@@ -22,12 +22,17 @@ import com.google.android.material.snackbar.Snackbar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Spinner;
@@ -141,8 +146,26 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // BPM text
-        // TODO make this type-able
-        bpmTextView = findViewById(R.id.bpmNumberTextView);
+        EditText editBpm = findViewById(R.id.editBpm);
+        bpmTextView = editBpm;
+        editBpm.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
+                if (id == EditorInfo.IME_ACTION_DONE) {
+                    // Read the text and update BPM
+                    String newText = textView.getText().toString();
+                    final int newBpm = newText.isEmpty() ? 0 : Integer.valueOf(newText);
+                    addBpm(newBpm - bpm);
+
+                    // Remove the focus, but enable it to regain focus after touch
+                    textView.setFocusable(false);
+                    textView.setFocusableInTouchMode(true);
+
+                    // Return false to continue processing the action, close keyboard
+                }
+                return false;
+            }
+        });
         displayBpm();
 
         // Pitch spinner
@@ -281,7 +304,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //TODO probably remove this, not sure what a floating action button does
+        //TODO could use this to punch in tempo
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
