@@ -43,7 +43,7 @@ import com.example.metrodrone.DroneService.DroneBinder;
 public class MainActivity extends AppCompatActivity {
 
     // Sound parameters
-    double bpm = 100;
+    int bpm = 100;
     int pitch = 0; // 0-11
     int octave = 2;
     int instrument = 0; // Piano
@@ -378,9 +378,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Add the specified amount to the BPM. Updates the BPM view as well.
-    protected void addBpm(double increase) {
-        final double maxBpm = 512.; // Maximum allowed BPM
-        bpm = Math.min(maxBpm, Math.max(0., bpm + increase));
+    protected void addBpm(int increase) {
+        final int maxBpm = 512; // Maximum allowed BPM
+        bpm = Math.min(maxBpm, Math.max(0, bpm + increase));
         update();
     }
 
