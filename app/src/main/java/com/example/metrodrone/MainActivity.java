@@ -51,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
 
     // State
     boolean isPlaying = false;
+    boolean isTapping = false;
+    TempoTapper tempoTapper;
 
     // Persistent UI items
     TextView bpmTextView;
@@ -299,13 +301,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //TODO could use this to punch in tempo
+        // Tempo tapper
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                if (isTapping) {
+                    tempoTapper.tap();
+                } else {
+                    //TODO could animate the button to indicate tapping mode
+                    tempoTapper = new TempoTapper(view) {
+                        @Override
+                        public void onComplete(int bpm) {
+                            isTapping = false;
+                            setBpm(bpm);
+                        }
+
+                        @Override
+                        public void onCancel() {
+                            // TODO animate button
+                            isTapping = false;
+                        }
+                    };
+                    isTapping = true;
+                }
             }
         });
 
@@ -379,8 +398,13 @@ public class MainActivity extends AppCompatActivity {
 
     // Add the specified amount to the BPM. Updates the BPM view as well.
     protected void addBpm(int increase) {
+        setBpm(bpm + increase);
+    }
+
+    // Set the BPM, while clamping to the allowable range
+    protected void setBpm(int bpm) {
         final int maxBpm = 512; // Maximum allowed BPM
-        bpm = Math.min(maxBpm, Math.max(0, bpm + increase));
+        this.bpm = Math.min(maxBpm, Math.max(0, bpm));
         update();
     }
 
