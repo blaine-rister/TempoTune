@@ -1,4 +1,4 @@
-package com.example.metrodronemidi;
+package com.example.metrodrone;
 
 import android.content.Context;
 
@@ -22,6 +22,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("com.example.metrodronemidi", appContext.getPackageName());
+        assertEquals("com.example.metrodrone", appContext.getPackageName());
     }
 }

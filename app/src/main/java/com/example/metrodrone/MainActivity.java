@@ -1,4 +1,4 @@
-package com.example.metrodronemidi;
+package com.example.metrodrone;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;
 
@@ -22,8 +21,6 @@ import com.google.android.material.snackbar.Snackbar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Menu;
@@ -37,14 +34,11 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Spinner;
 import android.widget.SeekBar;
-import android.widget.ExpandableListView;
 
 import android.content.Context;
 
-import android.app.AlertDialog;
-
 import android.os.IBinder;
-import com.example.metrodronemidi.DroneService.DroneBinder;
+import com.example.metrodrone.DroneService.DroneBinder;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -127,24 +121,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // BPM increase button
-        ImageButton bpmIncreaseButton = findViewById(R.id.bpmIncreaseButton);
-        bpmIncreaseButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                addBpm(1);
-            }
-        });
-
-        // BPM decrease button
-        ImageButton bpmDecreaseButton = findViewById(R.id.bpmDecreaseButton);
-        bpmDecreaseButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                addBpm(-1);
-            }
-        });
-
         // BPM text
         EditText editBpm = findViewById(R.id.editBpm);
         bpmTextView = editBpm;
@@ -153,9 +129,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == EditorInfo.IME_ACTION_DONE) {
                     // Read the text and update BPM
-                    String newText = textView.getText().toString();
-                    final int newBpm = newText.isEmpty() ? 0 : Integer.valueOf(newText);
-                    addBpm(newBpm - bpm);
+                    addBpm(readBpm(textView)- bpm);
 
                     // Remove the focus, but enable it to regain focus after touch
                     textView.setFocusable(false);
@@ -167,6 +141,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         displayBpm();
+
+
+        // BPM increase button
+        ImageButton bpmIncreaseButton = findViewById(R.id.bpmIncreaseButton);
+        bpmIncreaseButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                bpm = readBpm(bpmTextView);
+                addBpm(1);
+            }
+        });
+
+        // BPM decrease button
+        ImageButton bpmDecreaseButton = findViewById(R.id.bpmDecreaseButton);
+        bpmDecreaseButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                bpm = readBpm(bpmTextView);
+                addBpm(-1);
+            }
+        });
 
         // Pitch spinner
         Spinner pitchSpinner = findViewById(R.id.pitchSpinner);
@@ -373,6 +368,13 @@ public class MainActivity extends AppCompatActivity {
     protected void update() {
         displayBpm();
         if (isPlaying) play();
+    }
+
+
+    // Reads the BPM from the given textView
+    public int readBpm(final TextView textView) {
+        final String text = textView.getText().toString();
+        return text.isEmpty() ? 0 : Integer.valueOf(text);
     }
 
     // Add the specified amount to the BPM. Updates the BPM view as well.

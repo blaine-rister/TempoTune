@@ -1,6 +1,4 @@
-package com.example.metrodronemidi;
-
-import android.provider.ContactsContract;
+package com.example.metrodrone;
 
 // Class to hold the settings which vary during the operation of the note player
 public class NoteSettings {

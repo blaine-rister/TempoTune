@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MetroDroneMidi</string>
+    <string name="app_name">MetroDrone</string>
     <string name="action_settings">Settings</string>
     <string-array name="pitches_array">
         <item>A</item>

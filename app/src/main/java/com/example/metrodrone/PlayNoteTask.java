@@ -1,8 +1,6 @@
-package com.example.metrodronemidi;
+package com.example.metrodrone;
 
 import java.util.TimerTask;
-
-import org.billthefarmer.mididriver.MidiDriver;
 
 class PlayNoteTask extends TimerTask {
 

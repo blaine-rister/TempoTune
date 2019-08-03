@@ -1,4 +1,4 @@
-package com.example.metrodronemidi;
+package com.example.metrodrone;
 
 import android.app.Service;
 import android.content.Intent;

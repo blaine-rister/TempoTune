@@ -1,4 +1,4 @@
-package com.example.metrodronemidi;
+package com.example.metrodrone;
 
 // Provides read-only access to the global settings, for the drone service
 public class NoteSettingsReader {
