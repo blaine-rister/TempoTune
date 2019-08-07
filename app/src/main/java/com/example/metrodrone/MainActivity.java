@@ -43,9 +43,9 @@ import com.example.metrodrone.DroneService.DroneBinder;
 public class MainActivity extends AppCompatActivity {
 
     // Sound parameters
-    int bpm = 100;
+    int bpm = 80;
     int pitch = 0; // 0-11
-    int octave = 2;
+    int octave = 3; // 0-7
     int instrument = 0; // Piano
     NoteSettings settings = new NoteSettings(); // Global settings varying smoothly, incl. velocity
 
@@ -171,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
                 R.array.pitches_array, android.R.layout.simple_spinner_item);
         pitchAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         pitchSpinner.setAdapter(pitchAdapter);
+        pitchSpinner.setSelection(pitch);
         pitchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
@@ -190,6 +191,7 @@ public class MainActivity extends AppCompatActivity {
                 android.R.layout.simple_spinner_item, octaves);
         octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
         octaveSpinner.setAdapter(octaveAdapter);
+        octaveSpinner.setSelection(octave);
         octaveSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
@@ -205,12 +207,33 @@ public class MainActivity extends AppCompatActivity {
 
         // Velocity bar
         SeekBar velocitySeekBar = findViewById(R.id.velocitySeekBar);
-        velocitySeekBar.setProgress(velocitySeekBar.getMax()); // Start on max velocity
+        velocitySeekBar.setProgress((int) Math.floor(settings.velocity * velocitySeekBar.getMax()));
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 settings.velocity = (double) progress / seekBar.getMax(); // Assumes min is 0, to
                     // check this requires higher API level
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // Do nothing
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // Do nothing
+            }
+        });
+
+        // Duration bar
+        SeekBar durationSeekBar = findViewById(R.id.durationSeekBar);
+        durationSeekBar.setProgress((int) Math.floor(settings.duration * durationSeekBar.getMax()));
+        durationSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                settings.duration = (double) progress / seekBar.getMax(); // Assumes min is 0, to
+                // check this requires higher API level
             }
 
             @Override

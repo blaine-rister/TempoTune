@@ -12,4 +12,6 @@ public class NoteSettingsReader {
     public double getVelocity() {
         return settings.velocity;
     }
+
+    public double getDuration() { return settings.duration; }
 }
