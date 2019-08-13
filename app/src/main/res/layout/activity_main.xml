@@ -2,6 +2,7 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
@@ -30,18 +31,19 @@
                 app:srcCompat="@android:drawable/ic_media_pause" />
         </androidx.appcompat.widget.Toolbar>
 
-
-
     </com.google.android.material.appbar.AppBarLayout>
 
-    <include layout="@layout/content_main" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab"
-        android:layout_width="wrap_content"
+    <!-- Use this for real ads: ads:adUnitId="ca-app-pub-5040365596623384~5072587493"-->
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/adView"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="@dimen/fab_margin"
-        app:srcCompat="@android:drawable/ic_dialog_email" />
+        android:layout_gravity="bottom"
+        xmlns:ads="http://schemas.android.com/apk/res-auto"
+        ads:adSize="SMART_BANNER"
+        ads:adUnitId="@string/banner_ad_unit_id"
+        />
+
+    <include layout="@layout/content_main" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

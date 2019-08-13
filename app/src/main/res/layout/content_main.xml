@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -8,14 +8,11 @@
     tools:context=".MainActivity"
     tools:showIn="@layout/activity_main">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
-
         <LinearLayout
+            android:id="@+id/bpmPanel"
             android:layout_width="match_parent"
             android:layout_height="81dp"
+            android:layout_alignParentTop="true"
             android:orientation="vertical">
 
             <TextView
@@ -52,7 +49,9 @@
                     android:scrollbarAlwaysDrawVerticalTrack="false"
                     android:scrollHorizontally="true"
                     android:selectAllOnFocus="true"
-                    android:singleLine="true" />
+                    android:singleLine="true"
+                    android:maxLines="1"
+                    android:imeOptions="actionDone" />
 
                 <ImageButton
                     android:id="@+id/bpmDecreaseButton"
@@ -67,8 +66,10 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/pitchPanel"
             android:layout_width="match_parent"
-            android:layout_height="104dp"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/bpmPanel"
             android:orientation="vertical">
 
             <TextView
@@ -79,7 +80,7 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="84dp"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
                 <Spinner
@@ -97,40 +98,44 @@
 
         </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/instrumentPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/pitchPanel"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/instrumentTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Instrument" />
+
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="108dp"
-            android:orientation="vertical">
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/instrumentTextView"
+            <Spinner
+                android:id="@+id/instrumentFamilySpinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Instrument" />
+                android:layout_weight="1" />
 
-            <LinearLayout
+            <Spinner
+                android:id="@+id/instrumentNameSpinner"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal">
-
-                <Spinner
-                    android:id="@+id/instrumentFamilySpinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-
-                <Spinner
-                    android:id="@+id/instrumentNameSpinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
-
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
         </LinearLayout>
 
+    </LinearLayout>
+
         <LinearLayout
+            android:id="@+id/durationPanel"
             android:layout_width="match_parent"
             android:layout_height="108dp"
+            android:layout_below="@id/instrumentPanel"
             android:orientation="vertical">
 
             <TextView
@@ -148,8 +153,10 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/volumePanel"
             android:layout_width="match_parent"
             android:layout_height="108dp"
+            android:layout_below="@id/durationPanel"
             android:orientation="vertical">
 
             <TextView
@@ -166,6 +173,16 @@
                 android:layout_weight="1" />
         </LinearLayout>
 
-    </LinearLayout>
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/volumePanel"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginTop="@dimen/fab_margin"
+        android:layout_marginBottom="@dimen/fab_margin"
+        android:layout_marginHorizontal="@dimen/fab_margin"
+        app:srcCompat="@android:drawable/ic_dialog_email" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</RelativeLayout>

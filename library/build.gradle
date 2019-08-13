@@ -1,0 +1,44 @@
+apply plugin: 'com.android.library'
+//apply plugin: 'com.github.dcendents.android-maven'
+
+android {
+    compileSdkVersion 28
+    buildToolsVersion '28.0.3'
+
+    externalNativeBuild {
+        ndkBuild {
+            path 'src/main/jni/Android.mk'
+        }
+    }
+
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion 28
+
+        ndk {
+            abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+        }
+    }
+
+    buildTypes {
+        release {
+            ndk {
+                abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+            }
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+        debug {
+            ndk {
+                abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+            }
+        }
+    }
+
+    compileOptions {
+        encoding = 'UTF-8'
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}

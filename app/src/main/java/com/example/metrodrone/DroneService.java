@@ -6,9 +6,6 @@ import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.os.Binder;
 
-import java.util.Timer;
-import java.util.TimerTask;
-
 import org.billthefarmer.mididriver.MidiDriver;
 
 // Responsible for playing sound through the MIDI driver //
@@ -17,8 +14,6 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     // Create midi driver
     protected MidiDriverHelper midi;
     protected MediaPlayer player; // TODO do we need this?
-
-    private Timer noteTimer;
 
     // Create binder to return on binding
     final IBinder droneBinder = new DroneBinder();
@@ -60,13 +55,17 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         //TODO: Do we need to start the player? The example app didn't have it
 
         // Set the instrument
-        setInstrument(instrument);
+        midi.changeProgram((byte) instrument);
 
-        // Start a timer to play the notes
-        final double msPerBeat = PlayNoteTask.getMsPerBeat(bpm);
-        noteTimer = new Timer();
-        TimerTask playNote = new PlayNoteTask(midi, pitch, octave, bpm, settings);
-        noteTimer.schedule(playNote, 0, (long) msPerBeat);
+        // Calculate the note and beat durations
+        final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm);
+        final long beatDurationMs = Math.round(msPerBeat);
+        final long noteDurationMs = Math.round(msPerBeat * settings.getDuration());
+
+        // Play the sound
+        final byte[] pitches = {MidiDriverHelper.encodePitch(pitch, octave)};
+        final byte velocity = MidiDriverHelper.encodeVelocity(settings.getVelocity());
+        midi.renderNotes(pitches, velocity, noteDurationMs, beatDurationMs);
         isPlaying = true;
     }
 
@@ -78,9 +77,6 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         // Stop player
         if (player != null) player.stop();
 
-        // Stop the timer, cancelling old notes
-        if (noteTimer != null) noteTimer.cancel();
-
         isPlaying = false;
     }
 
@@ -90,10 +86,5 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     public void onMidiStart()
     {
         // Nothing happens here, the program is set in play()
-    }
-
-    protected void setInstrument(int code) {
-        final int setProgram = 0xc0;
-        midi.send(setProgram, code);
     }
 }

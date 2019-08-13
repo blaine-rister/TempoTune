@@ -15,6 +15,8 @@ import android.content.Intent;
 import android.content.ComponentName;
 import android.content.ServiceConnection;
 
+import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdSize;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -35,12 +37,22 @@ import android.widget.TextView;
 import android.widget.Spinner;
 import android.widget.SeekBar;
 
+import com.google.android.material.snackbar.Snackbar;
+
 import android.content.Context;
 
 import android.os.IBinder;
 import com.example.metrodrone.DroneService.DroneBinder;
 
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.InterstitialAd;
+
 public class MainActivity extends AppCompatActivity {
+
+    // Constants
+    final boolean testAds = true;
 
     // Sound parameters
     int bpm = 80;
@@ -51,11 +63,15 @@ public class MainActivity extends AppCompatActivity {
 
     // State
     boolean isPlaying = false;
+    boolean isPausedForApp = false;
     boolean isTapping = false;
     TempoTapper tempoTapper;
 
     // Persistent UI items
     TextView bpmTextView;
+
+    // Ads
+    InterstitialAd interstitialAd;
 
     // Service interface
     DroneBinder droneBinder;
@@ -139,6 +155,7 @@ public class MainActivity extends AppCompatActivity {
 
                     // Return false to continue processing the action, close keyboard
                 }
+
                 return false;
             }
         });
@@ -356,6 +373,42 @@ public class MainActivity extends AppCompatActivity {
         if (!bindService(intent, droneConnection, Context.BIND_AUTO_CREATE)) {
             fatalErrorDialog("Binding to the server returned false.");
         }
+
+        // Initialize ads
+        MobileAds.initialize(this);
+
+        // Get the ad unit IDs
+        final boolean testAds = true;
+        final int bannerAdUnitIdRes = testAds ? R.string.test_banner_ad_unit_id :
+                R.string.real_banner_ad_unit_id;
+        final int interstitialAdUnitRes = testAds ? R.string.test_interstitial_ad_unit_id :
+                R.string.real_interstitial_ad_unit_id;
+
+        // Initialize the banner ad
+        AdView banner = findViewById(R.id.adView);
+        banner.loadAd(new AdRequest.Builder().build());
+
+        // Initialize the interstitial ad
+        interstitialAd = new InterstitialAd(this);
+        interstitialAd.setAdUnitId(getResources().getString(R.string.interstitial_ad_unit_id));
+        interstitialAd.setAdListener(new AdListener(){
+            @Override
+            public void onAdClosed() {
+                // Code to be executed when the interstitial ad is closed.
+                Snackbar snackbar = Snackbar.make(findViewById(R.id.activity_main_layout),
+                        "Upgrade to the paid version to disable ads.",
+                        Snackbar.LENGTH_SHORT);
+                snackbar.setAction("Action", null).show();
+            }
+        });
+    }
+
+    // Check the BPM when 'back' is pressed: the user may use this to exit the keyboard
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        setBpm(readBpm(bpmTextView));
+        update();
     }
 
     // Method to handle reading the instrument CSV file. Returns the results in these lists.
@@ -466,18 +519,13 @@ public class MainActivity extends AppCompatActivity {
         update();
     }
 
-    // On resume
+    // On restart, load an ad
     @Override
-    protected void onResume()
+    protected void onRestart()
     {
-        super.onResume();
-    }
-
-    // On pause
-    @Override
-    protected void onPause()
-    {
-        super.onPause();
+        super.onRestart();
+        interstitialAd.loadAd(new AdRequest.Builder().build());
+        interstitialAd.show();
     }
 
     // Clean up
