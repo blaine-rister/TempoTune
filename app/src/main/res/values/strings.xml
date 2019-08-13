@@ -23,4 +23,10 @@
 
     <string name="banner_ad_unit_id">@string/test_banner_ad_unit_id</string>
     <string name="interstitial_ad_unit_id">@string/test_interstitial_ad_unit_id</string>
+
+    <string name="bpm_header">BPM</string>
+    <string name="pitch_header">Pitch</string>
+    <string name="instrument_header">Instrument</string>
+    <string name="duration_header">Duration</string>
+    <string name="velocity_header">Volume</string>
 </resources>

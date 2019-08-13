@@ -8,176 +8,145 @@
     tools:context=".MainActivity"
     tools:showIn="@layout/activity_main">
 
-        <LinearLayout
-            android:id="@+id/bpmPanel"
-            android:layout_width="match_parent"
-            android:layout_height="81dp"
-            android:layout_alignParentTop="true"
-            android:orientation="vertical">
+    <TextView
+        android:id="@+id/bpmTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:gravity="left"
+        android:text="@string/bpm_header" />
 
-            <TextView
-                android:id="@+id/bpmTextView"
-                android:layout_width="match_parent"
+            <ImageButton
+                android:id="@+id/bpmIncreaseButton"
+                android:layout_width="110dp"
                 android:layout_height="wrap_content"
-                android:text="BPM" />
+                android:layout_below="@id/bpmTextView"
+                android:layout_toLeftOf="@id/editBpm"
+                android:layout_toStartOf="@id/editBpm"
+                android:background="@android:color/transparent"
+                app:srcCompat="@android:drawable/ic_input_add" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal">
-
-                <ImageButton
-                    android:id="@+id/bpmIncreaseButton"
-                    android:layout_width="110dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@android:color/transparent"
-                    app:srcCompat="@android:drawable/ic_input_add" />
-
-                <EditText
-                    android:id="@+id/editBpm"
-                    android:layout_width="120dp"
-                    android:layout_height="wrap_content"
-                    android:ems="10"
-                    android:freezesText="true"
-                    android:hapticFeedbackEnabled="true"
-                    android:inputType="number"
-                    android:linksClickable="false"
-                    android:longClickable="false"
-                    android:saveEnabled="true"
-                    android:scrollbarAlwaysDrawHorizontalTrack="false"
-                    android:scrollbarAlwaysDrawVerticalTrack="false"
-                    android:scrollHorizontally="true"
-                    android:selectAllOnFocus="true"
-                    android:singleLine="true"
-                    android:maxLines="1"
-                    android:imeOptions="actionDone" />
-
-                <ImageButton
-                    android:id="@+id/bpmDecreaseButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@android:color/transparent"
-                    app:srcCompat="@android:drawable/btn_minus" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/pitchPanel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/bpmPanel"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/pitchTextView"
-                android:layout_width="match_parent"
+            <EditText
+                android:id="@+id/editBpm"
+                android:layout_width="120dp"
                 android:layout_height="wrap_content"
-                android:text="Pitch" />
+                android:layout_centerHorizontal="true"
+                android:layout_below="@id/bpmTextView"
+                android:ems="10"
+                android:freezesText="true"
+                android:hapticFeedbackEnabled="true"
+                android:inputType="number"
+                android:linksClickable="false"
+                android:longClickable="false"
+                android:saveEnabled="true"
+                android:scrollbarAlwaysDrawHorizontalTrack="false"
+                android:scrollbarAlwaysDrawVerticalTrack="false"
+                android:scrollHorizontally="true"
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:maxLines="1"
+                android:imeOptions="actionDone" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <ImageButton
+                android:id="@+id/bpmDecreaseButton"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:layout_below="@id/bpmTextView"
+                android:layout_toRightOf="@id/editBpm"
+                android:layout_toEndOf="@id/editBpm"
+                android:background="@android:color/transparent"
+                app:srcCompat="@android:drawable/btn_minus" />
+    <TextView
+        android:id="@+id/pitchTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/editBpm"
+        android:gravity="left"
+        android:text="@string/pitch_header" />
+
 
                 <Spinner
                     android:id="@+id/pitchSpinner"
-                    android:layout_width="125dp"
-                    android:layout_height="wrap_content" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingTop="@dimen/spinner_padding"
+                    android:paddingBottom="@dimen/spinner_padding"
+                    android:layout_below="@id/pitchTextView" />
 
                 <Spinner
                     android:id="@+id/octaveSpinner"
-                    android:layout_width="195dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1" />
+                    android:paddingTop="@dimen/spinner_padding"
+                    android:paddingBottom="@dimen/spinner_padding"
+                    android:layout_toRightOf="@id/pitchSpinner"
+                    android:layout_toEndOf="@id/pitchSpinner"
+                    android:layout_below="@id/pitchTextView" />
 
-            </LinearLayout>
-
-        </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/instrumentPanel"
+    <TextView
+        android:id="@+id/instrumentTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/pitchPanel"
-        android:orientation="vertical">
+        android:layout_below="@id/pitchSpinner"
+        android:gravity="left"
+        android:text="@string/instrument_header" />
 
-        <TextView
-            android:id="@+id/instrumentTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Instrument" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
 
             <Spinner
                 android:id="@+id/instrumentFamilySpinner"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
+                android:paddingTop="@dimen/spinner_padding"
+                android:paddingBottom="@dimen/spinner_padding"
+                android:layout_below="@id/instrumentTextView" />
 
             <Spinner
                 android:id="@+id/instrumentNameSpinner"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
-        </LinearLayout>
+                android:paddingTop="@dimen/spinner_padding"
+                android:paddingBottom="@dimen/spinner_padding"
+                android:layout_below="@id/instrumentTextView"
+                android:layout_toRightOf="@id/instrumentFamilySpinner"
+                android:layout_toEndOf="@id/instrumentFamilySpinner" />
 
-    </LinearLayout>
+    <TextView
+        android:id="@+id/durationTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/instrumentFamilySpinner"
+        android:gravity="left"
+        android:text="@string/duration_header" />
 
-        <LinearLayout
-            android:id="@+id/durationPanel"
-            android:layout_width="match_parent"
-            android:layout_height="108dp"
-            android:layout_below="@id/instrumentPanel"
-            android:orientation="vertical">
+    <SeekBar
+        android:id="@+id/durationSeekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="@dimen/seekbar_padding"
+        android:paddingBottom="@dimen/seekbar_padding"
+        android:layout_below="@id/durationTextView" />
 
-            <TextView
-                android:id="@+id/durationTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Duration" />
+    <TextView
+        android:id="@+id/velocityTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/durationSeekBar"
+        android:gravity="left"
+        android:text="@string/velocity_header" />
 
-            <SeekBar
-                android:id="@+id/durationSeekBar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/volumePanel"
-            android:layout_width="match_parent"
-            android:layout_height="108dp"
-            android:layout_below="@id/durationPanel"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/velocityTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Volume" />
-
-            <SeekBar
-                android:id="@+id/velocitySeekBar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-        </LinearLayout>
+    <SeekBar
+        android:id="@+id/velocitySeekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="@dimen/seekbar_padding"
+        android:paddingBottom="@dimen/seekbar_padding"
+        android:layout_below="@id/velocityTextView" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/volumePanel"
+        android:layout_below="@id/velocitySeekBar"
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
         android:layout_marginTop="@dimen/fab_margin"
