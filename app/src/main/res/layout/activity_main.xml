@@ -33,7 +33,14 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Use this for real ads: ads:adUnitId="ca-app-pub-5040365596623384~5072587493"-->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        <include layout="@layout/content_main" />
+    </androidx.core.widget.NestedScrollView>
+
     <com.google.android.gms.ads.AdView
         android:id="@+id/adView"
         android:layout_width="match_parent"
@@ -43,7 +50,5 @@
         ads:adSize="SMART_BANNER"
         ads:adUnitId="@string/banner_ad_unit_id"
         />
-
-    <include layout="@layout/content_main" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
