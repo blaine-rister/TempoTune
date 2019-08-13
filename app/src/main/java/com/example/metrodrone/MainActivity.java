@@ -239,7 +239,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                // Do nothing
+                // Update the drone with whatever changes were made
+                update();
             }
         });
 
@@ -260,7 +261,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                // Do nothing
+                // Update the drone with whatever changes were made
+                update();
             }
         });
 
