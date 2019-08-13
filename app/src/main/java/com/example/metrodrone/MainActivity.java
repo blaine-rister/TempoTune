@@ -391,16 +391,6 @@ public class MainActivity extends AppCompatActivity {
         // Initialize the interstitial ad
         interstitialAd = new InterstitialAd(this);
         interstitialAd.setAdUnitId(getResources().getString(R.string.interstitial_ad_unit_id));
-        interstitialAd.setAdListener(new AdListener(){
-            @Override
-            public void onAdClosed() {
-                // Code to be executed when the interstitial ad is closed.
-                Snackbar snackbar = Snackbar.make(findViewById(R.id.activity_main_layout),
-                        "Upgrade to the paid version to disable ads.",
-                        Snackbar.LENGTH_SHORT);
-                snackbar.setAction("Action", null).show();
-            }
-        });
     }
 
     // Check the BPM when 'back' is pressed: the user may use this to exit the keyboard
