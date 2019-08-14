@@ -15,10 +15,7 @@ import android.content.Intent;
 import android.content.ComponentName;
 import android.content.ServiceConnection;
 
-import com.google.android.gms.ads.AdListener;
-import com.google.android.gms.ads.AdSize;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -27,17 +24,19 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.view.LayoutInflater;
+
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Spinner;
 import android.widget.SeekBar;
-
-import com.google.android.material.snackbar.Snackbar;
+import android.widget.Button;
 
 import android.content.Context;
 
@@ -56,10 +55,9 @@ public class MainActivity extends AppCompatActivity {
 
     // Sound parameters
     int bpm = 80;
-    int pitch = 0; // 0-11
-    int octave = 3; // 0-7
     int instrument = 0; // Piano
     NoteSettings settings = new NoteSettings(); // Global settings varying smoothly, incl. velocity
+    List<Note> notes = new ArrayList<>(); // Stores the pitches to be played
 
     // State
     boolean isPlaying = false;
@@ -182,43 +180,87 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Pitch spinner
-        Spinner pitchSpinner = findViewById(R.id.pitchSpinner);
-        ArrayAdapter<CharSequence> pitchAdapter = ArrayAdapter.createFromResource(this,
+        // Create the pitch adapter
+        final ArrayAdapter<CharSequence> pitchAdapter = ArrayAdapter.createFromResource(this,
                 R.array.pitches_array, android.R.layout.simple_spinner_item);
         pitchAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        pitchSpinner.setAdapter(pitchAdapter);
-        pitchSpinner.setSelection(pitch);
-        pitchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
-                setPitch((String) adapterView.getItemAtPosition(pos));
-            }
 
+        // Create the octave adapter
+        final Integer[] octaves =  {0, 1, 2, 3, 4, 5, 6, 7};
+        final ArrayAdapter<Integer> octaveAdapter = new ArrayAdapter<Integer>(this,
+                android.R.layout.simple_spinner_item, octaves);
+        octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
+
+        // Set up the note spinners which come built-in to the UI
+        notes.add(new Note(
+                (Spinner) findViewById(R.id.pitchSpinner),
+                pitchAdapter,
+                (Spinner) findViewById(R.id.octaveSpinner),
+                octaveAdapter) {
             @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-                // Do nothing
+            public void onPitchChanged() {
+                update(); // Update the drone when the pitch is changed
             }
         });
 
-        // Octave spinner
-        Spinner octaveSpinner = findViewById(R.id.octaveSpinner);
-        final Integer[] octaves =  {0, 1, 2, 3, 4, 5, 6, 7};
-        ArrayAdapter<Integer> octaveAdapter = new ArrayAdapter<Integer>(this,
-                android.R.layout.simple_spinner_item, octaves);
-        octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
-        octaveSpinner.setAdapter(octaveAdapter);
-        octaveSpinner.setSelection(octave);
-        octaveSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        // Add pitch button
+        final Button addPitchButton = findViewById(R.id.addPitchButton);
+        addPitchButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
-                octave = (Integer) adapterView.getItemAtPosition(pos);
-                update();
-            }
+            public void onClick(View view) {
 
+                //TODO: there could be some bug in Android about this
+                // See this link, maybe try this fix: https://stackoverflow.com/questions/15425151/change-relative-layout-width-and-height-dynamically
+                // Or, put the first pitch spinner outside of here, set this sub-layout WITHOUT
+                // wrap_content
+
+                // Get the pitch layout
+                LinearLayout layout = findViewById(R.id.pitchLayout);
+
+                // Inflate new spinners
+                LayoutInflater inflater = LayoutInflater.from(layout.getContext());
+                Spinner pitchSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
+                Spinner octaveSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
+
+                // Add a new note
+                Note note = new Note(pitchSpinner, pitchAdapter, octaveSpinner, octaveAdapter) {
+                    @Override public void onPitchChanged() {
+                        update(); // Update the drone when the pitch is changed
+                    }
+                };
+                notes.add(note);
+                update();
+
+                // Put the new spinners in the UI layout
+                final LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                layout.addView(note.pitchSpinner, params);
+                layout.addView(note.octaveSpinner, params);
+            }
+        });
+
+        // Remove pitch button
+        Button removePitchButton = findViewById(R.id.removePitchButton);
+        removePitchButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-                // Do nothing
+            public void onClick(View view) {
+
+                // Do nothing if there are no pitches left to remove
+                if (notes.isEmpty())
+                    return;
+
+                // Get the last note
+                final int removeIdx = notes.size() - 1;
+                Note noteToRemove = notes.get(removeIdx);
+
+                // Remove the note from the sounding pitches
+                notes.remove(removeIdx);
+                update();
+
+                // Remove the note from the UI layout
+                LinearLayout layout = findViewById(R.id.pitchLayout);
+                layout.removeView(noteToRemove.octaveSpinner);
+                layout.removeView(noteToRemove.pitchSpinner);
             }
         });
 
@@ -439,7 +481,7 @@ public class MainActivity extends AppCompatActivity {
     protected void play() {
         if (!isBound) return;
 
-        droneBinder.play(bpm, pitch, octave, instrument, settings.getReader());
+        droneBinder.play(bpm, notes, instrument, settings.getReader());
         isPlaying = true;
     }
 
@@ -479,36 +521,6 @@ public class MainActivity extends AppCompatActivity {
     // Displays the current BPM
     protected void displayBpm() {
         bpmTextView.setText(Integer.toString((int) bpm));
-    }
-
-    // Updates the pitch given the pitch name in pitchStr
-    protected void setPitch(CharSequence pitchStr) {
-        // Convert the first character to an ASCII code
-        final char firstChar = pitchStr.charAt(0);
-        final boolean isSharp = pitchStr.length() > 1;
-        final int firstCharAscii = (int) firstChar;
-
-        // Make sure the character is in the range A-
-        final int asciiA = (int) 'A';
-        final int asciiG =  (int) 'G';
-        if (firstCharAscii < asciiA || firstCharAscii > asciiG) fatalErrorDialog("Invalid pitch " +
-                pitchStr);
-
-        // Convert the natural pitch using a lookup table
-        final int[] pitchLookup = {
-                0,  // A, A#
-                2,  // B
-                3,  // C, C#
-                5,  // D, D#
-                7,  // E
-                8,  // F, F#
-                10,  // G, G#
-        };
-        final int naturalPitch = pitchLookup[firstCharAscii - asciiA];
-
-        // Add sharps, update the drone
-        pitch = isSharp ? naturalPitch + 1 : naturalPitch;
-        update();
     }
 
     // On restart, load an ad

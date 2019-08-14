@@ -3,6 +3,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/context_main_layout"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
@@ -66,29 +67,59 @@
         android:text="@string/pitch_header" />
 
 
-                <Spinner
-                    android:id="@+id/pitchSpinner"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingTop="@dimen/spinner_padding"
-                    android:paddingBottom="@dimen/spinner_padding"
-                    android:layout_below="@id/pitchTextView" />
+    <HorizontalScrollView
+        android:id="@+id/pitchScrollView"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/pitchTextView"
+        android:fadeScrollbars="false"
+        android:fillViewport="true">
 
-                <Spinner
-                    android:id="@+id/octaveSpinner"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingTop="@dimen/spinner_padding"
-                    android:paddingBottom="@dimen/spinner_padding"
-                    android:layout_toRightOf="@id/pitchSpinner"
-                    android:layout_toEndOf="@id/pitchSpinner"
-                    android:layout_below="@id/pitchTextView" />
+        <LinearLayout
+            android:id="@+id/pitchLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <Spinner
+                android:id="@+id/pitchSpinner"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="@dimen/spinner_padding"
+                android:paddingBottom="@dimen/spinner_padding"
+                android:paddingRight="@dimen/spinner_padding" />
+
+            <Spinner
+                android:id="@+id/octaveSpinner"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="@dimen/spinner_padding"
+                android:paddingBottom="@dimen/spinner_padding" />
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
+
+    <Button
+        android:id="@+id/addPitchButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/pitchScrollView"
+        android:text="Add" />
+
+    <Button
+        android:id="@+id/removePitchButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/pitchScrollView"
+        android:layout_toRightOf="@id/addPitchButton"
+        android:layout_toEndOf="@id/addPitchButton"
+        android:text="Remove" />
 
     <TextView
         android:id="@+id/instrumentTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/pitchSpinner"
+        android:layout_below="@id/addPitchButton"
         android:gravity="left"
         android:text="@string/instrument_header" />
 
@@ -154,5 +185,4 @@
         android:layout_marginBottom="@dimen/fab_margin"
         android:layout_marginHorizontal="@dimen/fab_margin"
         app:srcCompat="@android:drawable/ic_dialog_email" />
-
 </RelativeLayout>
