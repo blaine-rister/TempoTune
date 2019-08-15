@@ -40,6 +40,8 @@
 #include <malloc.h>
 #include <math.h>
 #include <semaphore.h>
+#include <limits.h>
+#include <stdlib.h>
 
 #include <android/log.h>
 
@@ -80,6 +82,7 @@ static SLObjectItf outputMixObject = NULL;
 // buffer queue player interfaces
 static SLObjectItf bqPlayerObject = NULL;
 static SLPlayItf bqPlayerPlay;
+static SLVolumeItf bqPlayerVolume;
 static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 
 // EAS data
@@ -110,7 +113,22 @@ jboolean checkInitialization(const char *functionName) {
 // Set the player's state to playing
 SLresult play() {
 
+    SLmillibel maxVolume;
     SLresult result;
+
+    // Get the maximum volume level
+    result = (*bqPlayerVolume)->GetMaxVolumeLevel(bqPlayerVolume, &maxVolume);
+    if (result != SL_RESULT_SUCCESS) {
+        LOG_E(LOG_TAG, "failed to get the maximum volume");
+        return result;
+    }
+
+    // Set the volume to max
+    result = (*bqPlayerVolume)->SetVolumeLevel(bqPlayerVolume, maxVolume);
+    if (result != SL_RESULT_SUCCESS) {
+        LOG_E(LOG_TAG, "failed to set the volume level");
+        return result;
+    }
 
     // Set the playback pointer
     if (record_buffer == NULL) {
@@ -245,6 +263,43 @@ static EAS_RESULT endNote(const EAS_U8 pitch) {
     return EAS_WriteMIDIStream(pEASData, midiHandle, (EAS_U8 *) endNoteMsg, sizeof(endNoteMsg));
 }
 
+// Normalize the audio so the maximum value is given by maxLevel, on a scale of 0-1
+static EAS_RESULT normalize(EAS_PCM *const buffer, const size_t bufferLength,
+        const double maxLevel) {
+
+    EAS_PCM maxBefore;
+    size_t i;
+
+    assert(sizeof(short) == sizeof(EAS_PCM));
+    if (maxLevel < 0. || maxLevel > 1.) {
+        LOG_E(LOG_TAG, "normalize: invalid maxLevel: %f", maxLevel);
+        return EAS_FAILURE;
+    }
+
+    const double maxPcm = (double) SHRT_MAX * maxLevel;
+
+    // Get the maximum value of the un-normalized stream
+    maxBefore = 0;
+    for (i = 0; i < bufferLength; i++) {
+        const EAS_PCM sampleLevel = (EAS_PCM) abs((int) buffer[i]);
+        maxBefore = sampleLevel > maxBefore ? sampleLevel : maxBefore;
+    }
+
+    // Return if the stream is already normalized
+    if (maxBefore == 0 || maxBefore == maxPcm)
+        return EAS_SUCCESS;
+
+    // Compute the linear gain
+    const float gain = (float) (maxPcm / (double) maxBefore);
+
+    // Apply the gain
+    for (i = 0; i < bufferLength; i++) {
+        buffer[i] = (EAS_PCM) ((float) buffer[i] * gain);
+    }
+
+    return EAS_SUCCESS;
+}
+
 // Ramp down the audio in the given buffer. The gain reaches the given number of decibels
 // by the end of the buffer. Positive or negative values of dB are interpreted the same.
 static void rampDown(EAS_PCM *const buffer, const size_t bufferLength, const double dB) {
@@ -298,9 +353,13 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
     EAS_PCM *noteEndPosition;
     int i;
 
+    // MIDI info
+    const EAS_U8 velocityMax = 127; // Maximum allowed velocity in MIDI
+
     // Internal parameters
     const long rampDownMs = 15; // Time for the ramp-down of a note
     const double rampDb = -40; // Amount of ramping down
+    const double minLevel = rampDb; // The sound level corresponding to zero velocity
 
     // Verify parameters
     if (recordingDurationMs < noteDurationMs) {
@@ -309,6 +368,10 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
     }
     if (numPitches < 1) {
         LOG_E(LOG_TAG, "Invalid number of pitches: %d", numPitches);
+        return JNI_FALSE;
+    }
+    if (velocity > velocityMax) {
+        LOG_E(LOG_TAG, "Velocity %d exceeds maximum value of %d", velocity, velocityMax);
         return JNI_FALSE;
     }
 
@@ -332,8 +395,8 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
     // Allocate a new recording. Put room for an extra two mix buffer at the end, to prevent writing
     // past the end of the buffer during rendering.
     const size_t numBufferMonoSamples = recordingSamples + 2 * pLibConfig->mixBufferSize;
-    if ((record_buffer = (EAS_PCM *) malloc(getNumPcm(numBufferMonoSamples) *
-            sizeof(EAS_PCM))) == NULL) {
+    const size_t recordBufferLength = getNumPcm(numBufferMonoSamples);
+    if ((record_buffer = (EAS_PCM *) malloc(recordBufferLength * sizeof(EAS_PCM))) == NULL) {
         LOG_E(LOG_TAG, "Insufficient memory for recording buffer.");
         return JNI_FALSE;
     }
@@ -366,6 +429,13 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
             rampDownMs > noteDurationMs ? noteDurationMs : rampDownMs));
     EAS_PCM *const rampStartPosition = recording_position - rampDownNumPcm;
     rampDown(rampStartPosition, rampDownNumPcm, rampDb);
+
+    // Compute the maximum level based on the velocity
+    const double maxLevel = (double) velocity / (double) velocityMax;
+
+    // Normalize the audio
+    if (normalize(record_buffer, recordBufferLength, maxLevel))
+        return JNI_FALSE;
 
     // Start playing the recording
     play();
@@ -444,13 +514,14 @@ SLresult createBufferQueueAudioPlayer()
     SLDataSink audioSnk = {&loc_outmix, NULL};
 
     // create audio player
-    const SLInterfaceID ids[1] = {SL_IID_BUFFERQUEUE};
-    const SLboolean req[1] = {SL_BOOLEAN_TRUE};
+    const SLInterfaceID ids[] = {SL_IID_BUFFERQUEUE, SL_IID_VOLUME};
+    const SLboolean req[] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
+    const size_t numIds = sizeof(ids) / sizeof(SLInterfaceID);
 
     result = (*engineEngine)->CreateAudioPlayer(engineEngine,
                                                 &bqPlayerObject,
                                                 &audioSrc, &audioSnk,
-                                                1, ids, req);
+                                                numIds, ids, req);
     if (SL_RESULT_SUCCESS != result)
         return result;
 
@@ -468,6 +539,12 @@ SLresult createBufferQueueAudioPlayer()
                                              &bqPlayerPlay);
     if (SL_RESULT_SUCCESS != result)
         return result;
+
+    // Get the volume interface
+    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_VOLUME, &bqPlayerVolume);
+    if (result != SL_RESULT_SUCCESS) {
+        return result;
+    }
 
     // LOG_D(LOG_TAG, "Play interface retrieved");
 
@@ -500,6 +577,7 @@ void shutdownAudio() {
         (*bqPlayerObject)->Destroy(bqPlayerObject);
         bqPlayerObject = NULL;
         bqPlayerPlay = NULL;
+        bqPlayerVolume = NULL;
         bqPlayerBufferQueue = NULL;
     }
 
