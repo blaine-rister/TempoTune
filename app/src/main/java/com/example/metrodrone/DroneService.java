@@ -7,6 +7,9 @@ import android.os.IBinder;
 import android.os.Binder;
 import java.util.List;
 
+import android.net.Uri;
+import android.content.ContentResolver;
+
 import org.billthefarmer.mididriver.MidiDriver;
 
 // Responsible for playing sound through the MIDI driver //
@@ -25,7 +28,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     public void onCreate() {
         super.onCreate();
 
-        // Set on midi start listener
+        // Initialize the MIDI
         midi = new MidiDriverHelper();
         midi.setOnMidiStartListener(this);
     }
@@ -52,11 +55,12 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         if (isPlaying) pause();
 
         // Start the midi
-        midi.start();
+        midi.start(resourceToUri(R.raw.fluidr3_gm).toString());
         //TODO: Do we need to start the player? The example app didn't have it
 
         // Set the instrument
-        midi.changeProgram((byte) instrument);
+        //XXX this was crashing
+        //midi.changeProgram((byte) instrument);
 
         // Calculate the note and beat durations
         final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm);
@@ -73,7 +77,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
         // Play the sound
         final byte velocity = MidiDriverHelper.encodeVelocity(settings.getVelocity());
-        midi.renderNotes(pitches, velocity, noteDurationMs, beatDurationMs);
+        midi.renderNotes(pitches, velocity, noteDurationMs, beatDurationMs); // FIXME: This fails because the default bank/channel has no preset. Need to inspect the soundfont file and find out which banks/channels are used
         isPlaying = true;
     }
 
@@ -94,5 +98,14 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     public void onMidiStart()
     {
         // Nothing happens here, the program is set in play()
+    }
+
+    // Convert a resource to a URI, from:
+    // https://stackoverflow.com/questions/4896223/how-to-get-an-uri-of-an-image-resource-in-android
+    public Uri resourceToUri(int resID) {
+        return Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" +
+                this.getResources().getResourcePackageName(resID) + '/' +
+                this.getResources().getResourceTypeName(resID) + '/' +
+                this.getResources().getResourceEntryName(resID) );
     }
 }

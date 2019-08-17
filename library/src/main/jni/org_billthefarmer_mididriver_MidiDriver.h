@@ -14,7 +14,7 @@ extern "C"
  * Signature: ()Z
  */
 JNIEXPORT jboolean JNICALL Java_org_billthefarmer_mididriver_MidiDriver_init
-        (JNIEnv *, jobject);
+        (JNIEnv *, jobject, jstring);
 
 /*
  * Class:     org_billthefarmer_mididriver_MidiDriver

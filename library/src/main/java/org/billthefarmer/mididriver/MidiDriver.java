@@ -53,11 +53,11 @@ public class MidiDriver
     }
 
     /**
-     * Start midi driver
+     * Start the midi driver, given a soundfont file.
      */
-    public void start()
+    public void start(String soundfontFilename)
     {
-        if (!init()) {
+        if (!init(soundfontFilename)) {
             throw new RuntimeException("Failed to initialize MIDI");
         }
 
@@ -65,16 +65,6 @@ public class MidiDriver
 
         if (listener != null)
             listener.onMidiStart();
-    }
-
-    /**
-     * Queue midi event or events
-     *
-     * @param byte array of midi events
-     */
-    public void queueEvent(byte[] event)
-    {
-        write(event);
     }
 
     /**
@@ -108,12 +98,7 @@ public class MidiDriver
      */
     public void changeProgram(byte programNumber) {
 
-        byte msg[] = new byte[2];
-
-        msg[0] = (byte) 0xc0;
-        msg[1] = programNumber;
-
-        if (!write(msg))
+        if (!changeProgramJNI(programNumber))
             throw new RuntimeException("Failed to change the MIDI program");
     }
 
@@ -133,7 +118,7 @@ public class MidiDriver
      *
      * @return true for success
      */
-    private native boolean init();
+    private native boolean init(String soundfontFilename);
 
     /**
      * Returm part of EAS config
@@ -165,18 +150,11 @@ public class MidiDriver
                                  long recordDurationMs);
 
     /**
-     * Write midi event or events
+     *  Change the MIDI program.
      *
-     * @param byte array of midi events
+     * @return True on success
      */
-    private native boolean write(byte a[]);
-
-    /**
-     * Set master volume
-     * @param volume master volume for EAS synthesizer (between 0 and 100)
-     * @return true for success
-     */
-    public  native boolean setVolume(int volume);
+    public native boolean changeProgramJNI(byte programNum);
 
     /**
      * Shut down native code

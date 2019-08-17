@@ -61,6 +61,25 @@ LOCAL_SRC_FILES = \
 #	lib_src/eas_wavefile.c \
 #	lib_src/eas_wavefiledata.c \
 
+# All ALL the fluidlite files
+LOCAL_SRC_FILES += \
+	fluidlite_squash/fluid_chan.c \
+	fluidlite_squash/fluid_chorus.c \
+	fluidlite_squash/fluid_conv.c \
+	fluidlite_squash/fluid_defsfont.c \
+	fluidlite_squash/fluid_dsp_float.c \
+	fluidlite_squash/fluid_gen.c \
+	fluidlite_squash/fluid_hash.c \
+	fluidlite_squash/fluid_list.c \
+	fluidlite_squash/fluid_mod.c \
+	fluidlite_squash/fluid_ramsfont.c \
+	fluidlite_squash/fluid_rev.c \
+	fluidlite_squash/fluid_settings.c \
+	fluidlite_squash/fluid_synth.c \
+	fluidlite_squash/fluid_sys.c \
+	fluidlite_squash/fluid_tuning.c \
+	fluidlite_squash/fluid_voice.c
+
 LOCAL_CFLAGS += -O2 -std=gnu99 -D UNIFIED_DEBUG_MESSAGES \
 	-D EAS_WT_SYNTH -D NUM_OUTPUT_CHANNELS=2 \
 	-D _SAMPLE_RATE_22050 -D MAX_SYNTH_VOICES=64 \
@@ -79,7 +98,8 @@ LOCAL_CFLAGS += -O2 -std=gnu99 -D UNIFIED_DEBUG_MESSAGES \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/host_src \
-	$(LOCAL_PATH)/lib_src
+	$(LOCAL_PATH)/lib_src \
+	${LOCAL_PATH}/fluidlite_squash
 
 LOCAL_ARM_MODE := arm
 
@@ -90,7 +110,8 @@ LOCAL_MODULE := sonivox
 # 	host_src/eas.h \
 # 	host_src/eas_types.h \
 # 	host_src/eas_reverb.h \
-# 	host_src/jet.h
+# 	host_src/jet.h \
+#   host_src/fluidlite.h
 
 # Remove support for assembler files as GNU compiler support withdrawn
 # from NDK r17b, which must include GNU as.
