@@ -1796,7 +1796,10 @@ fluid_synth_program_reset(fluid_synth_t* synth)
   int i;
   /* try to set the correct presets */
   for (i = 0; i < synth->midi_channels; i++){
-    fluid_synth_program_change(synth, i, fluid_channel_get_prognum(synth->channel[i]));
+      int result;
+      result = fluid_synth_program_change(synth, i, fluid_channel_get_prognum(synth->channel[i]));
+      if (result != FLUID_OK)
+          return result;
   }
   return FLUID_OK;
 }
@@ -2525,24 +2528,39 @@ fluid_synth_sfload(fluid_synth_t* synth, const char* filename, int reset_presets
     return FLUID_FAILED;
   }
 
+  // Allocate a new soundfont
+  sfont = FLUID_NEW(fluid_sfont_t);
+  if (sfont == NULL) {
+      FLUID_LOG(FLUID_ERR, "Out of memory.");
+      return FLUID_FAILED;
+  }
+
+  // Try to load the soundfont with each of the loaders, quit when one works
   for (list = synth->loaders; list; list = fluid_list_next(list)) {
     loader = (fluid_sfloader_t*) fluid_list_get(list);
 
-    sfont = FLUID_NEW(fluid_sfont_t);
-    sfont->id = ++synth->sfont_id;
-    synth->sfont = fluid_list_prepend(synth->sfont, sfont);
-
+    // Try to load the soundfont
     loader->data = sfont;
-    fluid_sfloader_load(loader, filename);
-    loader->data = NULL;
-
-
-    if (reset_presets) {
-        fluid_synth_program_reset(synth);
+    if (fluid_sfloader_load(loader, filename) == NULL) {
+        continue;
     }
+
+    // Add the soundfont to the synth
+    fluid_synth_add_sfont(synth, sfont);
+
+    // Optionally reset presets
+    if (reset_presets) {
+        if (fluid_synth_program_reset(synth) != FLUID_OK)
+            goto sfload_err;
+    }
+
     return (int) sfont->id;
   }
 
+
+sfload_err:
+  // Delete the soundfont and return -1
+  delete_fluid_sfont(sfont);
   FLUID_LOG(FLUID_ERR, "Failed to load SoundFont \"%s\"", filename);
   return -1;
 }
@@ -3493,10 +3511,10 @@ fluid_synth_get_bank_offset(fluid_synth_t* synth, int sfont_id)
 void
 fluid_synth_remove_bank_offset(fluid_synth_t* synth, int sfont_id)
 {
-	fluid_bank_offset_t* bank_offset;
+    fluid_bank_offset_t* bank_offset;
 
-	bank_offset = fluid_synth_get_bank_offset0(synth, sfont_id);
-	if (bank_offset != NULL) {
-		synth->bank_offsets = fluid_list_remove(synth->bank_offsets, bank_offset);
-	}
+    bank_offset = fluid_synth_get_bank_offset0(synth, sfont_id);
+    if (bank_offset != NULL) {
+        synth->bank_offsets = fluid_list_remove(synth->bank_offsets, bank_offset);
+    }
 }
