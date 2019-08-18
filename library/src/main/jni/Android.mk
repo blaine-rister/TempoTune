@@ -78,7 +78,8 @@ LOCAL_SRC_FILES += \
 	fluidlite_squash/fluid_synth.c \
 	fluidlite_squash/fluid_sys.c \
 	fluidlite_squash/fluid_tuning.c \
-	fluidlite_squash/fluid_voice.c
+	fluidlite_squash/fluid_voice.c \
+	fluidlite_squash/aasset_stdio_adapter.c
 
 LOCAL_CFLAGS += -O2 -std=gnu99 -D UNIFIED_DEBUG_MESSAGES \
 	-D EAS_WT_SYNTH -D NUM_OUTPUT_CHANNELS=2 \
@@ -154,8 +155,8 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := midi
 LOCAL_SRC_FILES := midi.c
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/host_src
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/host_src ${LOCAL_PATH}/fluidlite_squash
 LOCAL_STATIC_LIBRARIES := sonivox
-LOCAL_LDLIBS := -lOpenSLES -llog
+LOCAL_LDLIBS := -lOpenSLES -llog -landroid
 
 include $(BUILD_SHARED_LIBRARY)

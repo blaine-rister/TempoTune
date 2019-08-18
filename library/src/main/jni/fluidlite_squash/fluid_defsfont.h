@@ -143,7 +143,7 @@ typedef struct _SFData
   unsigned int samplepos;		/* position within sffd of the sample chunk */
   unsigned int samplesize;		/* length within sffd of the sample chunk */
   char *fname;			/* file name */
-  FILE *sffd;			/* loaded sfont file descriptor */
+  fluid_file sffd;			/* loaded sfont file descriptor */
   fluid_list_t *info;		     /* linked list of info strings (1st byte is ID) */
   fluid_list_t *preset;		/* linked list of preset info */
   fluid_list_t *inst;			/* linked list of instrument info */
@@ -426,9 +426,9 @@ enum
 #define ErrnoEnd	ErrWrite
 
 int gerr (int ev, char * fmt, ...);
-int safe_fread (void *buf, int count, FILE * fd);
-int safe_fwrite (void *buf, int count, FILE * fd);
-int safe_fseek (FILE * fd, long ofs, int whence);
+int safe_fread (void *buf, int count, fluid_file fd);
+int safe_fwrite (void *buf, int count, fluid_file fd);
+int safe_fseek (fluid_file fd, long ofs, int whence);
 
 
 /********************************************************************************/

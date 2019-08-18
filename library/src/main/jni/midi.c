@@ -103,7 +103,9 @@ static EAS_I32 bufferSize;
 static EAS_HANDLE midiHandle;
 
 // Recording buffer
-static enum State {PLAYING, IDLE} state = IDLE;
+static enum State {
+    PLAYING, IDLE
+} state = IDLE;
 static EAS_PCM *record_buffer = NULL; // Storage for the recording
 static EAS_PCM *recording_position = NULL; // Current recording position
 static EAS_PCM *playback_position = NULL; // Current playback position
@@ -193,8 +195,7 @@ void enqueueBuffer(SLAndroidSimpleBufferQueueItf bq) {
 
 // this callback handler is called every time a buffer finishes
 // playing
-void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
-{
+void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
     int i;
 
     EAS_PCM *next_buffer;
@@ -267,7 +268,7 @@ static int changeProgram(const EAS_U8 programNum) {
 
     result = fluid_synth_program_change(fluidSynth, midiChannel, programNum);
     if (result != 0) {
-        LOG_E(LOG_TAG, "Failed to change fluid program.");
+        LOG_E(LOG_TAG, "Failed to change fluid program to %uc.", programNum);
     }
 
     return result;
@@ -276,7 +277,7 @@ static int changeProgram(const EAS_U8 programNum) {
 // Start a note
 static EAS_RESULT startNote(const EAS_U8 pitch, const EAS_U8 velocity) {
     return !isInitialized("startNote") || fluid_synth_noteon(fluidSynth, midiChannel, pitch,
-            velocity);
+                                                             velocity);
 
 }
 
@@ -288,7 +289,7 @@ static EAS_RESULT endNote(const EAS_U8 pitch) {
 // Normalize the audio so the maximum value is given by maxLevel, on a scale of 0-1. This is the
 // final processing stage so it also converts the audio to fixed-point at the end.
 static EAS_RESULT normalize(const float *const inBuffer, EAS_PCM *const outBuffer,
-        const size_t bufferLength, const double maxLevel) {
+                            const size_t bufferLength, const double maxLevel) {
 
     float maxBefore;
     size_t i;
@@ -322,7 +323,7 @@ static EAS_RESULT normalize(const float *const inBuffer, EAS_PCM *const outBuffe
 
 // Ramp down the audio in the given buffer. The gain reaches the given number of decibels
 // by the end of the buffer. Positive or negative values of dB are interpreted the same.
-static void rampDown(EAS_PCM *const buffer, const size_t bufferLength, const double dB) {
+static void rampDown(float *const buffer, const size_t bufferLength, const double dB) {
 
     size_t i;
 
@@ -335,7 +336,7 @@ static void rampDown(EAS_PCM *const buffer, const size_t bufferLength, const dou
 
     // Process the sound in-place
     for (i = 0; i < bufferLength; i++) {
-        buffer[i] = (EAS_PCM) ((float) buffer[i] * expf(-tau * (float) i));
+        buffer[i] = buffer[i] * expf(-tau * (float) i);
     }
 }
 
@@ -356,11 +357,11 @@ static float *renderSamples(const EAS_I32 numSamples, float *buffer) {
 
 // Render the data offline, then start looping it
 jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
-        const EAS_U8 velocity,
-        const jlong noteDurationMs,
-        const jlong recordingDurationMs) {
+                const EAS_U8 velocity,
+                const jlong noteDurationMs,
+                const jlong recordingDurationMs) {
 
-    float *noteEndPosition, *floatBuffer = NULL;
+    float *noteEndPosition, *decayEndPosition, *floatBuffer = NULL;
     int i;
 
     // MIDI info
@@ -439,16 +440,13 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
     }
 
     // Render the note decays
-    if (renderSamples(decaySamples, noteEndPosition) == NULL)
+    if ((decayEndPosition = renderSamples(decaySamples, noteEndPosition)) == NULL)
         goto render_quit;
-
-    // Set the end of the recording
-    recording_position = record_buffer + getNumPcm(recordingSamples);
 
     // Ramp down the audio at the end of the recording
     const size_t rampDownNumPcm = getNumPcm(ms2Samples(
             rampDownMs > noteDurationMs ? noteDurationMs : rampDownMs));
-    EAS_PCM *const rampStartPosition = recording_position - rampDownNumPcm;
+    float *const rampStartPosition = decayEndPosition - rampDownNumPcm;
     rampDown(rampStartPosition, rampDownNumPcm, rampDb);
 
     // Compute the maximum level based on the velocity
@@ -461,19 +459,21 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
     // Clean up intermediates
     free(floatBuffer);
 
+    // Set the end of the recording
+    recording_position = record_buffer + getNumPcm(recordingSamples);
+
     // Start playing the recording
     play();
     return JNI_TRUE;
 
-render_quit:
+    render_quit:
     if (floatBuffer != NULL)
         free(floatBuffer);
     return JNI_FALSE;
 }
 
 // create the engine and output mix objects
-SLresult createEngine()
-{
+SLresult createEngine() {
     SLresult result;
 
     // create engine
@@ -518,28 +518,27 @@ SLresult createEngine()
 }
 
 // create buffer queue audio player
-SLresult createBufferQueueAudioPlayer()
-{
+SLresult createBufferQueueAudioPlayer() {
     SLresult result;
 
     // configure audio source
     SLDataLocator_AndroidSimpleBufferQueue loc_bufq =
-        {
-         SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2
-        };
+            {
+                    SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2
+            };
     SLDataFormat_PCM format_pcm =
-        {
-         SL_DATAFORMAT_PCM, (SLuint32) (pLibConfig->numChannels),
-         (SLuint32) (pLibConfig->sampleRate * 1000),
-         SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
-         SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
-         SL_BYTEORDER_LITTLEENDIAN
-        };
+            {
+                    SL_DATAFORMAT_PCM, (SLuint32) (pLibConfig->numChannels),
+                    (SLuint32) (pLibConfig->sampleRate * 1000),
+                    SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
+                    SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
+                    SL_BYTEORDER_LITTLEENDIAN
+            };
     SLDataSource audioSrc = {&loc_bufq, &format_pcm};
 
     // configure audio sink
     SLDataLocator_OutputMix loc_outmix =
-        {SL_DATALOCATOR_OUTPUTMIX, outputMixObject};
+            {SL_DATALOCATOR_OUTPUTMIX, outputMixObject};
     SLDataSink audioSnk = {&loc_outmix, NULL};
 
     // create audio player
@@ -664,7 +663,8 @@ int initFluid(const char *soundfontFilename) {
     fluid_settings_setint(fluidSettings, "synth.audio-channels", numStereoChannels);
     fluid_settings_setnum(fluidSettings, "synth.sample-rate", pLibConfig->sampleRate);
     fluid_settings_setint(fluidSettings, "synth.threadsafe-api", 0); // Turn off monitor
-    fluid_settings_setint(fluidSettings, "synth.chorus.active", 0); // Turn off chorus (could be enabled as an interesting feature)
+    fluid_settings_setint(fluidSettings, "synth.chorus.active",
+                          0); // Turn off chorus (could be enabled as an interesting feature)
 
     // Initialize the synthesizer
     if ((fluidSynth = new_fluid_synth(fluidSettings)) == NULL) {
@@ -682,8 +682,7 @@ int initFluid(const char *soundfontFilename) {
 }
 
 // init EAS midi
-EAS_RESULT initEAS()
-{
+EAS_RESULT initEAS() {
     EAS_RESULT result;
 
     // get the library configuration
@@ -712,29 +711,24 @@ EAS_RESULT initEAS()
 }
 
 // shutdown EAS midi
-void shutdownEAS()
-{
+void shutdownEAS() {
 
-    if (midiHandle != NULL)
-    {
+    if (midiHandle != NULL) {
         EAS_CloseMIDIStream(pEASData, midiHandle);
         midiHandle = NULL;
     }
 
-    if (pEASData != NULL)
-    {
+    if (pEASData != NULL) {
         EAS_Shutdown(pEASData);
         pEASData = NULL;
     }
 }
 
 // init mididriver
-jboolean midi_init(const char *soundfontFilename)
-{
+jboolean midi_init(const char *soundfontFilename) {
     EAS_RESULT result;
 
-    if ((result = initFluid(soundfontFilename)))
-    {
+    if ((result = initFluid(soundfontFilename))) {
         shutdownFluid();
 
         LOG_E(LOG_TAG, "Init fluid failed: %ld", result);
@@ -755,8 +749,7 @@ jboolean midi_init(const char *soundfontFilename)
     }
 
     // create the engine and output mix objects
-    if ((result = createEngine()) != SL_RESULT_SUCCESS)
-    {
+    if ((result = createEngine()) != SL_RESULT_SUCCESS) {
         shutdownFluid();
         shutdownAudio();
         free(buffer);
@@ -768,8 +761,7 @@ jboolean midi_init(const char *soundfontFilename)
     }
 
     // create buffer queue audio player
-    if ((result = createBufferQueueAudioPlayer()) != SL_RESULT_SUCCESS)
-    {
+    if ((result = createBufferQueueAudioPlayer()) != SL_RESULT_SUCCESS) {
         shutdownFluid();
         shutdownAudio();
         free(buffer);
@@ -795,8 +787,7 @@ jboolean midi_init(const char *soundfontFilename)
 }
 
 // Write a MIDI message
-jboolean midi_write(EAS_U8 *bytes, jint length)
-{
+jboolean midi_write(EAS_U8 *bytes, jint length) {
     EAS_RESULT result;
 
     // Verify initialization
@@ -804,22 +795,28 @@ jboolean midi_write(EAS_U8 *bytes, jint length)
         return JNI_FALSE;
 
     return (EAS_WriteMIDIStream(pEASData, midiHandle, bytes, length) == EAS_SUCCESS) ?
-        JNI_TRUE : JNI_FALSE;
+           JNI_TRUE : JNI_FALSE;
 }
 
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
                                                   jobject obj,
-                                                  jstring soundfontFilename)
-{
-    return midi_init((*env)->GetStringUTFChars(env, soundfontFilename, NULL));
+                                                  jobject AAssetAdapter,
+                                                  jstring soundfontAAssetName) {
+    // Initialize the AAssets wrapper, so we can do file I/O
+    if (init_AAssets(env, AAssetAdapter)) {
+        LOG_E(LOG_TAG, "Failed to initialize AAssets.");
+        return JNI_FALSE;
+    }
+
+    // Initialize the synth
+    return midi_init((*env)->GetStringUTFChars(env, soundfontAAssetName, NULL));
 }
 
 // midi config
 jintArray
 Java_org_billthefarmer_mididriver_MidiDriver_config(JNIEnv *env,
-                                                    jobject obj)
-{
+                                                    jobject obj) {
     jboolean isCopy;
 
     if (pLibConfig == NULL)
@@ -842,7 +839,7 @@ Java_org_billthefarmer_mididriver_MidiDriver_config(JNIEnv *env,
 // Stop looping, delete the recording
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_pause(JNIEnv *env,
-        jobject jobj) {
+                                                   jobject jobj) {
     return delete_recording();
 }
 
@@ -850,11 +847,11 @@ Java_org_billthefarmer_mididriver_MidiDriver_pause(JNIEnv *env,
 // Render and then start looping
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_render(JNIEnv *env,
-                                                   jobject obj,
-                                                   jbyteArray pitches,
-                                                   jbyte velocity,
-                                                   jlong noteDurationMs,
-                                                   jlong recordingDurationMs) {
+                                                    jobject obj,
+                                                    jbyteArray pitches,
+                                                    jbyte velocity,
+                                                    jlong noteDurationMs,
+                                                    jlong recordingDurationMs) {
 
     EAS_RESULT result;
     jboolean isCopy;
@@ -872,15 +869,15 @@ Java_org_billthefarmer_mididriver_MidiDriver_render(JNIEnv *env,
 // Change the MIDI program
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_changeProgramJNI(JNIEnv *env,
-        jobject obj, jbyte programNum) {
+                                                              jobject obj,
+                                                              jbyte programNum) {
     return (changeProgram(programNum) == 0) ? JNI_TRUE : JNI_FALSE;
 }
 
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_write(JNIEnv *env,
                                                    jobject obj,
-                                                   jbyteArray byteArray)
-{
+                                                   jbyteArray byteArray) {
     EAS_RESULT result;
     jboolean isCopy;
     jint length;
@@ -916,9 +913,15 @@ jboolean midi_shutdown() {
 
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_shutdown(JNIEnv *env,
-                                                      jobject obj)
-{
-    return midi_shutdown();
+                                                      jobject obj) {
+    // Delete the synth
+    if (midi_shutdown() != JNI_TRUE)
+        return JNI_FALSE;
+
+    // Release AAssets, enabling garbage collection
+    release_AAssets(env);
+
+    return JNI_TRUE;
 }
 
 #ifdef __cplusplus

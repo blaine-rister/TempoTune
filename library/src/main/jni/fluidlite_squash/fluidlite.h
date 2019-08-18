@@ -21,6 +21,8 @@
 #ifndef _FLUIDSYNTH_H
 #define _FLUIDSYNTH_H
 
+#include "fluid_config.h"
+
 #include <stdio.h>
 
 #ifdef __cplusplus
@@ -88,7 +90,9 @@ extern "C" {
 #include "fluidsynth/gen.h"
 #include "fluidsynth/voice.h"
 #include "fluidsynth/version.h"
-
+#ifdef FLUID_WITH_ANDROID_AASSET
+#include "aasset_stdio_adapter_public.h"
+#endif
 
 #ifdef __cplusplus
 }

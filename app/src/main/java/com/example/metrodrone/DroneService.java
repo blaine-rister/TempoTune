@@ -2,13 +2,10 @@ package com.example.metrodrone;
 
 import android.app.Service;
 import android.content.Intent;
-import android.media.MediaPlayer;
+import android.content.res.AssetManager;
 import android.os.IBinder;
 import android.os.Binder;
 import java.util.List;
-
-import android.net.Uri;
-import android.content.ContentResolver;
 
 import org.billthefarmer.mididriver.MidiDriver;
 
@@ -17,7 +14,6 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     // Create midi driver
     protected MidiDriverHelper midi;
-    protected MediaPlayer player; // TODO do we need this?
 
     // Create binder to return on binding
     final IBinder droneBinder = new DroneBinder();
@@ -31,6 +27,13 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         // Initialize the MIDI
         midi = new MidiDriverHelper();
         midi.setOnMidiStartListener(this);
+
+        // Initialize the asset retrieval data
+        AssetManager assetManager = getAssets();
+        final String soundfontFilename = "fluidr3_gm.sf2";
+
+        // Start the midi
+        midi.start(assetManager, soundfontFilename);
     }
 
     // Interface for the main activity
@@ -41,7 +44,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         void pause() {
             DroneService.this.pause();
         }
-        void stop() { DroneService.this.stopSelf(); }
+        void stop() { DroneService.this.stop(); }
     }
 
     @Override
@@ -49,18 +52,21 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         return droneBinder;
     }
 
+    public void stop() {
+        // Stop the MIDI
+        midi.stop();
+
+        // Shut down the service
+        DroneService.this.stopSelf();
+    }
+
     public void play(int bpm, List<Note> notes, int instrument,
                      NoteSettingsReader settings) {
         // Reset the state, cancelling old notes
         if (isPlaying) pause();
 
-        // Start the midi
-        midi.start(resourceToUri(R.raw.fluidr3_gm).toString());
-        //TODO: Do we need to start the player? The example app didn't have it
-
         // Set the instrument
-        //XXX this was crashing
-        //midi.changeProgram((byte) instrument);
+        midi.changeProgram((byte) instrument);
 
         // Calculate the note and beat durations
         final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm);
@@ -84,10 +90,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     // Pause playing
     public void pause() {
         // Stop midi
-        if (midi != null) midi.stop();
-
-        // Stop player
-        if (player != null) player.stop();
+        if (midi != null) midi.pause();
 
         isPlaying = false;
     }
@@ -98,14 +101,5 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     public void onMidiStart()
     {
         // Nothing happens here, the program is set in play()
-    }
-
-    // Convert a resource to a URI, from:
-    // https://stackoverflow.com/questions/4896223/how-to-get-an-uri-of-an-image-resource-in-android
-    public Uri resourceToUri(int resID) {
-        return Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" +
-                this.getResources().getResourcePackageName(resID) + '/' +
-                this.getResources().getResourceTypeName(resID) + '/' +
-                this.getResources().getResourceEntryName(resID) );
     }
 }

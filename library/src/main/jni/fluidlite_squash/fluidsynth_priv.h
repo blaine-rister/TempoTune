@@ -33,8 +33,23 @@
 #endif
 
 #if HAVE_STDIO_H
+// Drop-in reimplementations for reading from Android assets
+#ifdef FLUID_WITH_ANDROID_AASSET
+#include <aasset_stdio_adapter.h>
+#else
 #include <stdio.h>
-#endif
+
+typedef FILE* fluid_file;
+
+#define fluid_system_fopen fopen
+#define fluid_system_fread fread
+#define fluid_system_fseek fseek
+#define fluid_system_fclose fclose
+#define fluid_system_ftell ftell
+#define fluid_system_rewing rewind
+
+#endif /* ANDROID_ASSET */
+#endif /* HAVE_STDIO_H */
 
 #if HAVE_MATH_H
 #include <math.h>
@@ -163,17 +178,18 @@ typedef struct _fluid_client_t fluid_client_t;
  *
  *                      SYSTEM INTERFACE
  */
-typedef FILE*  fluid_file;
 
 #define FLUID_MALLOC(_n)             malloc(_n)
 #define FLUID_REALLOC(_p,_n)         realloc(_p,_n)
 #define FLUID_NEW(_t)                (_t*)malloc(sizeof(_t))
 #define FLUID_ARRAY(_t,_n)           (_t*)malloc((_n)*sizeof(_t))
 #define FLUID_FREE(_p)               free(_p)
-#define FLUID_FOPEN(_f,_m)           fopen(_f,_m)
-#define FLUID_FCLOSE(_f)             fclose(_f)
-#define FLUID_FREAD(_p,_s,_n,_f)     fread(_p,_s,_n,_f)
-#define FLUID_FSEEK(_f,_n,_set)      fseek(_f,_n,_set)
+#define FLUID_FOPEN(_f,_m)           fluid_system_fopen(_f,_m)
+#define FLUID_FCLOSE(_f)             fluid_system_fclose(_f)
+#define FLUID_FREAD(_p,_s,_n,_f)     fluid_system_fread(_p,_s,_n,_f)
+#define FLUID_FSEEK(_f,_n,_set)      fluid_system_fseek(_f,_n,_set)
+#define FLUID_FTELL(_f)              fluid_system_ftell(_f)
+#define FLUID_REWIND(_f)             fluid_system_rewind(_f)
 #define FLUID_MEMCPY(_dst,_src,_n)   memcpy(_dst,_src,_n)
 #define FLUID_MEMSET(_s,_c,_n)       memset(_s,_c,_n)
 #define FLUID_STRLEN(_s)             strlen(_s)
@@ -200,7 +216,12 @@ typedef FILE*  fluid_file;
 #define FLUID_FLUSH()                fflush(stdout)
 #endif
 
+#ifdef ANDROID_LOGGING
+#include <android/log.h>
+#define FLUID_LOG(...) __android_log_print(ANDROID_LOG_ERROR, "", __VA_ARGS__)
+#else
 #define FLUID_LOG                    fluid_log
+#endif
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795

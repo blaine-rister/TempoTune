@@ -23,6 +23,11 @@
 #define HAVE_FCNTL_H 1
 #define HAVE_LIMITS_H 1
 
+// Override stdio with Android asset-reading functions
+#define FLUID_WITH_ANDROID_AASSET
+
+// Use Android logging
+#define ANDROID_LOGGING
 
 //#pragma warning(disable : 4244)
 //#pragma warning(disable : 4101)

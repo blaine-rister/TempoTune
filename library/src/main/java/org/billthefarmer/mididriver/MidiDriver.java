@@ -35,6 +35,11 @@
 
 package org.billthefarmer.mididriver;
 
+import android.content.res.AssetManager;
+
+import java.io.IOException;
+import java.io.InputStream;
+
 /**
  * MidiDriver class
  */
@@ -44,6 +49,7 @@ public class MidiDriver
      * Midi start listener
      */
     private OnMidiStartListener listener;
+    private static boolean isStarted;
 
     /**
      * Class constructor
@@ -53,16 +59,27 @@ public class MidiDriver
     }
 
     /**
-     * Start the midi driver, given a soundfont file.
+     * Start the midi driver, given a soundfont file stored as an Android asset. Must also pass an
+     * AssetManager which is capable of reading the asset.
      */
-    public void start(String soundfontFilename)
+    public void start(AssetManager assetManager, final String soundfontFilename)
     {
-        if (!init(soundfontFilename)) {
-            throw new RuntimeException("Failed to initialize MIDI");
+        // Test that the asset can be opened
+        try {
+           InputStream stream = assetManager.open(soundfontFilename, AssetManager.ACCESS_RANDOM);
+           stream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to open soundfont " + soundfontFilename);
         }
 
-        // Call listener
+        // Initialize the MIDI, if it hasn't been
+        if (!isStarted && !init(assetManager, soundfontFilename)) {
+            throw new RuntimeException("Failed to initialize MIDI");
+        }
+        isStarted = true;
 
+        // Call the listener
         if (listener != null)
             listener.onMidiStart();
     }
@@ -73,6 +90,7 @@ public class MidiDriver
     public void stop()
     {
         shutdown();
+        isStarted = false;
     }
 
     /**
@@ -118,7 +136,7 @@ public class MidiDriver
      *
      * @return true for success
      */
-    private native boolean init(String soundfontFilename);
+    private native boolean init(Object assetManager, String soundfontFilename);
 
     /**
      * Returm part of EAS config
@@ -166,6 +184,7 @@ public class MidiDriver
     // Load midi library
     static
     {
+        isStarted = false;
         System.loadLibrary("midi");
     }
 }
