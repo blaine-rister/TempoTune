@@ -81,7 +81,7 @@ LOCAL_SRC_FILES += \
 	fluidlite_squash/fluid_voice.c \
 	fluidlite_squash/aasset_stdio_adapter.c
 
-LOCAL_CFLAGS += -O2 -std=gnu99 -D UNIFIED_DEBUG_MESSAGES \
+LOCAL_CFLAGS += -O3 -std=gnu99 -D UNIFIED_DEBUG_MESSAGES \
 	-D EAS_WT_SYNTH -D NUM_OUTPUT_CHANNELS=2 \
 	-D _SAMPLE_RATE_22050 -D MAX_SYNTH_VOICES=64 \
 	-D _8_BIT_SAMPLES -D _FILTER_ENABLED \
