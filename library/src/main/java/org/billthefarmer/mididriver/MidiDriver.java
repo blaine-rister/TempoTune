@@ -129,6 +129,14 @@ public class MidiDriver
             throw new RuntimeException("Failed to render pitches");
     }
 
+    /*
+     * Pause playback and check for errors.
+     */
+    public void pause() {
+        if (!pauseJNI())
+            throw new RuntimeException("Failed to pause playback");
+    }
+
     // Native midi methods
 
     /**
@@ -153,7 +161,7 @@ public class MidiDriver
      *
      * @return
      */
-    public native boolean pause();
+    public native boolean pauseJNI();
 
     /**
      * Renders an audio signal, then loops it.

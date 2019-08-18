@@ -104,7 +104,7 @@ static EAS_HANDLE midiHandle;
 
 // Recording buffer
 static enum State {
-    PLAYING, IDLE
+    PLAYING, STOPPING, IDLE
 } state = IDLE;
 static EAS_PCM *record_buffer = NULL; // Storage for the recording
 static EAS_PCM *recording_position = NULL; // Current recording position
@@ -149,6 +149,7 @@ SLresult play() {
     }
     playback_position = record_buffer;
 
+    // Set the state to playing
     result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PLAYING);
     if (SL_RESULT_SUCCESS != result)
         return result;
@@ -161,24 +162,22 @@ SLresult play() {
     return SL_RESULT_SUCCESS;
 }
 
-// Set the player's state to paused
+// Set the player's state to paused. If currently playing, waits for the buffer to empty.
 SLresult idle(void) {
 
-    SLresult result;
+    // Do nothing if we're already idle
+    if (state == IDLE)
+        return SL_RESULT_SUCCESS;
 
     // Stop playing
+    state = STOPPING;
+
+    // Block until we have confirmation that there are no more callbacks
+    sem_wait(&is_idle);
     state = IDLE;
-    if (state == PLAYING) {
-        // Block until we have confirmation that there are no more callbacks
-        sem_wait(&is_idle);
 
-        // Tell OpenSL ES to stop playing sound. Note: this is non-blocking
-        result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PAUSED);
-        if (SL_RESULT_SUCCESS != result)
-            return result;
-    }
-
-    return SL_RESULT_SUCCESS;
+    // Tell OpenSL ES to stop playing sound. Note: this is non-blocking
+    return (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PAUSED);
 }
 
 
@@ -187,10 +186,22 @@ void enqueueBuffer(SLAndroidSimpleBufferQueueItf bq) {
     SLresult result;
 
     result = (*bqPlayerBufferQueue)->Enqueue(bq, buffer, bufferSize * sizeof(EAS_PCM));
-
+    switch (result) {
+        case SL_RESULT_SUCCESS:
+            return;
+        case SL_RESULT_OPERATION_ABORTED:
+            return;
+        default:
+            /* Could get SL_RESULT_BUFFER_INSUFFICIENT (code 7) if the buffer is full. This
+            * shouldn't happen because we are supposed to wait for the buffer to clear before
+            * starting a new render. */
+            LOG_E(LOG_TAG, "Error code from OpenSL ES enqueue buffer: %d", result);
+            assert(0);
+    }
     // the most likely other result is SL_RESULT_BUFFER_INSUFFICIENT,
     // which for this code example would indicate a programming error
     assert(SL_RESULT_SUCCESS == result);
+
 }
 
 // this callback handler is called every time a buffer finishes
@@ -209,6 +220,9 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
 
     switch (state) {
         case IDLE:
+            // This shouldn't happen
+            assert(0);
+        case STOPPING:
             // Tell the main thread that we are done playing
             sem_post(&is_idle);
             return;
@@ -838,9 +852,9 @@ Java_org_billthefarmer_mididriver_MidiDriver_config(JNIEnv *env,
 
 // Stop looping, delete the recording
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_pause(JNIEnv *env,
-                                                   jobject jobj) {
-    return delete_recording();
+Java_org_billthefarmer_mididriver_MidiDriver_pauseJNI(JNIEnv *env,
+                                                      jobject jobj) {
+    return delete_recording() == SL_RESULT_SUCCESS ? JNI_TRUE : JNI_FALSE;
 }
 
 
@@ -905,7 +919,8 @@ jboolean midi_shutdown() {
 
     shutdownFluid();
 
-    delete_recording();
+    if (delete_recording() != SL_RESULT_SUCCESS)
+        return JNI_FALSE;
     sem_destroy(&is_idle);
 
     return JNI_TRUE;
