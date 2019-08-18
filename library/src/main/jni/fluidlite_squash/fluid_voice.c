@@ -487,11 +487,11 @@ fluid_voice_write(fluid_voice_t* voice,
 
   if (fres > 0.45f * voice->output_rate)
     fres = 0.45f * voice->output_rate;
-  else if (fres < 5)
-    fres = 5;
+  else if (fres < 5.f)
+    fres = 5.f;
 
   /* if filter enabled and there is a significant frequency change.. */
-  if ((abs (fres - voice->last_fres) > 0.01))
+  if ((fabsf (fres - voice->last_fres) > 0.01f))
   {
     /* The filter coefficients have to be recalculated (filter
     * parameters have changed). Recalculation for various reasons is
