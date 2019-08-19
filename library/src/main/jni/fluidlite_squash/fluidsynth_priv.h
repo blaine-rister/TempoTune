@@ -218,7 +218,7 @@ typedef struct _fluid_client_t fluid_client_t;
 
 #ifdef ANDROID_LOGGING
 #include <android/log.h>
-#define FLUID_LOG(...) __android_log_print(ANDROID_LOG_ERROR, "", __VA_ARGS__)
+#define FLUID_LOG(type, ...) __android_log_print(ANDROID_LOG_ERROR, "", __VA_ARGS__)
 #else
 #define FLUID_LOG                    fluid_log
 #endif

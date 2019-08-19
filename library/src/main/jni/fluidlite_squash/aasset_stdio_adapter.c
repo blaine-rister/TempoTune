@@ -36,7 +36,7 @@ int init_AAssets(JNIEnv *env, jobject javaAssetManager) {
     // Retain a global reference to the underlying jobject
     javaGlobalAssetManager = (*env)->NewGlobalRef(env, javaAssetManager);
     if (javaGlobalAssetManager == NULL) {
-        FLUID_LOG("init_AAssets: out of memory");
+        FLUID_LOG(FLUID_ERR, "init_AAssets: out of memory");
         return -1;
     }
 
@@ -59,12 +59,13 @@ void release_AAssets(JNIEnv *env) {
 // See https://stackoverflow.com/questions/13317387/how-to-get-file-in-assets-from-android-ndk
 fluid_file fluid_system_fopen(const char * filename, const char * mode ) {
     if (strcmp(mode, "rb")) {
-        FLUID_LOG("fluid_system_fopen: only mode \"rb\" is supported for Android assets");
+        FLUID_LOG(FLUID_ERR, "fluid_system_fopen: only mode \"rb\" is supported for Android "
+                             "assets");
         return NULL;
     }
 
     if (aasset_manager == NULL) {
-        FLUID_LOG("fluid_system_fopen: must call init_AAssets before this");
+        FLUID_LOG(FLUID_ERR, "fluid_system_fopen: must call init_AAssets before this");
         return NULL;
     }
     return AAssetManager_open(aasset_manager, filename, AASSET_MODE_RANDOM);
