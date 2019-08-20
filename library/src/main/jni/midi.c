@@ -69,11 +69,10 @@ extern "C" {
 
 // Constants
 static const int midiChannel = 0;
-static const int sampleRate = 22050;
+static const int sampleRate = 44100;
 static const int maxVoices = 64; // TODO this is certainly too many for our application
 static const int numChannels = 2; // Stereo
-static const int mixBufferSize = 128; // We don't even use a mix buffer anymore, but this is needed to size the OpenSL ES buffer
-// TODO: If the sample rate is 44.1k, EAS says to use a mix buffer size of 256
+static const int mixBufferSize = 256;
 
 // semaphores
 static sem_t is_idle;
