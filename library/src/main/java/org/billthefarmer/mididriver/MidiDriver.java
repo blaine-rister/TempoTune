@@ -35,7 +35,9 @@
 
 package org.billthefarmer.mididriver;
 
+import android.content.Context;
 import android.content.res.AssetManager;
+import android.media.AudioManager;
 
 import java.util.Set;
 import java.util.Iterator;
@@ -65,7 +67,8 @@ public class MidiDriver
      * Start the midi driver, given a soundfont file stored as an Android asset. Must also pass an
      * AssetManager which is capable of reading the asset.
      */
-    public void start(AssetManager assetManager, final String soundfontFilename)
+    public void start(AssetManager assetManager, final String soundfontFilename,
+                      final int sampleRate, final int bufferSize)
     {
         // Test that the asset can be opened
         try {
@@ -77,7 +80,7 @@ public class MidiDriver
         }
 
         // Initialize the MIDI, if it hasn't been
-        if (!isStarted && !init(assetManager, soundfontFilename)) {
+        if (!isStarted && !init(assetManager, soundfontFilename, sampleRate, bufferSize)) {
             throw new RuntimeException("Failed to initialize MIDI");
         }
         isStarted = true;
@@ -175,7 +178,8 @@ public class MidiDriver
      *
      * @return true for success
      */
-    private native boolean init(Object assetManager, String soundfontFilename);
+    private native boolean init(Object assetManager, String soundfontFilename, int sampleRate,
+                                int bufferSize);
 
     /**
      * Returm part of EAS config

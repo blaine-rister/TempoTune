@@ -1,8 +1,10 @@
 package com.example.metrodrone;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.media.AudioManager;
 import android.os.IBinder;
 import android.os.Binder;
 
@@ -27,7 +29,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     public void onCreate() {
         super.onCreate();
 
-        // Initialize the MIDI
+        // Initialize the MIDI class
         midi = new MidiDriverHelper();
         midi.setOnMidiStartListener(this);
 
@@ -35,8 +37,24 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         AssetManager assetManager = getAssets();
         final String soundfontFilename = "fluidr3_gm.sf2";
 
+        // Query the device sample rate
+        AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int sampleRate = Integer.parseInt(am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE));
+        if (sampleRate < 1) {
+            // TODO log warning
+            sampleRate = 44100;
+        }
+
+        // Query the device buffer size
+        int bufferSize = Integer.parseInt(am.getProperty(
+                AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER));
+        if (bufferSize < 1) {
+            // TODO log warning
+            bufferSize = 256;
+        }
+
         // Start the midi
-        midi.start(assetManager, soundfontFilename);
+        midi.start(assetManager, soundfontFilename, sampleRate, bufferSize);
     }
 
     // Interface for the main activity

@@ -53,6 +53,7 @@
 
 #include "org_billthefarmer_mididriver_MidiDriver.h"
 #include "midi.h"
+#include "../../../../../../AppData/Local/Android/Sdk/ndk-bundle/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/jni.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,16 +65,14 @@ extern "C" {
 #define LOG_E(tag, ...) __android_log_print(ANDROID_LOG_ERROR, tag, __VA_ARGS__)
 #define LOG_I(tag, ...) __android_log_print(ANDROID_LOG_INFO, tag, __VA_ARGS__)
 
-
-// determines how many EAS buffers to fill a host buffer
-#define NUM_BUFFERS 4
-
 // Constants
 static const int midiChannel = 0;
-static const int sampleRate = 44100;
 static const int maxVoices = 64; // TODO this is certainly too many for our application
 static const int numChannels = 2; // Stereo
-static const int mixBufferSize = 256;
+
+// Sound parameters
+int sampleRate;
+int bufferSizeMono;
 
 // semaphores
 static sem_t is_idle;
@@ -96,9 +95,8 @@ static fluid_synth_t *fluidSynth = NULL;
 static fluid_settings_t *fluidSettings = NULL;
 static int soundFont = -1;
 
-// Recording buffer
+// Playback buffer
 static int16_t *buffer;
-static size_t bufferSize;
 
 // Recording buffer
 static enum State {
@@ -118,6 +116,12 @@ jboolean isInitialized(const char *functionName) {
         return JNI_FALSE;
     }
     return JNI_TRUE;
+}
+
+// Computes the number of int16_t elements needed to store a given number of samples. This depends
+// on how many channels we have.
+static size_t getNumPcm(const size_t numSamples) {
+    return numSamples * numChannels;
 }
 
 // Set the player's state to playing
@@ -183,7 +187,8 @@ void enqueueBuffer(SLAndroidSimpleBufferQueueItf bq) {
 
     SLresult result;
 
-    result = (*bqPlayerBufferQueue)->Enqueue(bq, buffer, bufferSize * sizeof(int16_t));
+    result = (*bqPlayerBufferQueue)->Enqueue(bq, buffer,
+            getNumPcm(bufferSizeMono) * sizeof(int16_t));
     switch (result) {
         case SL_RESULT_SUCCESS:
             return;
@@ -207,6 +212,8 @@ void enqueueBuffer(SLAndroidSimpleBufferQueueItf bq) {
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
     int i;
 
+    const size_t bufferSizePcm = getNumPcm(bufferSizeMono);
+
     assert(bq == bqPlayerBufferQueue);
     assert(NULL == context);
 
@@ -220,7 +227,7 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
             return;
         case PLAYING:
             // Read from the recording circularly and write into the buffer
-            for (i = 0; i < bufferSize; i++) {
+            for (i = 0; i < bufferSizePcm; i++) {
                 buffer[i] = *playback_position++;
                 if (playback_position == recording_position) {
                     playback_position = record_buffer;
@@ -237,13 +244,6 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
 static size_t ms2Samples(const size_t ms) {
     const size_t msPerSecond = 1000;
     return (ms * (size_t) sampleRate) / msPerSecond;
-}
-
-
-// Computes the number of int16_t elements needed to store a given number of samples. This depends
-// on how many channels we have.
-static size_t getNumPcm(const size_t numSamples) {
-    return numSamples * numChannels;
 }
 
 // Deletes the existing recording and cancels playback
@@ -689,9 +689,6 @@ int initFluid(const char *soundfontFilename) {
     // Destroy existing instances
     shutdownFluid();
 
-    // calculate buffer size
-    bufferSize = mixBufferSize * numChannels * NUM_BUFFERS;
-
     // Create the settings
     if ((fluidSettings = new_fluid_settings()) == NULL) {
         LOG_E(LOG_TAG, "Failed to create fluid settings");
@@ -721,9 +718,15 @@ int initFluid(const char *soundfontFilename) {
 }
 
 // init midi driver
-jboolean midi_init(const char *soundfontFilename) {
+jboolean midi_init(const char *soundfontFilename, const int deviceSampleRate,
+        const int deviceBufferSizeMono) {
     int result;
 
+    // Save the sound parameters
+    sampleRate = deviceSampleRate;
+    bufferSizeMono = deviceBufferSizeMono;
+
+    // Initialize the synth
     if ((result = initFluid(soundfontFilename))) {
         shutdownFluid();
 
@@ -732,10 +735,8 @@ jboolean midi_init(const char *soundfontFilename) {
         return JNI_FALSE;
     }
 
-    // LOG_D(LOG_TAG, "Init EAS success, buffer: %ld", bufferSize);
-
     // allocate buffer in bytes
-    buffer = (int16_t *) malloc(bufferSize * sizeof(int16_t));
+    buffer = (int16_t *) malloc(getNumPcm(bufferSizeMono) * sizeof(int16_t));
     if (buffer == NULL) {
         shutdownFluid();
 
@@ -786,15 +787,27 @@ jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
                                                   jobject obj,
                                                   jobject AAssetAdapter,
-                                                  jstring soundfontAAssetName) {
+                                                  jstring soundfontAAssetName,
+                                                  jint deviceSampleRate,
+                                                  jint deviceBufferSize) {
+    jboolean result;
+
     // Initialize the AAssets wrapper, so we can do file I/O
     if (init_AAssets(env, AAssetAdapter)) {
         LOG_E(LOG_TAG, "Failed to initialize AAssets.");
         return JNI_FALSE;
     }
 
+    // Convert Java arguments
+    const char *const soundfontName = (*env)->GetStringUTFChars(env, soundfontAAssetName, NULL);
+
     // Initialize the synth
-    return midi_init((*env)->GetStringUTFChars(env, soundfontAAssetName, NULL));
+    result = midi_init(soundfontName, deviceSampleRate, deviceBufferSize);
+
+    // Release Java arguments
+    (*env)->ReleaseStringUTFChars(env, soundfontAAssetName, soundfontName);
+
+    return result;
 }
 
 // Stop looping, delete the recording
