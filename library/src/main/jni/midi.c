@@ -65,6 +65,9 @@ extern "C" {
 #define LOG_E(tag, ...) __android_log_print(ANDROID_LOG_ERROR, tag, __VA_ARGS__)
 #define LOG_I(tag, ...) __android_log_print(ANDROID_LOG_INFO, tag, __VA_ARGS__)
 
+// Output audio datatype
+typedef int16_t output_t;
+
 // Constants
 static const int midiChannel = 0;
 static const int maxVoices = 64; // TODO this is certainly too many for our application
@@ -95,16 +98,13 @@ static fluid_synth_t *fluidSynth = NULL;
 static fluid_settings_t *fluidSettings = NULL;
 static int soundFont = -1;
 
-// Playback buffer
-static int16_t *buffer;
-
 // Recording buffer
 static enum State {
     PLAYING, STOPPING, IDLE
 } state = IDLE;
-static int16_t *record_buffer = NULL; // Storage for the recording
-static int16_t *recording_position = NULL; // Current recording position
-static int16_t *playback_position = NULL; // Current playback position
+static output_t *record_buffer = NULL; // Storage for the recording
+static output_t *recording_position = NULL; // Current recording position
+static output_t *playback_position = NULL; // Current playback position
 
 // Function declarations
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
@@ -118,7 +118,7 @@ jboolean isInitialized(const char *functionName) {
     return JNI_TRUE;
 }
 
-// Computes the number of int16_t elements needed to store a given number of samples. This depends
+// Computes the number of output_t elements needed to store a given number of samples. This depends
 // on how many channels we have.
 static size_t getNumPcm(const size_t numSamples) {
     return numSamples * numChannels;
@@ -183,15 +183,14 @@ SLresult idle(void) {
 }
 
 
-void enqueueBuffer(SLAndroidSimpleBufferQueueItf bq) {
+void enqueueBuffer(const output_t *const data) {
 
     SLresult result;
 
-    result = (*bqPlayerBufferQueue)->Enqueue(bq, buffer,
-            getNumPcm(bufferSizeMono) * sizeof(int16_t));
+    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, data,
+            getNumPcm(bufferSizeMono) * sizeof(output_t));
     switch (result) {
         case SL_RESULT_SUCCESS:
-            return;
         case SL_RESULT_OPERATION_ABORTED:
             return;
         default:
@@ -226,16 +225,14 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
             sem_post(&is_idle);
             return;
         case PLAYING:
-            // Read from the recording circularly and write into the buffer
-            for (i = 0; i < bufferSizePcm; i++) {
-                buffer[i] = *playback_position++;
-                if (playback_position == recording_position) {
-                    playback_position = record_buffer;
-                }
+            // Update the playback position circularly
+            playback_position += bufferSizePcm;
+            if (playback_position >= recording_position) {
+                playback_position = record_buffer + (playback_position - recording_position);
             }
 
-            // Send the buffer
-            enqueueBuffer(bq);
+            // Enqueue playback of a buffer's portion of the recording
+            enqueueBuffer(playback_position);
             return;
     }
 }
@@ -321,13 +318,13 @@ static int endNote(const uint8_t pitch) {
 
 // Normalize the audio so the maximum value is given by maxLevel, on a scale of 0-1. This is the
 // final processing stage so it also converts the audio to fixed-point at the end.
-static int normalize(const float *const inBuffer, int16_t *const outBuffer,
+static int normalize(const float *const inBuffer, output_t *const outBuffer,
                             const size_t bufferLength, const double maxLevel) {
 
     float maxBefore;
     size_t i;
 
-    assert(sizeof(short) == sizeof(int16_t));
+    assert(sizeof(short) == sizeof(output_t));
     if (maxLevel < 0. || maxLevel > 1.) {
         LOG_E(LOG_TAG, "normalize: invalid maxLevel: %f", maxLevel);
         return -1;
@@ -348,7 +345,7 @@ static int normalize(const float *const inBuffer, int16_t *const outBuffer,
     // Apply the gain and convert to fixed-point
     for (i = 0; i < bufferLength; i++) {
         // TODO also perform dithering here
-        outBuffer[i] = (int16_t) (inBuffer[i] * gain);
+        outBuffer[i] = (output_t) (inBuffer[i] * gain);
     }
 
     return 0;
@@ -459,9 +456,9 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     assert(record_buffer == NULL); // Should be freed by now
     assert(state == IDLE); // Shouldn't be playing anything
 
-    // Allocate a new recording.
-    const size_t recordBufferLength = getNumPcm(recordingSamples);
-    if ((record_buffer = (int16_t *) malloc(recordBufferLength * sizeof(int16_t))) == NULL) {
+    // Allocate a new recording. Add an extra buffer at the end, to imitate looping behavior
+    const size_t recordBufferLength = getNumPcm(recordingSamples + bufferSizeMono);
+    if ((record_buffer = (output_t *) malloc(recordBufferLength * sizeof(output_t))) == NULL) {
         LOG_E(LOG_TAG, "Insufficient memory for recording buffer.");
         goto render_quit;
     }
@@ -507,9 +504,15 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
 
     // Clean up intermediates
     free(floatBuffer);
+    floatBuffer = NULL;
 
     // Set the end of the recording
     recording_position = record_buffer + getNumPcm(recordingSamples);
+
+    // Configure the loop imitation at the end of the recording
+    const size_t recordingLength = recording_position - record_buffer;
+    const size_t endPaddingLength = recordBufferLength - recordBufferLength;
+    memcpy(recording_position, record_buffer, endPaddingLength * sizeof(output_t));
 
     // Start playing the recording
     play();
@@ -601,6 +604,9 @@ SLresult createBufferQueueAudioPlayer() {
                                                 numIds, ids, req);
     if (SL_RESULT_SUCCESS != result)
         return result;
+
+    LOG_I(LOG_TAG, "Initialized audio player with sample rate: %d buffer size: %d", sampleRate,
+            bufferSizeMono);
 
     // LOG_D(LOG_TAG, "Audio player created");
 
@@ -735,22 +741,10 @@ jboolean midi_init(const char *soundfontFilename, const int deviceSampleRate,
         return JNI_FALSE;
     }
 
-    // allocate buffer in bytes
-    buffer = (int16_t *) malloc(getNumPcm(bufferSizeMono) * sizeof(int16_t));
-    if (buffer == NULL) {
-        shutdownFluid();
-
-        LOG_E(LOG_TAG, "Allocate buffer failed");
-
-        return JNI_FALSE;
-    }
-
     // create the engine and output mix objects
     if ((result = createEngine()) != SL_RESULT_SUCCESS) {
         shutdownFluid();
         shutdownAudio();
-        free(buffer);
-        buffer = NULL;
 
         LOG_E(LOG_TAG, "Create engine failed: %d", result);
 
@@ -761,8 +755,6 @@ jboolean midi_init(const char *soundfontFilename, const int deviceSampleRate,
     if ((result = createBufferQueueAudioPlayer()) != SL_RESULT_SUCCESS) {
         shutdownFluid();
         shutdownAudio();
-        free(buffer);
-        buffer = NULL;
 
         LOG_E(LOG_TAG, "Create buffer queue audio player failed: %d", result);
 
@@ -864,11 +856,6 @@ jboolean midi_shutdown() {
     int result;
 
     shutdownAudio();
-
-    if (buffer != NULL)
-        free(buffer);
-    buffer = NULL;
-
     shutdownFluid();
 
     if (delete_recording() != SL_RESULT_SUCCESS)
