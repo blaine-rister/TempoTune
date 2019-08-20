@@ -64,6 +64,7 @@ extern "C" {
 #define LOG_E(tag, ...) __android_log_print(ANDROID_LOG_ERROR, tag, __VA_ARGS__)
 #define LOG_I(tag, ...) __android_log_print(ANDROID_LOG_INFO, tag, __VA_ARGS__)
 
+
 // determines how many EAS buffers to fill a host buffer
 #define NUM_BUFFERS 4
 
@@ -239,7 +240,8 @@ static size_t ms2Samples(const size_t ms) {
 }
 
 
-// Computes the number of int16_t elements needed to store a given number of samples
+// Computes the number of int16_t elements needed to store a given number of samples. This depends
+// on how many channels we have.
 static size_t getNumPcm(const size_t numSamples) {
     return numSamples * numChannels;
 }
@@ -457,11 +459,8 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     assert(record_buffer == NULL); // Should be freed by now
     assert(state == IDLE); // Shouldn't be playing anything
 
-    // Allocate a new recording. Put room for an extra two mix buffer at the end, to prevent writing
-    // past the end of the buffer during rendering.
-    // TODO: Don't need extra padding for fluid
-    const size_t numBufferMonoSamples = recordingSamples + 2 * mixBufferSize;
-    const size_t recordBufferLength = getNumPcm(numBufferMonoSamples);
+    // Allocate a new recording.
+    const size_t recordBufferLength = getNumPcm(recordingSamples);
     if ((record_buffer = (int16_t *) malloc(recordBufferLength * sizeof(int16_t))) == NULL) {
         LOG_E(LOG_TAG, "Insufficient memory for recording buffer.");
         goto render_quit;
