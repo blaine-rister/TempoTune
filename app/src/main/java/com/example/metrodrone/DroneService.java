@@ -5,7 +5,10 @@ import android.content.Intent;
 import android.content.res.AssetManager;
 import android.os.IBinder;
 import android.os.Binder;
+
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.billthefarmer.mididriver.MidiDriver;
 
@@ -38,13 +41,18 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     // Interface for the main activity
     public class DroneBinder extends Binder {
-        void play(int bpm, List<Note> notes, int instrument, NoteSettingsReader settings) {
-            DroneService.this.play(bpm, notes, instrument, settings);
+        void play(int bpm, List<Note> notes, NoteSettingsReader settings) {
+            DroneService.this.play(bpm, notes, settings);
         }
         void pause() {
             DroneService.this.pause();
         }
         void stop() { DroneService.this.stop(); }
+        void changeProgram(int instrument) {
+            midi.changeProgram((byte) instrument);
+        }
+        int getKeyMin() { return midi.getKeyMin(); };
+        int getKeyMax() { return midi.getKeyMax(); };
     }
 
     @Override
@@ -60,30 +68,30 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         DroneService.this.stopSelf();
     }
 
-    public void play(int bpm, List<Note> notes, int instrument,
-                     NoteSettingsReader settings) {
+    public void play(int bpm, List<Note> notes, NoteSettingsReader settings) {
         // Reset the state, cancelling old notes
         if (isPlaying) pause();
 
-        // Set the instrument
-        midi.changeProgram((byte) instrument);
+        // Do nothing in the absence of notes to play
+        if (notes.isEmpty())
+            return;
 
         // Calculate the note and beat durations
         final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm);
         final long beatDurationMs = Math.round(msPerBeat);
         final long noteDurationMs = Math.round(msPerBeat * settings.getDuration());
 
-        // Encode the pitches to be played
+        // Encode the pitches to be played in a set
+        Set<Byte> keys = new HashSet<>();
         final int numPitches = notes.size();
-        byte[] pitches = new byte[numPitches];
         for (int i = 0; i < numPitches; i++) {
             final Note note = notes.get(i);
-            pitches[i] = MidiDriverHelper.encodePitch(note.getPitch(), note.getOctave());
+            keys.add(MidiDriverHelper.encodePitch(note.getPitch(), note.getOctave()));
         };
 
         // Play the sound
         final byte velocity = MidiDriverHelper.encodeVelocity(settings.getVelocity());
-        midi.renderNotes(pitches, velocity, noteDurationMs, beatDurationMs); // FIXME: This fails because the default bank/channel has no preset. Need to inspect the soundfont file and find out which banks/channels are used
+        midi.renderNotes(keys, velocity, noteDurationMs, beatDurationMs);
         isPlaying = true;
     }
 

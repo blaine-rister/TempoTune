@@ -51,10 +51,6 @@
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
 
-// for EAS midi
-#include "eas.h"
-#include "eas_reverb.h"
-
 #include "org_billthefarmer_mididriver_MidiDriver.h"
 #include "midi.h"
 
@@ -72,7 +68,12 @@ extern "C" {
 #define NUM_BUFFERS 4
 
 // Constants
-const int midiChannel = 0;
+static const int midiChannel = 0;
+static const int sampleRate = 22050;
+static const int maxVoices = 64; // TODO this is certainly too many for our application
+static const int numChannels = 2; // Stereo
+static const int mixBufferSize = 128; // We don't even use a mix buffer anymore, but this is needed to size the OpenSL ES buffer
+// TODO: If the sample rate is 44.1k, EAS says to use a mix buffer size of 256
 
 // semaphores
 static sem_t is_idle;
@@ -91,24 +92,21 @@ static SLVolumeItf bqPlayerVolume;
 static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 
 // Fluid data
-fluid_synth_t *fluidSynth = NULL;
-fluid_settings_t *fluidSettings = NULL;
-int soundFont = -1;
+static fluid_synth_t *fluidSynth = NULL;
+static fluid_settings_t *fluidSettings = NULL;
+static int soundFont = -1;
 
-// EAS data
-static EAS_DATA_HANDLE pEASData;
-const S_EAS_LIB_CONFIG *pLibConfig;
-static EAS_PCM *buffer;
-static EAS_I32 bufferSize;
-static EAS_HANDLE midiHandle;
+// Recording buffer
+static int16_t *buffer;
+static size_t bufferSize;
 
 // Recording buffer
 static enum State {
     PLAYING, STOPPING, IDLE
 } state = IDLE;
-static EAS_PCM *record_buffer = NULL; // Storage for the recording
-static EAS_PCM *recording_position = NULL; // Current recording position
-static EAS_PCM *playback_position = NULL; // Current playback position
+static int16_t *record_buffer = NULL; // Storage for the recording
+static int16_t *recording_position = NULL; // Current recording position
+static int16_t *playback_position = NULL; // Current playback position
 
 // Function declarations
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
@@ -185,7 +183,7 @@ void enqueueBuffer(SLAndroidSimpleBufferQueueItf bq) {
 
     SLresult result;
 
-    result = (*bqPlayerBufferQueue)->Enqueue(bq, buffer, bufferSize * sizeof(EAS_PCM));
+    result = (*bqPlayerBufferQueue)->Enqueue(bq, buffer, bufferSize * sizeof(int16_t));
     switch (result) {
         case SL_RESULT_SUCCESS:
             return;
@@ -208,12 +206,6 @@ void enqueueBuffer(SLAndroidSimpleBufferQueueItf bq) {
 // playing
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
     int i;
-
-    EAS_PCM *next_buffer;
-
-    EAS_RESULT result;
-    EAS_I32 numGenerated;
-    EAS_I32 count;
 
     assert(bq == bqPlayerBufferQueue);
     assert(NULL == context);
@@ -244,13 +236,13 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
 // Computes the number of samples needed. Does not take into account the number of channels
 static size_t ms2Samples(const size_t ms) {
     const size_t msPerSecond = 1000;
-    return (ms * (size_t) pLibConfig->sampleRate) / msPerSecond;
+    return (ms * (size_t) sampleRate) / msPerSecond;
 }
 
 
-// Computes the number of EAS_PCM elements needed to store a given number of samples
-static size_t getNumPcm(const EAS_I32 numSamples) {
-    return (size_t) numSamples * pLibConfig->numChannels;
+// Computes the number of int16_t elements needed to store a given number of samples
+static size_t getNumPcm(const size_t numSamples) {
+    return numSamples * numChannels;
 }
 
 // Deletes the existing recording and cancels playback
@@ -273,7 +265,7 @@ SLresult delete_recording() {
 }
 
 // Change the program
-static int changeProgram(const EAS_U8 programNum) {
+static int changeProgram(const uint8_t programNum) {
 
     int result;
 
@@ -288,30 +280,56 @@ static int changeProgram(const EAS_U8 programNum) {
     return result;
 }
 
+// Get the key range for the currently selected program. Can substitue NULL for either arugment.
+static jboolean getProgramRange(int *min, int *max) {
+
+    if (!isInitialized("getProgramRange"))
+        return JNI_FALSE;
+
+    // Get the preset
+    const fluid_preset_t *const preset = fluid_synth_get_channel_preset(fluidSynth, midiChannel);
+    if (preset == NULL)
+        return JNI_FALSE;
+
+    preset->get_range(preset, min, max);
+
+    return JNI_TRUE;
+}
+
+// Convenience wrappers for getProgramRange
+static int getProgramKeyMin(void) {
+    int min;
+    return getProgramRange(&min, NULL) == JNI_TRUE ? min : -1;
+}
+static int getProgramKeyMax(void) {
+    int max;
+    return getProgramRange(NULL, &max) == JNI_TRUE ? max : -1;
+}
+
 // Start a note
-static EAS_RESULT startNote(const EAS_U8 pitch, const EAS_U8 velocity) {
+static int startNote(const uint8_t pitch, const uint8_t velocity) {
     return !isInitialized("startNote") || fluid_synth_noteon(fluidSynth, midiChannel, pitch,
                                                              velocity);
 
 }
 
 // End a note
-static EAS_RESULT endNote(const EAS_U8 pitch) {
+static int endNote(const uint8_t pitch) {
     return !isInitialized("endNote") || fluid_synth_noteoff(fluidSynth, midiChannel, pitch);
 }
 
 // Normalize the audio so the maximum value is given by maxLevel, on a scale of 0-1. This is the
 // final processing stage so it also converts the audio to fixed-point at the end.
-static EAS_RESULT normalize(const float *const inBuffer, EAS_PCM *const outBuffer,
+static int normalize(const float *const inBuffer, int16_t *const outBuffer,
                             const size_t bufferLength, const double maxLevel) {
 
     float maxBefore;
     size_t i;
 
-    assert(sizeof(short) == sizeof(EAS_PCM));
+    assert(sizeof(short) == sizeof(int16_t));
     if (maxLevel < 0. || maxLevel > 1.) {
         LOG_E(LOG_TAG, "normalize: invalid maxLevel: %f", maxLevel);
-        return EAS_FAILURE;
+        return -1;
     }
 
     const double maxPcm = (double) SHRT_MAX * maxLevel;
@@ -329,10 +347,10 @@ static EAS_RESULT normalize(const float *const inBuffer, EAS_PCM *const outBuffe
     // Apply the gain and convert to fixed-point
     for (i = 0; i < bufferLength; i++) {
         // TODO also perform dithering here
-        outBuffer[i] = (EAS_PCM) (inBuffer[i] * gain);
+        outBuffer[i] = (int16_t) (inBuffer[i] * gain);
     }
 
-    return EAS_SUCCESS;
+    return 0;
 }
 
 // Ramp down the audio in the given buffer. The gain reaches the given number of decibels
@@ -356,7 +374,7 @@ static void rampDown(float *const buffer, const size_t bufferLength, const doubl
 
 // Helper to render a specific number of samples to the buffer. Returns the new end of the buffer,
 // or NULL on failure. In actuality, finishes the last buffer after numSamples
-static float *renderSamples(const EAS_I32 numSamples, float *buffer) {
+static float *renderSamples(const int numSamples, float *buffer) {
 
 
 
@@ -370,8 +388,8 @@ static float *renderSamples(const EAS_I32 numSamples, float *buffer) {
 }
 
 // Render the data offline, then start looping it
-jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
-                const EAS_U8 velocity,
+jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
+                const uint8_t velocity,
                 const jlong noteDurationMs,
                 const jlong recordingDurationMs) {
 
@@ -379,7 +397,7 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
     int i;
 
     // MIDI info
-    const EAS_U8 velocityMax = 127; // Maximum allowed velocity in MIDI
+    const uint8_t velocityMax = 127; // Maximum allowed velocity in MIDI
 
     // Internal parameters
     const long rampDownMs = 15; // Time for the ramp-down of a note
@@ -395,8 +413,8 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
         LOG_E(LOG_TAG, "Invalid number of pitches: %d", numPitches);
         goto render_quit;
     }
-    if (numPitches > pLibConfig->maxVoices) {
-        LOG_E(LOG_TAG, "Too many pitches: %d (max: %ld)", numPitches, pLibConfig->maxVoices);
+    if (numPitches > maxVoices) {
+        LOG_E(LOG_TAG, "Too many pitches: %d (max: %d)", numPitches, maxVoices);
         goto render_quit;
     }
     if (velocity > velocityMax) {
@@ -408,10 +426,29 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
     if (!isInitialized("render"))
         goto render_quit;
 
+    // Get the range of allowable pitches
+    const int keyMin = getProgramKeyMin();
+    const int keyMax = getProgramKeyMax();
+    if (keyMin < 0 || keyMax < 0 || keyMin > keyMax) {
+        LOG_E(LOG_TAG, "Failed to retrieve the pitch range for the current program.");
+        goto render_quit;
+    }
+
+    // Verify the provided pitches work for the current program
+    for (i = 0; i < numPitches; i++) {
+        const uint8_t pitch = pitchBytes[i];
+
+        if (pitch < keyMin || pitch > keyMax) {
+            LOG_E(LOG_TAG, "Key %u is outside the range [%d, %d] of the current program.", pitch,
+                    keyMin, keyMax);
+            goto render_quit;
+        }
+    }
+
     // Compute the recording lengths
-    const EAS_I32 noteSamples = ms2Samples(noteDurationMs);
-    const EAS_I32 recordingSamples = ms2Samples(recordingDurationMs);
-    const EAS_I32 decaySamples = recordingSamples - noteSamples;
+    const int noteSamples = ms2Samples(noteDurationMs);
+    const int recordingSamples = ms2Samples(recordingDurationMs);
+    const int decaySamples = recordingSamples - noteSamples;
 
     // Free the old recording
     if (delete_recording() != SL_RESULT_SUCCESS) {
@@ -424,9 +461,9 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
     // Allocate a new recording. Put room for an extra two mix buffer at the end, to prevent writing
     // past the end of the buffer during rendering.
     // TODO: Don't need extra padding for fluid
-    const size_t numBufferMonoSamples = recordingSamples + 2 * pLibConfig->mixBufferSize;
+    const size_t numBufferMonoSamples = recordingSamples + 2 * mixBufferSize;
     const size_t recordBufferLength = getNumPcm(numBufferMonoSamples);
-    if ((record_buffer = (EAS_PCM *) malloc(recordBufferLength * sizeof(EAS_PCM))) == NULL) {
+    if ((record_buffer = (int16_t *) malloc(recordBufferLength * sizeof(int16_t))) == NULL) {
         LOG_E(LOG_TAG, "Insufficient memory for recording buffer.");
         goto render_quit;
     }
@@ -439,7 +476,7 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
 
     // Send the note start messages
     for (i = 0; i < numPitches; i++) {
-        if (startNote(pitchBytes[i], velocity) != EAS_SUCCESS)
+        if (startNote(pitchBytes[i], velocity))
             goto render_quit;
     }
 
@@ -449,7 +486,7 @@ jboolean render(const EAS_U8 *const pitchBytes, const jint numPitches,
 
     // Send the note end messages
     for (i = 0; i < numPitches; i++) {
-        if (endNote(pitchBytes[i]) != EAS_SUCCESS)
+        if (endNote(pitchBytes[i]))
             goto render_quit;
     }
 
@@ -542,8 +579,8 @@ SLresult createBufferQueueAudioPlayer() {
             };
     SLDataFormat_PCM format_pcm =
             {
-                    SL_DATAFORMAT_PCM, (SLuint32) (pLibConfig->numChannels),
-                    (SLuint32) (pLibConfig->sampleRate * 1000),
+                    SL_DATAFORMAT_PCM, (SLuint32) (numChannels),
+                    (SLuint32) (sampleRate * 1000),
                     SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
                     SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
                     SL_BYTEORDER_LITTLEENDIAN
@@ -654,13 +691,8 @@ int initFluid(const char *soundfontFilename) {
     // Destroy existing instances
     shutdownFluid();
 
-    // get the library configuration
-    pLibConfig = EAS_Config();
-    if (pLibConfig == NULL || pLibConfig->libVersion != LIB_VERSION)
-        return -1;
-
     // calculate buffer size
-    bufferSize = pLibConfig->mixBufferSize * pLibConfig->numChannels * NUM_BUFFERS;
+    bufferSize = mixBufferSize * numChannels * NUM_BUFFERS;
 
     // Create the settings
     if ((fluidSettings = new_fluid_settings()) == NULL) {
@@ -668,17 +700,12 @@ int initFluid(const char *soundfontFilename) {
         return -1;
     };
 
-    // Get the EAS configuration, since we are copying the settings over
-    pLibConfig = EAS_Config();
-
     // Configure the settings
-    fluid_settings_setint(fluidSettings, "synth.polyphony", pLibConfig->maxVoices);
-    const int numStereoChannels = pLibConfig->numChannels / 2;
+    fluid_settings_setint(fluidSettings, "synth.polyphony", maxVoices);
+    const int numStereoChannels = numChannels / 2;
     fluid_settings_setint(fluidSettings, "synth.audio-channels", numStereoChannels);
-    fluid_settings_setnum(fluidSettings, "synth.sample-rate", pLibConfig->sampleRate);
+    fluid_settings_setnum(fluidSettings, "synth.sample-rate", sampleRate);
     fluid_settings_setint(fluidSettings, "synth.threadsafe-api", 0); // Turn off monitor
-    fluid_settings_setint(fluidSettings, "synth.chorus.active",
-                          0); // Turn off chorus (could be enabled as an interesting feature)
 
     // Initialize the synthesizer
     if ((fluidSynth = new_fluid_synth(fluidSettings)) == NULL) {
@@ -695,57 +722,14 @@ int initFluid(const char *soundfontFilename) {
     return 0;
 }
 
-// init EAS midi
-EAS_RESULT initEAS() {
-    EAS_RESULT result;
-
-    // get the library configuration
-    pLibConfig = EAS_Config();
-    if (pLibConfig == NULL || pLibConfig->libVersion != LIB_VERSION)
-        return EAS_FAILURE;
-
-    // calculate buffer size
-    bufferSize = pLibConfig->mixBufferSize * pLibConfig->numChannels * NUM_BUFFERS;
-
-    // init library
-    if ((result = EAS_Init(&pEASData)) != EAS_SUCCESS)
-        return result;
-
-    // select reverb preset and enable
-    EAS_SetParameter(pEASData, EAS_MODULE_REVERB, EAS_PARAM_REVERB_PRESET,
-                     EAS_PARAM_REVERB_CHAMBER);
-    EAS_SetParameter(pEASData, EAS_MODULE_REVERB, EAS_PARAM_REVERB_BYPASS,
-                     EAS_FALSE);
-
-    // open midi stream
-    if ((result = EAS_OpenMIDIStream(pEASData, &midiHandle, NULL)) != EAS_SUCCESS)
-        return result;
-
-    return EAS_SUCCESS;
-}
-
-// shutdown EAS midi
-void shutdownEAS() {
-
-    if (midiHandle != NULL) {
-        EAS_CloseMIDIStream(pEASData, midiHandle);
-        midiHandle = NULL;
-    }
-
-    if (pEASData != NULL) {
-        EAS_Shutdown(pEASData);
-        pEASData = NULL;
-    }
-}
-
-// init mididriver
+// init midi driver
 jboolean midi_init(const char *soundfontFilename) {
-    EAS_RESULT result;
+    int result;
 
     if ((result = initFluid(soundfontFilename))) {
         shutdownFluid();
 
-        LOG_E(LOG_TAG, "Init fluid failed: %ld", result);
+        LOG_E(LOG_TAG, "Init fluid failed: %d", result);
 
         return JNI_FALSE;
     }
@@ -753,7 +737,7 @@ jboolean midi_init(const char *soundfontFilename) {
     // LOG_D(LOG_TAG, "Init EAS success, buffer: %ld", bufferSize);
 
     // allocate buffer in bytes
-    buffer = (EAS_PCM *) malloc(bufferSize * sizeof(EAS_PCM));
+    buffer = (int16_t *) malloc(bufferSize * sizeof(int16_t));
     if (buffer == NULL) {
         shutdownFluid();
 
@@ -769,7 +753,7 @@ jboolean midi_init(const char *soundfontFilename) {
         free(buffer);
         buffer = NULL;
 
-        LOG_E(LOG_TAG, "Create engine failed: %ld", result);
+        LOG_E(LOG_TAG, "Create engine failed: %d", result);
 
         return JNI_FALSE;
     }
@@ -781,7 +765,7 @@ jboolean midi_init(const char *soundfontFilename) {
         free(buffer);
         buffer = NULL;
 
-        LOG_E(LOG_TAG, "Create buffer queue audio player failed: %ld", result);
+        LOG_E(LOG_TAG, "Create buffer queue audio player failed: %d", result);
 
         return JNI_FALSE;
     }
@@ -800,18 +784,6 @@ jboolean midi_init(const char *soundfontFilename) {
     return JNI_TRUE;
 }
 
-// Write a MIDI message
-jboolean midi_write(EAS_U8 *bytes, jint length) {
-    EAS_RESULT result;
-
-    // Verify initialization
-    if (!isInitialized("write"))
-        return JNI_FALSE;
-
-    return (EAS_WriteMIDIStream(pEASData, midiHandle, bytes, length) == EAS_SUCCESS) ?
-           JNI_TRUE : JNI_FALSE;
-}
-
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
                                                   jobject obj,
@@ -827,29 +799,6 @@ Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
     return midi_init((*env)->GetStringUTFChars(env, soundfontAAssetName, NULL));
 }
 
-// midi config
-jintArray
-Java_org_billthefarmer_mididriver_MidiDriver_config(JNIEnv *env,
-                                                    jobject obj) {
-    jboolean isCopy;
-
-    if (pLibConfig == NULL)
-        return NULL;
-
-    jintArray configArray = (*env)->NewIntArray(env, 4);
-
-    jint *config = (*env)->GetIntArrayElements(env, configArray, &isCopy);
-
-    config[0] = pLibConfig->maxVoices;
-    config[1] = pLibConfig->numChannels;
-    config[2] = pLibConfig->sampleRate;
-    config[3] = pLibConfig->mixBufferSize;
-
-    (*env)->ReleaseIntArrayElements(env, configArray, config, 0);
-
-    return configArray;
-}
-
 // Stop looping, delete the recording
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_pauseJNI(JNIEnv *env,
@@ -857,6 +806,17 @@ Java_org_billthefarmer_mididriver_MidiDriver_pauseJNI(JNIEnv *env,
     return delete_recording() == SL_RESULT_SUCCESS ? JNI_TRUE : JNI_FALSE;
 }
 
+// Get the minimum allowed key for the currently selected program
+jint Java_org_billthefarmer_mididriver_MidiDriver_getKeyMinJNI(JNIEnv *env,
+                                                            jobject jobj) {
+    return getProgramKeyMin();
+}
+
+// Get the maximum allowed key for the currently selected program
+jint Java_org_billthefarmer_mididriver_MidiDriver_getKeyMaxJNI(JNIEnv *env,
+                                                            jobject jobj) {
+    return getProgramKeyMax();
+}
 
 // Render and then start looping
 jboolean
@@ -867,10 +827,10 @@ Java_org_billthefarmer_mididriver_MidiDriver_render(JNIEnv *env,
                                                     jlong noteDurationMs,
                                                     jlong recordingDurationMs) {
 
-    EAS_RESULT result;
+    int result;
     jboolean isCopy;
 
-    const EAS_U8 *const pitchBytes = (EAS_U8 *) (*env)->GetByteArrayElements(env, pitches, &isCopy);
+    const uint8_t *const pitchBytes = (uint8_t *) (*env)->GetByteArrayElements(env, pitches, &isCopy);
     const jint numPitches = (*env)->GetArrayLength(env, pitches);
 
     result = render(pitchBytes, numPitches, velocity, noteDurationMs, recordingDurationMs);
@@ -888,28 +848,9 @@ Java_org_billthefarmer_mididriver_MidiDriver_changeProgramJNI(JNIEnv *env,
     return (changeProgram(programNum) == 0) ? JNI_TRUE : JNI_FALSE;
 }
 
-jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_write(JNIEnv *env,
-                                                   jobject obj,
-                                                   jbyteArray byteArray) {
-    EAS_RESULT result;
-    jboolean isCopy;
-    jint length;
-    EAS_U8 *bytes;
-
-    bytes = (EAS_U8 *) (*env)->GetByteArrayElements(env, byteArray, &isCopy);
-    length = (*env)->GetArrayLength(env, byteArray);
-
-    result = midi_write(bytes, length);
-
-    (*env)->ReleaseByteArrayElements(env, byteArray, (jbyte *) bytes, 0);
-
-    return result;
-}
-
 // shutdown midi
 jboolean midi_shutdown() {
-    EAS_RESULT result;
+    int result;
 
     shutdownAudio();
 

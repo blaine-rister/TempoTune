@@ -105,6 +105,7 @@ fluid_preset_t* fluid_ramsfont_sfont_get_preset(fluid_sfont_t* sfont, unsigned i
   preset->get_banknum = fluid_rampreset_preset_get_banknum;
   preset->get_num = fluid_rampreset_preset_get_num;
   preset->noteon = fluid_rampreset_preset_noteon;
+  preset->get_range = NULL; // Not yet implemented for this soundfont type
   preset->notify = NULL;
 
   return preset;

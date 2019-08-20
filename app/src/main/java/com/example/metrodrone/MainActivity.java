@@ -55,13 +55,13 @@ public class MainActivity extends AppCompatActivity {
 
     // Sound parameters
     int bpm = 80;
-    int instrument = 0; // Piano
+    int ketLimitLo = 0;
+    int keyLimitHi = 127;
     NoteSettings settings = new NoteSettings(); // Global settings varying smoothly, incl. velocity
     List<Note> notes = new ArrayList<>(); // Stores the pitches to be played
 
     // State
     boolean isPlaying = false;
-    boolean isPausedForApp = false;
     boolean isTapping = false;
     TempoTapper tempoTapper;
 
@@ -185,18 +185,13 @@ public class MainActivity extends AppCompatActivity {
                 R.array.pitches_array, android.R.layout.simple_spinner_item);
         pitchAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
-        // Create the octave adapter
-        final Integer[] octaves =  {0, 1, 2, 3, 4, 5, 6, 7};
-        final ArrayAdapter<Integer> octaveAdapter = new ArrayAdapter<Integer>(this,
-                android.R.layout.simple_spinner_item, octaves);
-        octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
-
         // Set up the note spinners which come built-in to the UI
         notes.add(new Note(
+                this,
                 (Spinner) findViewById(R.id.pitchSpinner),
                 pitchAdapter,
-                (Spinner) findViewById(R.id.octaveSpinner),
-                octaveAdapter) {
+                (Spinner) findViewById(R.id.octaveSpinner)
+        ) {
             @Override
             public void onPitchChanged() {
                 update(); // Update the drone when the pitch is changed
@@ -223,11 +218,13 @@ public class MainActivity extends AppCompatActivity {
                 Spinner octaveSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
 
                 // Add a new note
-                Note note = new Note(pitchSpinner, pitchAdapter, octaveSpinner, octaveAdapter) {
+                Note note = new Note(layout.getContext(), pitchSpinner, pitchAdapter,
+                        octaveSpinner) {
                     @Override public void onPitchChanged() {
                         update(); // Update the drone when the pitch is changed
                     }
                 };
+                noteSetLimits(note);
                 notes.add(note);
                 update();
 
@@ -350,7 +347,20 @@ public class MainActivity extends AppCompatActivity {
         instrumentSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
-                instrument = ((NameValPair) adapterView.getItemAtPosition(pos)).i - 1;
+                // Change the instrument program
+                final int instrument = ((NameValPair) adapterView.getItemAtPosition(pos)).i - 1;
+                droneBinder.changeProgram(instrument);
+
+                // Get the key limits
+                ketLimitLo = droneBinder.getKeyMin();
+                keyLimitHi = droneBinder.getKeyMax();
+
+                // Send the new limits to the note selectors
+                for (int i = 0; i < notes.size(); i++) {
+                    noteSetLimits(notes.get(i));
+                }
+
+                // Update the sound
                 update();
             }
 
@@ -418,6 +428,9 @@ public class MainActivity extends AppCompatActivity {
             fatalErrorDialog("Binding to the server returned false.");
         }
 
+        // Select the default instrument, to make sure limits are initialized
+        instrumentSpinner.setSelection(0);
+
         // Initialize ads
         MobileAds.initialize(this);
 
@@ -477,11 +490,16 @@ public class MainActivity extends AppCompatActivity {
         return list;
     }
 
+    // Set the pitch limits of a Note object
+    protected void noteSetLimits(Note note) {
+        note.setLimits(ketLimitLo, keyLimitHi);
+    }
+
     // Tell the service to start playing sound
     protected void play() {
         if (!isBound) return;
 
-        droneBinder.play(bpm, notes, instrument, settings.getReader());
+        droneBinder.play(bpm, notes, settings.getReader());
         isPlaying = true;
     }
 

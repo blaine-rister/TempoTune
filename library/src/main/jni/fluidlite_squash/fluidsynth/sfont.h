@@ -126,6 +126,7 @@ struct _fluid_preset_t {
   char* (*get_name)(fluid_preset_t* preset);
   int (*get_banknum)(fluid_preset_t* preset);
   int (*get_num)(fluid_preset_t* preset);
+  void (*get_range)(const fluid_preset_t *const, int *const min, int*const max);
 
   /** handle a noteon event. Returns 0 if no error occured. */
   int (*noteon)(fluid_preset_t* preset, fluid_synth_t* synth, int chan, int key, int vel);

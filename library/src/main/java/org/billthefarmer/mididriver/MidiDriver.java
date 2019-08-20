@@ -37,6 +37,9 @@ package org.billthefarmer.mididriver;
 
 import android.content.res.AssetManager;
 
+import java.util.Set;
+import java.util.Iterator;
+
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -121,11 +124,39 @@ public class MidiDriver
     }
 
     /**
+     * Get the minimum key for the current program.
+     */
+    public byte getKeyMin() {
+        final int keyMin = getKeyMinJNI();
+        if (keyMin < 0)
+            throw new RuntimeException("Failed to get the minimum key");
+        return (byte) keyMin;
+    }
+
+    /**
+     * Get the maximum key for the current program.
+     */
+    public byte getKeyMax() {
+        final int keyMax = getKeyMaxJNI();
+        if (keyMax < 0)
+            throw new RuntimeException("Failed to get the maximum key");
+        return (byte) keyMax;
+    }
+
+    /**
      * Render and check for errors.
      */
-    public void renderNotes(byte pitches[], byte velocity, long noteDurationMs,
+    public void renderNotes(Set<Byte> pitches, byte velocity, long noteDurationMs,
                        long recordDurationMs) {
-        if (!render(pitches, velocity, noteDurationMs, recordDurationMs))
+
+        // Convert the pitch set to an array
+        byte pitchArray[] = new byte[pitches.size()];
+        Iterator<Byte> it = pitches.iterator();
+        for (int i = 0; it.hasNext(); i++) {
+            pitchArray[i] = it.next();
+        }
+
+        if (!render(pitchArray, velocity, noteDurationMs, recordDurationMs))
             throw new RuntimeException("Failed to render pitches");
     }
 
@@ -166,7 +197,7 @@ public class MidiDriver
     /**
      * Renders an audio signal, then loops it.
      *
-     * @param pitches The pitches to play.
+     * @param pitches The pitches to play. Duplicates will cause an error.
      * @param velocity The velocity at which to play them.
      * @param noteDurationMs - The delay before end is sent, in ms.
      * @param recordDurationMs - The total duration of the recording, in ms.
@@ -181,6 +212,18 @@ public class MidiDriver
      * @return True on success
      */
     public native boolean changeProgramJNI(byte programNum);
+
+    /**
+     * Get the minimum key for the current program.
+     * @return The key value, or -1 on error.
+     */
+    public native int getKeyMinJNI();
+
+    /**
+     * Get the maximum key for the current program.
+     * @return The key value, or -1 on error.
+     */
+    public native int getKeyMaxJNI();
 
     /**
      * Shut down native code

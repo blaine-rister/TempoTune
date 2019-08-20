@@ -37,7 +37,6 @@
 #define MIDI_H
 
 #include <jni.h>
-#include "eas.h"
 
 /* for C++ linkage */
 #ifdef __cplusplus
@@ -47,9 +46,6 @@ extern "C"
 
 // init mididriver
 jboolean midi_init();
-
-// midi write
-jboolean midi_write(EAS_U8 *bytes, jint length);
 
 // set EAS master volume
 jboolean midi_setVolume(jint volume);
