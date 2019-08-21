@@ -23,9 +23,6 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     // Create binder to return on binding
     final IBinder droneBinder = new DroneBinder();
 
-    // State
-    protected boolean isPlaying = false;
-
     public void onCreate() {
         super.onCreate();
 
@@ -37,17 +34,27 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         AssetManager assetManager = getAssets();
         final String soundfontFilename = "fluidr3_gm.sf2";
 
-        // Query the device sample rate
-        AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        int sampleRate = Integer.parseInt(am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE));
+        // Query the device audio parameters, on supported devices
+        int sampleRate = -1;
+        int bufferSize = -1;
+        if (android.os.Build.VERSION.SDK_INT >= 17) {
+
+            // Query the device sample rate
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            sampleRate = Integer.parseInt(am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE));
+
+            // Query the device buffer size
+            bufferSize = Integer.parseInt(am.getProperty(
+                    AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER));
+        } else {
+            // TODO log warning
+        }
+
+        // Substitute default parameters if querying failed
         if (sampleRate < 1) {
             // TODO log warning
             sampleRate = 44100;
         }
-
-        // Query the device buffer size
-        int bufferSize = Integer.parseInt(am.getProperty(
-                AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER));
         if (bufferSize < 1) {
             // TODO log warning
             bufferSize = 256;
@@ -88,7 +95,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     public void play(int bpm, List<Note> notes, NoteSettingsReader settings) {
         // Reset the state, cancelling old notes
-        if (isPlaying) pause();
+        pause();
 
         // Do nothing in the absence of notes to play
         if (notes.isEmpty())
@@ -110,15 +117,12 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         // Play the sound
         final byte velocity = MidiDriverHelper.encodeVelocity(settings.getVelocity());
         midi.renderNotes(keys, velocity, noteDurationMs, beatDurationMs);
-        isPlaying = true;
     }
 
     // Pause playing
     public void pause() {
         // Stop midi
-        if (midi != null) midi.pause();
-
-        isPlaying = false;
+        midi.pause();
     }
 
     // Listener for sending initial midi messages when the Sonivox
