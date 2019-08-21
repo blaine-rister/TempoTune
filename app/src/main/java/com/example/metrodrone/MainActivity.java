@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import android.app.AlertDialog;
 import android.os.Bundle;
 
 import android.content.Intent;
@@ -73,47 +72,45 @@ public class MainActivity extends AppCompatActivity {
 
     // Service interface
     DroneBinder droneBinder;
-    boolean isBound = false;
     private ServiceConnection droneConnection = new ServiceConnection()
     {
         @Override
         public void onServiceConnected(ComponentName className,
                                        IBinder service) {
             droneBinder = (DroneBinder) service;
-            isBound = true;
-            onResume(); // Start the app
+            createUI();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            fatalErrorDialog("Lost connection to the server.");
+            throw new RuntimeException("Lost connection to the server.");
         }
 
         @Override
         public void onNullBinding(ComponentName name) {
-            fatalErrorDialog("The server returned null on binding.");
+            throw new RuntimeException("The server returned null on binding.");
         }
 
         @Override
         public void onBindingDied(ComponentName name) {
-            fatalErrorDialog("The server binding died.");
+            throw new RuntimeException("The server binding died.");
         }
     };
-
-    // Displays an error message and quits
-    public void fatalErrorDialog(String message) {
-        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
-        alertDialogBuilder.setCancelable(true);
-        alertDialogBuilder.setMessage(message + "\nThis app will close.");
-        AlertDialog alertDialog = alertDialogBuilder.create();
-        alertDialog.show(); // Shows the message
-        super.finish(); // Shuts down the app
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Start the drone service and bind to it. When bound, we will create the UI.
+        Intent intent = new Intent(this, DroneService.class);
+        if (!bindService(intent, droneConnection, Context.BIND_AUTO_CREATE)) {
+            throw new RuntimeException("Binding to the server returned false.");
+        }
+    }
+
+
+    // Creates the UI components. Refactored to be called after the drone service is bound
+    protected void createUI() {
         // Set up the toolbar
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -347,6 +344,7 @@ public class MainActivity extends AppCompatActivity {
         instrumentSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
+
                 // Change the instrument program
                 final int instrument = ((NameValPair) adapterView.getItemAtPosition(pos)).i - 1;
                 droneBinder.changeProgram(instrument);
@@ -422,15 +420,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Start the drone service and bind to it
-        Intent intent = new Intent(this, DroneService.class);
-        if (!bindService(intent, droneConnection, Context.BIND_AUTO_CREATE)) {
-            fatalErrorDialog("Binding to the server returned false.");
-        }
-
-        // Select the default instrument, to make sure limits are initialized
-        instrumentSpinner.setSelection(0);
-
         // Initialize ads
         MobileAds.initialize(this);
 
@@ -464,8 +453,7 @@ public class MainActivity extends AppCompatActivity {
             return readCsvHelper(resourceId);
         } catch (IOException ie) {
             ie.printStackTrace();
-            fatalErrorDialog("Failed to read the CSV file!");
-            return null;
+            throw new RuntimeException("Failed to read the CSV file!");
         }
     }
 
@@ -481,7 +469,8 @@ public class MainActivity extends AppCompatActivity {
         String line = bufferedReader.readLine(); // CSV header
         while ((line = bufferedReader.readLine()) != null) {
             String[] items = line.split(",");
-            if (items.length != itemsPerLine) fatalErrorDialog("Invalid CSV line: " + line);
+            if (items.length != itemsPerLine) throw new RuntimeException(
+                    "Invalid CSV line: " + line);
             String name = items[1].trim();
             int code = Integer.parseInt(items[0].trim());
             list.add(new NameValPair(name, code));
@@ -497,16 +486,12 @@ public class MainActivity extends AppCompatActivity {
 
     // Tell the service to start playing sound
     protected void play() {
-        if (!isBound) return;
-
         droneBinder.play(bpm, notes, settings.getReader());
         isPlaying = true;
     }
 
     // Tell the service to stop playing sound
     protected void pause() {
-        if (!isBound) return;
-
         droneBinder.pause();
         isPlaying = false;
     }
