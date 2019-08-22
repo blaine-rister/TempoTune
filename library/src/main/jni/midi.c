@@ -901,6 +901,26 @@ Java_org_billthefarmer_mididriver_MidiDriver_changeProgramJNI(JNIEnv *env,
     return (changeProgram(programNum) == 0) ? JNI_TRUE : JNI_FALSE;
 }
 
+// Get the current MIDI program number
+int get_program() {
+
+    unsigned int soundfontReturn, bankReturn, programReturn;
+
+    if (!isInitialized("get_program"))
+        return -1;
+
+    return fluid_synth_get_program(fluidSynth, midiChannel, &soundfontReturn, &bankReturn,
+            &programReturn) ? -1 : programReturn;
+}
+
+// Get the current MIDI program, JNI wrapper
+jint
+Java_org_billthefarmer_mididriver_MidiDriver_getProgramJNI(JNIEnv *env,
+                                                           jobject obj) {
+    return get_program();
+}
+
+
 // shutdown midi
 jboolean midi_shutdown() {
     int result;

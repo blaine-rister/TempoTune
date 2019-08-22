@@ -8,8 +8,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
-import android.os.IBinder;
-
 import java.util.List;
 
 // Class for the user interface for selecting a note
@@ -82,12 +80,15 @@ public class NoteSelector {
         // Set up pitch spinner
         this.pitchSpinner = pitchSpinner;
         pitchSpinner.setAdapter(pitchAdapter);
+        droneBinder.ignoreNextUpdate();
         pitchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos,
                                        long id) {
+                droneBinder.pushUpdates(false);
                 droneBinder.setPitch(handle,
                         str2Pitch((String) adapterView.getItemAtPosition(pos)));
+                droneBinder.popUpdates();
                 updateOctave();
             }
 
@@ -105,6 +106,7 @@ public class NoteSelector {
         // Set up octave spinner
         this.octaveSpinner = octaveSpinner;
         octaveSpinner.setAdapter(octaveAdapter);
+        droneBinder.ignoreNextUpdate();
         octaveSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos,

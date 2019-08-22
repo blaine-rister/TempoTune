@@ -21,6 +21,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     // State
     boolean isPlaying;
     boolean soundUpdateEnabled;
+    int updateIgnoreCount; // Use this to preempt an asynchronous update
     Stack<Boolean> updatesStack; // Allow storage of previous soundUpdateEnabled values
 
     // Sound parameters
@@ -39,6 +40,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         isPlaying = false;
         soundUpdateEnabled = true;
         updatesStack = new Stack<>();
+        updateIgnoreCount = 0;
         settings = new SoundSettings();
 
         // Start with a single note
@@ -90,6 +92,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         }
         void stop() { DroneService.this.stop(); }
         void changeProgram(int instrument) { DroneService.this.changeProgram(instrument); }
+        int getProgram() { return midi.getProgram(); }
         int addNote() { return settings.addNote(); }
         void deleteNote(int handle) { settings.deleteNote(handle); }
         boolean notesFull() { return settings.isFull(); }
@@ -125,6 +128,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         void updateSound() { DroneService.this.updateSound(); }
         void pushUpdates(boolean enable) { DroneService.this.pushUpdates(enable); }
         boolean popUpdates() { return DroneService.this.popUpdates(); }
+        void ignoreNextUpdate() { updateIgnoreCount++; }
         boolean updatesEnabled() { return soundUpdateEnabled; }
         void enableUpdates() { soundUpdateEnabled = true; }
         void disableUpdates() { soundUpdateEnabled = false; }
@@ -203,8 +207,18 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     // Update the sound if we are playing. Can be disabled with the soundUpdateEnabled flag.
     public void updateSound() {
+        // Check if updates are disabled
+        if (!soundUpdateEnabled)
+            return;
+
+        // Check the ignore counter
+        if (updateIgnoreCount > 0) {
+            updateIgnoreCount--;
+            return;
+        }
+
         // Update the sound if we are playing something
-        if (isPlaying && soundUpdateEnabled)
+        if (isPlaying)
             play();
     }
 

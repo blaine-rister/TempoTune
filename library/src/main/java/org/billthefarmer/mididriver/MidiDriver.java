@@ -127,6 +127,16 @@ public class MidiDriver
     }
 
     /**
+     * Retrieve the current program number.
+     */
+    public int getProgram() {
+        final int program = getProgramJNI();
+        if (program < 0)
+            throw new RuntimeException("Failed to get the MIDI program");
+        return program;
+    }
+
+    /**
      * Get the minimum key for the current program.
      */
     public byte getKeyMin() {
@@ -216,6 +226,13 @@ public class MidiDriver
      * @return True on success
      */
     public native boolean changeProgramJNI(byte programNum);
+
+    /**
+     * Retrieve the current MIDI program.
+     *
+     * @return Program number, or -1 on failure.
+     */
+    public native int getProgramJNI();
 
     /**
      * Get the minimum key for the current program.

@@ -208,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Add the existing notes to the UI
         final List<Integer> handles = droneBinder.getNoteHandles();
-        for (Iterator<Integer> it = handles.iterator(); it.hasNext();) {
+        for (Iterator<Integer> it = handles.iterator(); it.hasNext(); ) {
             addNote(it.next(), pitchAdapter);
         }
 
@@ -270,7 +270,7 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 // Update the drone with whatever changes were made
                 droneBinder.setVelocity((double) seekBar.getProgress() / seekBar.getMax()); // Assumes min is 0,
-                    // to check this requires higher API level
+                // to check this requires higher API level
             }
         });
 
@@ -292,7 +292,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 droneBinder.setDuration((double) seekBar.getProgress() / seekBar.getMax()); // Assumes min is 0,
-                    // to check this requires higher API level
+                // to check this requires higher API level
             }
         });
 
@@ -320,7 +320,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             // Add this item to the current sub-list, which is the most recent one
-            groupedInstruments.get(groupedInstruments.size() - 1).add(instrument);
+            final int familyIdx = groupedInstruments.size() - 1;
+            List<NameValPair> familyGroup = groupedInstruments.get(familyIdx);
+            familyGroup.add(instrument);
         }
 
         // Set up array adapters for each group
@@ -335,6 +337,7 @@ public class MainActivity extends AppCompatActivity {
         // Instrument name spinner
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
         instrumentSpinner.setAdapter(groupedInstrumentAdapters.get(0));
+        droneBinder.ignoreNextUpdate();
         instrumentSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
@@ -363,6 +366,7 @@ public class MainActivity extends AppCompatActivity {
                 android.R.layout.simple_spinner_item, familyNames);
         familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
         familySpinner.setAdapter(familyAdapter);
+        droneBinder.ignoreNextUpdate();
         familySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
@@ -375,6 +379,9 @@ public class MainActivity extends AppCompatActivity {
                 // Do nothing
             }
         });
+
+        // Set the spinners to reflect the current program
+        updateInstrumentSpinners(groupedInstruments, familySpinner, instrumentSpinner);
 
         // Tempo tapper
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -402,6 +409,32 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    // Set the instrument spinners to the current program
+    private void updateInstrumentSpinners(List<List<NameValPair>> groups, Spinner familySpinner,
+                                       Spinner instrumentSpinner){
+
+        // Look for the current program in the instrument groups. If found, set the spinners
+        final int currentProgram = droneBinder.getProgram();
+        int instrumentIdx = 0;
+        for (int familyIdx = 0; familyIdx < groups.size(); familyIdx++) {
+            List<NameValPair> group = groups.get(familyIdx);
+            for (int groupInstIdx = 0; groupInstIdx < group.size(); groupInstIdx++) {
+                if (instrumentIdx == currentProgram) {
+                    droneBinder.ignoreNextUpdate();
+                    familySpinner.setSelection(familyIdx);
+                    droneBinder.ignoreNextUpdate();
+                    instrumentSpinner.setSelection(groupInstIdx);
+                    return;
+                }
+                instrumentIdx++;
+            }
+        }
+
+        throw new RuntimeException(
+                String.format("Failed to set spinners to the program number %d", currentProgram));
+
     }
 
     // Add a new note the GUI
