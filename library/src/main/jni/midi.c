@@ -42,6 +42,7 @@
 #include <semaphore.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <android/log.h>
 
@@ -64,6 +65,7 @@ extern "C" {
 #define LOG_D(tag, ...) __android_log_print(ANDROID_LOG_DEBUG, tag, __VA_ARGS__)
 #define LOG_E(tag, ...) __android_log_print(ANDROID_LOG_ERROR, tag, __VA_ARGS__)
 #define LOG_I(tag, ...) __android_log_print(ANDROID_LOG_INFO, tag, __VA_ARGS__)
+#define LOG_W(tag, ...) __android_log_print(ANDROID_LOG_WARN, tag, __VA_ARGS__)
 
 // Output audio datatype
 typedef int16_t output_t;
@@ -90,7 +92,6 @@ static SLObjectItf outputMixObject = NULL;
 // buffer queue player interfaces
 static SLObjectItf bqPlayerObject = NULL;
 static SLPlayItf bqPlayerPlay;
-static SLVolumeItf bqPlayerVolume;
 static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 
 // Fluid data
@@ -127,22 +128,7 @@ static size_t getNumPcm(const size_t numSamples) {
 // Set the player's state to playing
 SLresult play() {
 
-    SLmillibel maxVolume;
     SLresult result;
-
-    // Get the maximum volume level
-    result = (*bqPlayerVolume)->GetMaxVolumeLevel(bqPlayerVolume, &maxVolume);
-    if (result != SL_RESULT_SUCCESS) {
-        LOG_E(LOG_TAG, "failed to get the maximum volume");
-        return result;
-    }
-
-    // Set the volume to max
-    result = (*bqPlayerVolume)->SetVolumeLevel(bqPlayerVolume, maxVolume);
-    if (result != SL_RESULT_SUCCESS) {
-        LOG_E(LOG_TAG, "failed to set the volume level");
-        return result;
-    }
 
     // Set the playback pointer
     if (record_buffer == NULL) {
@@ -571,6 +557,9 @@ SLresult createEngine() {
 
 // create buffer queue audio player
 SLresult createBufferQueueAudioPlayer() {
+
+    SLAndroidConfigurationItf configItf;
+    SLVolumeItf volumeItf;
     SLresult result;
 
     // configure audio source
@@ -580,8 +569,8 @@ SLresult createBufferQueueAudioPlayer() {
             };
     SLDataFormat_PCM format_pcm =
             {
-                    SL_DATAFORMAT_PCM, (SLuint32) (numChannels),
-                    (SLuint32) (sampleRate * 1000),
+                    SL_DATAFORMAT_PCM, (SLuint32)(numChannels),
+                    (SLuint32)(sampleRate * 1000),
                     SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
                     SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
                     SL_BYTEORDER_LITTLEENDIAN
@@ -594,8 +583,8 @@ SLresult createBufferQueueAudioPlayer() {
     SLDataSink audioSnk = {&loc_outmix, NULL};
 
     // create audio player
-    const SLInterfaceID ids[] = {SL_IID_BUFFERQUEUE, SL_IID_VOLUME};
-    const SLboolean req[] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
+    const SLInterfaceID ids[] = {SL_IID_BUFFERQUEUE, SL_IID_VOLUME, SL_IID_ANDROIDCONFIGURATION};
+    const SLboolean req[] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_FALSE, SL_BOOLEAN_FALSE};
     const size_t numIds = sizeof(ids) / sizeof(SLInterfaceID);
 
     result = (*engineEngine)->CreateAudioPlayer(engineEngine,
@@ -606,7 +595,7 @@ SLresult createBufferQueueAudioPlayer() {
         return result;
 
     LOG_I(LOG_TAG, "Initialized audio player with sample rate: %d buffer size: %d", sampleRate,
-            bufferSizeMono);
+          bufferSizeMono);
 
     // LOG_D(LOG_TAG, "Audio player created");
 
@@ -623,13 +612,75 @@ SLresult createBufferQueueAudioPlayer() {
     if (SL_RESULT_SUCCESS != result)
         return result;
 
-    // Get the volume interface
-    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_VOLUME, &bqPlayerVolume);
-    if (result != SL_RESULT_SUCCESS) {
-        return result;
+    // Get the volume interface, if it exists. If so, set the volume to max.
+    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_VOLUME, &volumeItf);
+    if (result == SL_RESULT_SUCCESS) {
+
+        SLmillibel maxVolume;
+
+        // Get the maximum volume level
+        result = (*volumeItf)->GetMaxVolumeLevel(volumeItf, &maxVolume);
+        if (result != SL_RESULT_SUCCESS) {
+            LOG_E(LOG_TAG, "failed to get the maximum volume");
+            return result;
+        }
+
+        // Set the volume to max
+        result = (*volumeItf)->SetVolumeLevel(volumeItf, maxVolume);
+        if (result != SL_RESULT_SUCCESS) {
+            LOG_E(LOG_TAG, "failed to set the volume level");
+            return result;
+        }
+
+        LOG_I(LOG_TAG, "Set volume level to the maximum.");
+
+    } else {
+        LOG_W(LOG_TAG, "Failed to get the volume controls (code %d). The app will not control the "
+                       "OpenSL ES player volume.", result);
     }
 
-    // LOG_D(LOG_TAG, "Play interface retrieved");
+#if 0
+    // Get the Android configuration interface, if it exists. If so, enable low power mode. This
+    // will fail on Android versions prior to API level 25
+    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_ANDROIDCONFIGURATION,
+                                             &configItf);
+    if (result == SL_RESULT_SUCCESS) {
+
+        const char *modeStr;
+        SLuint32 defaultMode;
+
+        const SLuint32 desiredMode = SL_ANDROID_PERFORMANCE_POWER_SAVING;
+
+        // Get the current (default) performance mode
+        (*configItf)->GetConfiguration(configItf, SL_ANDROID_KEY_PERFORMANCE_MODE,
+                                       &defaultMode, sizeof(defaultMode));
+        switch (defaultMode) {
+            case SL_ANDROID_PERFORMANCE_NONE:
+                modeStr = "none";
+            case SL_ANDROID_PERFORMANCE_LATENCY:
+                modeStr = "latency";
+            case SL_ANDROID_PERFORMANCE_LATENCY_EFFECTS:
+                modeStr = "latency_effects";
+            case SL_ANDROID_PERFORMANCE_POWER_SAVING:
+                modeStr = "power_saving";
+            default:
+                modeStr = "unrecognized"; // This happens on API level < 25
+        }
+
+        // Set the performance mode.
+        result = (*configItf)->SetConfiguration(configItf, SL_ANDROID_KEY_PERFORMANCE_MODE,
+                                                &desiredMode, sizeof(desiredMode));
+        if (result == SL_RESULT_SUCCESS) {
+            LOG_I(LOG_TAG, "Set audio to low-power mode.");
+        } else {
+            LOG_W(LOG_TAG, "Failed to set audio to low-power mode (code %d).", result);
+            LOG_I(LOG_TAG, "Audio defaulted to performance mode: %s", modeStr);
+        }
+    } else {
+        LOG_W(LOG_TAG, "Failed to get the configuration controls (code %d). Low-power audio mode "
+                       "will not be enabled.", result);
+    }
+#endif
 
     // get the buffer queue interface
     result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_BUFFERQUEUE,
@@ -660,7 +711,6 @@ void shutdownAudio() {
         (*bqPlayerObject)->Destroy(bqPlayerObject);
         bqPlayerObject = NULL;
         bqPlayerPlay = NULL;
-        bqPlayerVolume = NULL;
         bqPlayerBufferQueue = NULL;
     }
 

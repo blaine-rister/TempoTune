@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 
 import android.os.Bundle;
 
@@ -52,15 +54,10 @@ public class MainActivity extends AppCompatActivity {
     // Constants
     final boolean testAds = true;
 
-    // Sound parameters
-    int bpm = 80;
-    int ketLimitLo = 0;
-    int keyLimitHi = 127;
-    NoteSettings settings = new NoteSettings(); // Global settings varying smoothly, incl. velocity
-    List<Note> notes = new ArrayList<>(); // Stores the pitches to be played
+    // Dynamic UI items
+    List<NoteSelector> noteSelectors = new ArrayList<>(); // Stores the pitches to be played
 
     // State
-    boolean isPlaying = false;
     boolean isTapping = false;
     TempoTapper tempoTapper;
 
@@ -78,7 +75,10 @@ public class MainActivity extends AppCompatActivity {
         public void onServiceConnected(ComponentName className,
                                        IBinder service) {
             droneBinder = (DroneBinder) service;
-            createUI();
+            droneBinder.pushUpdates(false);
+            setupUI();
+            updateUI();
+            droneBinder.popUpdates();
         }
 
         @Override
@@ -101,18 +101,42 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Start the drone service and bind to it. When bound, we will create the UI.
+        // Start the drone service and bind to it. When bound, we will set up the UI.
         Intent intent = new Intent(this, DroneService.class);
+        if (startService(intent) == null) {
+            throw new RuntimeException("Failed to start the service.");
+        }
         if (!bindService(intent, droneConnection, Context.BIND_AUTO_CREATE)) {
             throw new RuntimeException("Binding to the server returned false.");
         }
+
+        // Start drawing the layout in the meantime, but don't initialize the behavior
+        setContentView(R.layout.activity_main);
+
+        // Initialize ads
+        MobileAds.initialize(this);
+
+        // Get the ad unit IDs
+        final boolean testAds = true;
+        final int bannerAdUnitIdRes = testAds ? R.string.test_banner_ad_unit_id :
+                R.string.real_banner_ad_unit_id;
+        final int interstitialAdUnitRes = testAds ? R.string.test_interstitial_ad_unit_id :
+                R.string.real_interstitial_ad_unit_id;
+
+        // Initialize the banner ad
+        AdView banner = findViewById(R.id.adView);
+        banner.loadAd(new AdRequest.Builder().build());
+
+        // Initialize the interstitial ad
+        interstitialAd = new InterstitialAd(this);
+        interstitialAd.setAdUnitId(getResources().getString(R.string.interstitial_ad_unit_id));
     }
 
 
-    // Creates the UI components. Refactored to be called after the drone service is bound
-    protected void createUI() {
+    // Set the behavior of the UI components. Called after the service is bound.
+    protected void setupUI() {
+
         // Set up the toolbar
-        setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -142,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == EditorInfo.IME_ACTION_DONE) {
                     // Read the text and update BPM
-                    addBpm(readBpm(textView)- bpm);
+                    droneBinder.setBpm(readBpm(textView));
 
                     // Remove the focus, but enable it to regain focus after touch
                     textView.setFocusable(false);
@@ -154,7 +178,6 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         });
-        displayBpm();
 
 
         // BPM increase button
@@ -162,8 +185,8 @@ public class MainActivity extends AppCompatActivity {
         bpmIncreaseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                bpm = readBpm(bpmTextView);
-                addBpm(1);
+                droneBinder.setBpm(droneBinder.getBpm() + 1);
+                updateUI();
             }
         });
 
@@ -172,8 +195,8 @@ public class MainActivity extends AppCompatActivity {
         bpmDecreaseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                bpm = readBpm(bpmTextView);
-                addBpm(-1);
+                droneBinder.setBpm(droneBinder.getBpm() - 1);
+                updateUI();
             }
         });
 
@@ -182,74 +205,44 @@ public class MainActivity extends AppCompatActivity {
                 R.array.pitches_array, android.R.layout.simple_spinner_item);
         pitchAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
-        // Set up the note spinners which come built-in to the UI
-        notes.add(new Note(
-                this,
-                (Spinner) findViewById(R.id.pitchSpinner),
-                pitchAdapter,
-                (Spinner) findViewById(R.id.octaveSpinner)
-        ) {
-            @Override
-            public void onPitchChanged() {
-                update(); // Update the drone when the pitch is changed
-            }
-        });
 
-        // Add pitch button
-        final Button addPitchButton = findViewById(R.id.addPitchButton);
-        addPitchButton.setOnClickListener(new View.OnClickListener() {
+        // Add the existing notes to the UI
+        final List<Integer> handles = droneBinder.getNoteHandles();
+        for (Iterator<Integer> it = handles.iterator(); it.hasNext();) {
+            addNote(it.next(), pitchAdapter);
+        }
+
+        // Add note button
+        final Button addNoteButton = findViewById(R.id.addPitchButton);
+        addNoteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
-                //TODO: there could be some bug in Android about this
-                // See this link, maybe try this fix: https://stackoverflow.com/questions/15425151/change-relative-layout-width-and-height-dynamically
-                // Or, put the first pitch spinner outside of here, set this sub-layout WITHOUT
-                // wrap_content
+                // Check if we have reached the note limit
+                if (droneBinder.notesFull())
+                    return;
 
-                // Get the pitch layout
-                LinearLayout layout = findViewById(R.id.pitchLayout);
-
-                // Inflate new spinners
-                LayoutInflater inflater = LayoutInflater.from(layout.getContext());
-                Spinner pitchSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
-                Spinner octaveSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
-
-                // Add a new note
-                Note note = new Note(layout.getContext(), pitchSpinner, pitchAdapter,
-                        octaveSpinner) {
-                    @Override public void onPitchChanged() {
-                        update(); // Update the drone when the pitch is changed
-                    }
-                };
-                noteSetLimits(note);
-                notes.add(note);
-                update();
-
-                // Put the new spinners in the UI layout
-                final LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                layout.addView(note.pitchSpinner, params);
-                layout.addView(note.octaveSpinner, params);
+                addNote(droneBinder.addNote(), pitchAdapter);
             }
         });
 
         // Remove pitch button
-        Button removePitchButton = findViewById(R.id.removePitchButton);
-        removePitchButton.setOnClickListener(new View.OnClickListener() {
+        Button removeNoteButton = findViewById(R.id.removePitchButton);
+        removeNoteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
                 // Do nothing if there are no pitches left to remove
-                if (notes.isEmpty())
+                if (noteSelectors.isEmpty())
                     return;
 
                 // Get the last note
-                final int removeIdx = notes.size() - 1;
-                Note noteToRemove = notes.get(removeIdx);
+                final int removeIdx = noteSelectors.size() - 1;
+                NoteSelector noteToRemove = noteSelectors.get(removeIdx);
 
                 // Remove the note from the sounding pitches
-                notes.remove(removeIdx);
-                update();
+                noteToRemove.destroy();
+                noteSelectors.remove(removeIdx);
 
                 // Remove the note from the UI layout
                 LinearLayout layout = findViewById(R.id.pitchLayout);
@@ -260,12 +253,12 @@ public class MainActivity extends AppCompatActivity {
 
         // Velocity bar
         SeekBar velocitySeekBar = findViewById(R.id.velocitySeekBar);
-        velocitySeekBar.setProgress((int) Math.floor(settings.velocity * velocitySeekBar.getMax()));
+        velocitySeekBar.setProgress((int) Math.floor(droneBinder.getVelocity() *
+                velocitySeekBar.getMax()));
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                settings.velocity = (double) progress / seekBar.getMax(); // Assumes min is 0, to
-                    // check this requires higher API level
+                // Do nothing
             }
 
             @Override
@@ -276,18 +269,19 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 // Update the drone with whatever changes were made
-                update();
+                droneBinder.setVelocity((double) seekBar.getProgress() / seekBar.getMax()); // Assumes min is 0,
+                    // to check this requires higher API level
             }
         });
 
         // Duration bar
         SeekBar durationSeekBar = findViewById(R.id.durationSeekBar);
-        durationSeekBar.setProgress((int) Math.floor(settings.duration * durationSeekBar.getMax()));
+        durationSeekBar.setProgress((int) Math.floor(droneBinder.getDuration() *
+                durationSeekBar.getMax()));
         durationSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                settings.duration = (double) progress / seekBar.getMax(); // Assumes min is 0, to
-                // check this requires higher API level
+                // Do nothing
             }
 
             @Override
@@ -297,8 +291,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                // Update the drone with whatever changes were made
-                update();
+                droneBinder.setDuration((double) seekBar.getProgress() / seekBar.getMax()); // Assumes min is 0,
+                    // to check this requires higher API level
             }
         });
 
@@ -348,18 +342,7 @@ public class MainActivity extends AppCompatActivity {
                 // Change the instrument program
                 final int instrument = ((NameValPair) adapterView.getItemAtPosition(pos)).i - 1;
                 droneBinder.changeProgram(instrument);
-
-                // Get the key limits
-                ketLimitLo = droneBinder.getKeyMin();
-                keyLimitHi = droneBinder.getKeyMax();
-
-                // Send the new limits to the note selectors
-                for (int i = 0; i < notes.size(); i++) {
-                    noteSetLimits(notes.get(i));
-                }
-
-                // Update the sound
-                update();
+                updateUI();
             }
 
             @Override
@@ -406,7 +389,7 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onComplete(int bpm) {
                             isTapping = false;
-                            setBpm(bpm);
+                            droneBinder.setBpm(bpm);
                         }
 
                         @Override
@@ -419,32 +402,37 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
 
-        // Initialize ads
-        MobileAds.initialize(this);
+    // Add a new note the GUI
+    public void addNote(final int handle, final ArrayAdapter<CharSequence> pitchAdapter) {
+        // Get the pitch layout
+        LinearLayout layout = findViewById(R.id.pitchLayout);
 
-        // Get the ad unit IDs
-        final boolean testAds = true;
-        final int bannerAdUnitIdRes = testAds ? R.string.test_banner_ad_unit_id :
-                R.string.real_banner_ad_unit_id;
-        final int interstitialAdUnitRes = testAds ? R.string.test_interstitial_ad_unit_id :
-                R.string.real_interstitial_ad_unit_id;
+        // Inflate new spinners
+        LayoutInflater inflater = LayoutInflater.from(layout.getContext());
+        Spinner pitchSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
+        Spinner octaveSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
 
-        // Initialize the banner ad
-        AdView banner = findViewById(R.id.adView);
-        banner.loadAd(new AdRequest.Builder().build());
+        // Add a new note
+        NoteSelector noteSelector = new NoteSelector(layout.getContext(), droneBinder, handle,
+                pitchSpinner, pitchAdapter, octaveSpinner);
+        noteSelectors.add(noteSelector);
+        updateUI();
 
-        // Initialize the interstitial ad
-        interstitialAd = new InterstitialAd(this);
-        interstitialAd.setAdUnitId(getResources().getString(R.string.interstitial_ad_unit_id));
+        // Put the new spinners in the UI layout
+        final LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        layout.addView(noteSelector.pitchSpinner, params);
+        layout.addView(noteSelector.octaveSpinner, params);
     }
 
     // Check the BPM when 'back' is pressed: the user may use this to exit the keyboard
     @Override
     public void onBackPressed() {
         super.onBackPressed();
-        setBpm(readBpm(bpmTextView));
-        update();
+        droneBinder.setBpm(readBpm(bpmTextView));
+        updateUI();
     }
 
     // Method to handle reading the instrument CSV file. Returns the results in these lists.
@@ -479,27 +467,24 @@ public class MainActivity extends AppCompatActivity {
         return list;
     }
 
-    // Set the pitch limits of a Note object
-    protected void noteSetLimits(Note note) {
-        note.setLimits(ketLimitLo, keyLimitHi);
-    }
-
     // Tell the service to start playing sound
     protected void play() {
-        droneBinder.play(bpm, notes, settings.getReader());
-        isPlaying = true;
+        droneBinder.play();
     }
 
     // Tell the service to stop playing sound
     protected void pause() {
         droneBinder.pause();
-        isPlaying = false;
     }
 
-    // Updates the UI, and if playing, updates the drone
-    protected void update() {
-        displayBpm();
-        if (isPlaying) play();
+    // Retrieves the settings and updates the UI
+    protected void updateUI() {
+        droneBinder.pushUpdates(false);
+        displayBpm(droneBinder.getBpm());
+        for (int i = 0; i < noteSelectors.size(); i++) {
+            noteSelectors.get(i).update();
+        }
+        droneBinder.popUpdates();
     }
 
 
@@ -509,21 +494,10 @@ public class MainActivity extends AppCompatActivity {
         return text.isEmpty() ? 0 : Integer.valueOf(text);
     }
 
-    // Add the specified amount to the BPM. Updates the BPM view as well.
-    protected void addBpm(int increase) {
-        setBpm(bpm + increase);
-    }
-
-    // Set the BPM, while clamping to the allowable range
-    protected void setBpm(int bpm) {
-        final int maxBpm = 512; // Maximum allowed BPM
-        this.bpm = Math.min(maxBpm, Math.max(0, bpm));
-        update();
-    }
-
     // Displays the current BPM
-    protected void displayBpm() {
-        bpmTextView.setText(Integer.toString((int) bpm));
+    protected void displayBpm(final int bpm) {
+
+        bpmTextView.setText(Integer.toString(bpm));
     }
 
     // On restart, load an ad

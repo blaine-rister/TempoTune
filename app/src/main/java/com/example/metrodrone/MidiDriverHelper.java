@@ -7,6 +7,10 @@ import org.billthefarmer.mididriver.MidiDriver;
 
 public class MidiDriverHelper extends MidiDriver {
 
+    // Constants
+    final static int maxNumNotes = 8;
+    final static int keyMax = 127;
+
     // Convert BPM to ms per beat
     public static double getMsPerBeat(int bpm) {
         final long msPerMinute = 60 * 1000;

@@ -8,14 +8,23 @@ import android.media.AudioManager;
 import android.os.IBinder;
 import android.os.Binder;
 
-import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Stack;
 
 import org.billthefarmer.mididriver.MidiDriver;
 
 // Responsible for playing sound through the MIDI driver //
 public class DroneService extends Service implements MidiDriver.OnMidiStartListener {
+
+    // State
+    boolean isPlaying;
+    boolean soundUpdateEnabled;
+    Stack<Boolean> updatesStack; // Allow storage of previous soundUpdateEnabled values
+
+    // Sound parameters
+    SoundSettings settings;
 
     // Create midi driver
     protected MidiDriverHelper midi;
@@ -25,6 +34,15 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     public void onCreate() {
         super.onCreate();
+
+        // Initialize the sound parameters
+        isPlaying = false;
+        soundUpdateEnabled = true;
+        updatesStack = new Stack<>();
+        settings = new SoundSettings();
+
+        // Start with a single note
+        settings.addNote();
 
         // Initialize the MIDI class
         midi = new MidiDriverHelper();
@@ -66,18 +84,50 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     // Interface for the main activity
     public class DroneBinder extends Binder {
-        void play(int bpm, List<Note> notes, NoteSettingsReader settings) {
-            DroneService.this.play(bpm, notes, settings);
-        }
+        void play() { DroneService.this.play(); }
         void pause() {
             DroneService.this.pause();
         }
         void stop() { DroneService.this.stop(); }
-        void changeProgram(int instrument) {
-            midi.changeProgram((byte) instrument);
+        void changeProgram(int instrument) { DroneService.this.changeProgram(instrument); }
+        int addNote() { return settings.addNote(); }
+        void deleteNote(int handle) { settings.deleteNote(handle); }
+        boolean notesFull() { return settings.isFull(); }
+        int getBpm() { return settings.getBpm(); }
+        double getVelocity() { return settings.getVelocity(); }
+        double getDuration() { return settings.getDuration(); }
+        int getNumNotes() { return settings.getNumNotes(); }
+        List<Integer> getNoteHandles() { return settings.getNoteHandles(); }
+        int getPitch(int handle) { return settings.getPitch(handle); }
+        int getOctave(int handle) { return settings.getOctave(handle); }
+        List<Integer> getOctaveChoices(int handle) { return settings.getOctaveChoices(handle); }
+        int setBpm(int bpm) {
+            bpm = settings.setBpm(bpm);
+            updateSound();
+            return bpm;
         }
-        int getKeyMin() { return midi.getKeyMin(); };
-        int getKeyMax() { return midi.getKeyMax(); };
+        void setVelocity(double velocity) {
+            settings.setVelocity(velocity);
+            updateSound();
+        }
+        void setDuration(double duration) {
+            settings.setDuration(duration);
+            updateSound();
+        }
+        void setPitch(int handle, int pitch) {
+            settings.setPitch(handle, pitch);
+            updateSound();
+        }
+        void setOctave(int handle, int octave) {
+            settings.setOctave(handle, octave);
+            updateSound();
+        }
+        void updateSound() { DroneService.this.updateSound(); }
+        void pushUpdates(boolean enable) { DroneService.this.pushUpdates(enable); }
+        boolean popUpdates() { return DroneService.this.popUpdates(); }
+        boolean updatesEnabled() { return soundUpdateEnabled; }
+        void enableUpdates() { soundUpdateEnabled = true; }
+        void disableUpdates() { soundUpdateEnabled = false; }
     }
 
     @Override
@@ -85,44 +135,77 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         return droneBinder;
     }
 
+    // Push the current updates() variable onto the stack and set the new one
+    void pushUpdates(boolean enable) {
+        updatesStack.push(soundUpdateEnabled);
+        soundUpdateEnabled = enable;
+    }
+
+    // Pop the top of the updates stack and set its value
+    boolean popUpdates() {
+        soundUpdateEnabled = updatesStack.pop();
+        return soundUpdateEnabled;
+    }
+
+    // Change the MIDI program, update note settings
+    public void changeProgram(final int instrument) {
+        midi.changeProgram((byte) instrument);
+        settings.setKeyLimits(midi.getKeyMin(), midi.getKeyMax());
+        updateSound();
+    }
+
     public void stop() {
         // Stop the MIDI
+        pause();
         midi.stop();
 
         // Shut down the service
         DroneService.this.stopSelf();
     }
 
-    public void play(int bpm, List<Note> notes, NoteSettingsReader settings) {
+    // Start playing the sound, according to the current settings
+    public void play() {
+
         // Reset the state, cancelling old notes
         pause();
 
         // Do nothing in the absence of notes to play
-        if (notes.isEmpty())
+        final int numNotes = settings.getNumNotes();
+        if (numNotes < 1)
             return;
 
         // Calculate the note and beat durations
-        final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm);
+        final double msPerBeat = MidiDriverHelper.getMsPerBeat(settings.getBpm());
         final long beatDurationMs = Math.round(msPerBeat);
         final long noteDurationMs = Math.round(msPerBeat * settings.getDuration());
 
         // Encode the pitches to be played in a set
+        final List<Integer> handles = settings.getNoteHandles();
         Set<Byte> keys = new HashSet<>();
-        final int numPitches = notes.size();
-        for (int i = 0; i < numPitches; i++) {
-            final Note note = notes.get(i);
-            keys.add(MidiDriverHelper.encodePitch(note.getPitch(), note.getOctave()));
+        for (int i = 0; i < numNotes; i++) {
+            final int handle = handles.get(i);
+            keys.add(MidiDriverHelper.encodePitch(settings.getPitch(handle),
+                    settings.getOctave(handle)));
         };
 
         // Play the sound
         final byte velocity = MidiDriverHelper.encodeVelocity(settings.getVelocity());
         midi.renderNotes(keys, velocity, noteDurationMs, beatDurationMs);
+        isPlaying = true;
     }
 
     // Pause playing
     public void pause() {
         // Stop midi
         midi.pause();
+        isPlaying = false;
+    }
+
+    // Update the sound if we are playing. Can be disabled with the soundUpdateEnabled flag.
+    public void updateSound() {
+        // Update the sound if we are playing something
+        if (isPlaying && soundUpdateEnabled)
+            play();
     }
 
     // Listener for sending initial midi messages when the Sonivox
