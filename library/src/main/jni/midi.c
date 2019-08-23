@@ -77,6 +77,7 @@ typedef int16_t output_t;
 
 // Constants
 static const int midiChannel = 0;
+static const int sfBank = 0;
 static const int maxVoices = 64; // TODO this is certainly too many for our application
 static const int numChannels = 2; // Stereo
 
@@ -256,13 +257,25 @@ SLresult delete_recording() {
 // Check if the given program number is available in the soundfont.
 static int queryProgram(const uint8_t programNum, int *const isAvailable) {
 
-    const int bankNum = 0;
-
     if (!isInitialized("queryProgram"))
         return -1;
 
-    *isAvailable = fluid_synth_find_preset(fluidSynth, bankNum, programNum) != NULL;
+    *isAvailable = fluid_synth_find_preset(fluidSynth, sfBank, programNum) != NULL;
     return 0;
+}
+
+// Get the name of the given program, if it exists. Returns NULL if it does not.
+static const char *getProgramName(const uint8_t programNum) {
+
+    fluid_preset_t *preset;
+
+    if (!isInitialized("programName"))
+        return NULL;
+
+    if ((preset = fluid_synth_find_preset(fluidSynth, sfBank, programNum)) == NULL)
+        return NULL;
+
+    return preset->get_name(preset);
 }
 
 // Change the program
@@ -920,6 +933,14 @@ Java_org_billthefarmer_mididriver_MidiDriver_queryProgramJNI(JNIEnv *env,
     return (queryProgram(programNum, &isAvailable) == 0) ? isAvailable : -1;
 }
 
+// Get the name of a program, given the program number. Returns an empty string on error.
+jstring
+Java_org_billthefarmer_mididriver_MidiDriver_getProgramNameJNI(JNIEnv *env,
+                                                               jobject obj,
+                                                               jbyte programNum) {
+    const char *const name = getProgramName(programNum);
+    return (*env)->NewStringUTF(env, name == NULL ? "" : name);
+}
 // Change the MIDI program
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_changeProgramJNI(JNIEnv *env,

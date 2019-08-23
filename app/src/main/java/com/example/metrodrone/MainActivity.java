@@ -298,20 +298,20 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Load the instruments and families from the CSV files
-        List<NameValPair> fullInstruments = readCsv(R.raw.instruments);
+        // Load the families from the CSV file
         List<NameValPair> families = readCsv(R.raw.families);
 
-        // Check each instrument to see if it's valid. Keep only the valid ones.
+        // Initialize the instruments by querying the soundfont
         List<NameValPair> instruments = new ArrayList<>();
-        for (Iterator<NameValPair> it = fullInstruments.iterator(); it.hasNext();) {
-            final NameValPair instrument = it.next();
-            final int instCode = instrument.i - 1;
-            if (droneBinder.queryProgram(instCode)) {
-                instruments.add(instrument);
+        for (int programNum = 0; programNum < DroneService.programMax; programNum++) {
+            if (droneBinder.queryProgram(programNum)) {
+                instruments.add(new NameValPair(
+                        droneBinder.getProgramName(programNum),
+                        programNum + 1
+                ));
             } else {
-                Log.w(logTag, String.format("setupUI: skipping invalid instrument %s (code %d)",
-                        instrument.s, instCode));
+                Log.w(logTag, String.format("setupUI: skipping invalid program code %d",
+                        programNum));
             }
         }
 

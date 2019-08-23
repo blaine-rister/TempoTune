@@ -18,6 +18,9 @@ import org.billthefarmer.mididriver.MidiDriver;
 // Responsible for playing sound through the MIDI driver //
 public class DroneService extends Service implements MidiDriver.OnMidiStartListener {
 
+    // Constants
+    final static int programMax = 127;
+
     // State
     boolean isPlaying;
     boolean soundUpdateEnabled;
@@ -92,6 +95,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         }
         void stop() { DroneService.this.stop(); }
         boolean queryProgram(int instrument) { return midi.queryProgram((byte) instrument); }
+        String getProgramName(int instrument) { return midi.getProgramName((byte) instrument); }
         void changeProgram(int instrument) { DroneService.this.changeProgram(instrument); }
         int getProgram() { return midi.getProgram(); }
         int addNote() { return settings.addNote(); }

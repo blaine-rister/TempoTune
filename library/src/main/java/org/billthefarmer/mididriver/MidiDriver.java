@@ -129,6 +129,18 @@ public class MidiDriver
         return result > 0;
     }
 
+    /*
+     * Get the name of a program given its number.
+     */
+    public String getProgramName(byte programNumber) {
+        String name = getProgramNameJNI(programNumber);
+        if (name.isEmpty())
+            throw new RuntimeException(String.format("Failed to get the name of program %d",
+                    programNumber));
+
+        return name;
+    }
+
     /**
      * Change the program
      */
@@ -238,6 +250,13 @@ public class MidiDriver
      * @return 1 if valid, 0 if invalid, -1 on error.
      */
     public native int queryProgramJNI(byte programNum);
+
+    /*
+     * Get the name of a given MIDI program.
+     *
+     * @return The program name.
+     */
+    public native String getProgramNameJNI(byte programNum);
 
     /**
      *  Change the MIDI program.
