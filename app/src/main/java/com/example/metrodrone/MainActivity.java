@@ -443,18 +443,16 @@ public class MainActivity extends AppCompatActivity {
 
         // Look for the current program in the instrument groups. If found, set the spinners
         final int currentProgram = droneBinder.getProgram();
-        int instrumentIdx = 0;
         for (int familyIdx = 0; familyIdx < groups.size(); familyIdx++) {
             List<NameValPair> group = groups.get(familyIdx);
             for (int groupInstIdx = 0; groupInstIdx < group.size(); groupInstIdx++) {
-                if (instrumentIdx == currentProgram) {
+                if (group.get(groupInstIdx).i - 1 == currentProgram) {
                     droneBinder.ignoreNextUpdate();
                     familySpinner.setSelection(familyIdx);
                     droneBinder.ignoreNextUpdate();
                     instrumentSpinner.setSelection(groupInstIdx);
                     return;
                 }
-                instrumentIdx++;
             }
         }
 
