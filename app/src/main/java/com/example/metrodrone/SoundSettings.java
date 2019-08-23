@@ -58,7 +58,7 @@ public class SoundSettings {
 
     // Delete a note, given its handle
     public void deleteNote(final int handle) {
-        occupiedHandles.remove(handle);
+        occupiedHandles.remove((Integer) handle);
         freeHandles.add(handle);
     }
 
