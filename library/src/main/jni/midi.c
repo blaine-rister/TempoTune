@@ -527,7 +527,7 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
 
     // Configure the loop imitation at the end of the recording
     const size_t recordingLength = recording_position - record_buffer;
-    const size_t endPaddingLength = recordBufferLength - recordBufferLength;
+    const size_t endPaddingLength = recordBufferLength - recordingLength;
     memcpy(recording_position, record_buffer, endPaddingLength * sizeof(output_t));
 
     // Start playing the recording
