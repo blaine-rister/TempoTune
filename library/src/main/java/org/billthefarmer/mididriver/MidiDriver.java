@@ -117,6 +117,18 @@ public class MidiDriver
         void onMidiStart();
     }
 
+    /*
+     * Query if the given program number is valid.
+     */
+    public boolean queryProgram(byte programNumber) {
+        int result = queryProgramJNI(programNumber);
+        if (result < 0)
+            throw new RuntimeException(String.format("Failed to query program number %d",
+                    programNumber));
+
+        return result > 0;
+    }
+
     /**
      * Change the program
      */
@@ -219,6 +231,13 @@ public class MidiDriver
      */
     private native boolean render(byte pitches[], byte velocity, long noteDurationMs,
                                  long recordDurationMs);
+
+    /*
+     * Query if the given MIDI program number is valid.
+     *
+     * @return 1 if valid, 0 if invalid, -1 on error.
+     */
+    public native int queryProgramJNI(byte programNum);
 
     /**
      *  Change the MIDI program.

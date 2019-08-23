@@ -67,6 +67,11 @@ extern "C" {
 #define LOG_I(tag, ...) __android_log_print(ANDROID_LOG_INFO, tag, __VA_ARGS__)
 #define LOG_W(tag, ...) __android_log_print(ANDROID_LOG_WARN, tag, __VA_ARGS__)
 
+// Internal fluid functions which are not in the public header
+fluid_preset_t* fluid_synth_find_preset(fluid_synth_t* synth,
+                                        unsigned int banknum,
+                                        unsigned int prognum);
+
 // Output audio datatype
 typedef int16_t output_t;
 
@@ -246,6 +251,18 @@ SLresult delete_recording() {
     }
 
     return SL_RESULT_SUCCESS;
+}
+
+// Check if the given program number is available in the soundfont.
+static int queryProgram(const uint8_t programNum, int *const isAvailable) {
+
+    const int bankNum = 0;
+
+    if (!isInitialized("queryProgram"))
+        return -1;
+
+    *isAvailable = fluid_synth_find_preset(fluidSynth, bankNum, programNum) != NULL;
+    return 0;
 }
 
 // Change the program
@@ -891,6 +908,16 @@ Java_org_billthefarmer_mididriver_MidiDriver_render(JNIEnv *env,
     (*env)->ReleaseByteArrayElements(env, pitches, (jbyte *) pitchBytes, 0);
 
     return result;
+}
+
+// Query if a program number is valid in the given soundfont. Returns 1 if valid, 0 if invalid, -1
+// on error.
+jint
+Java_org_billthefarmer_mididriver_MidiDriver_queryProgramJNI(JNIEnv *env,
+                                                              jobject obj,
+                                                              jbyte programNum) {
+    int isAvailable;
+    return (queryProgram(programNum, &isAvailable) == 0) ? isAvailable : -1;
 }
 
 // Change the MIDI program

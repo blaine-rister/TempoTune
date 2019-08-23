@@ -52,7 +52,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
         // Initialize the asset retrieval data
         AssetManager assetManager = getAssets();
-        final String soundfontFilename = "fluidr3_gm.sf2";
+        final String soundfontFilename = "fluidr3_gm_with_holes.sf2";
 
         // Query the device audio parameters, on supported devices
         int sampleRate = -1;
@@ -91,6 +91,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
             DroneService.this.pause();
         }
         void stop() { DroneService.this.stop(); }
+        boolean queryProgram(int instrument) { return midi.queryProgram((byte) instrument); }
         void changeProgram(int instrument) { DroneService.this.changeProgram(instrument); }
         int getProgram() { return midi.getProgram(); }
         int addNote() { return settings.addNote(); }

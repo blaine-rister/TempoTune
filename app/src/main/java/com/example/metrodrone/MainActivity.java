@@ -21,6 +21,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Menu;
@@ -52,7 +53,8 @@ import com.google.android.gms.ads.InterstitialAd;
 public class MainActivity extends AppCompatActivity {
 
     // Constants
-    final boolean testAds = true;
+    final static boolean testAds = true;
+    final static String logTag = "metrodrone";
 
     // Dynamic UI items
     List<NoteSelector> noteSelectors = new ArrayList<>(); // Stores the pitches to be played
@@ -297,33 +299,63 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // Load the instruments and families from the CSV files
-        List<NameValPair> instruments = readCsv(R.raw.instruments);
+        List<NameValPair> fullInstruments = readCsv(R.raw.instruments);
         List<NameValPair> families = readCsv(R.raw.families);
+
+        // Check each instrument to see if it's valid. Keep only the valid ones.
+        List<NameValPair> instruments = new ArrayList<>();
+        for (Iterator<NameValPair> it = fullInstruments.iterator(); it.hasNext();) {
+            final NameValPair instrument = it.next();
+            final int instCode = instrument.i - 1;
+            if (droneBinder.queryProgram(instCode)) {
+                instruments.add(instrument);
+            } else {
+                Log.w(logTag, String.format("setupUI: skipping invalid instrument %s (code %d)",
+                        instrument.s, instCode));
+            }
+        }
+
+        // We need to have at least one instrument
+        if (instruments.isEmpty())
+            throw new RuntimeException("No valid instruments found!");
 
         // Sort the lists by their codes
         Collections.sort(instruments);
         Collections.sort(families);
 
+        // Pad the families array with a 'null' bookend which is greater than all the instruments
+        families.add(new NameValPair(null, instruments.get(instruments.size() - 1).i + 1));
+
         // Group the instruments into families
         List<List<NameValPair>> groupedInstruments = new ArrayList<>();
-        for (int i = 0; i < instruments.size(); i++) {
+        List<String> familyNames = new ArrayList<>();
+        int familyIdx = -1;
+        for (Iterator<NameValPair> it = instruments.iterator(); it.hasNext();) {
             // Get the current item
-            final NameValPair instrument = instruments.get(i);
+            final NameValPair instrument = it.next();
 
-            // Check if we need to bump up to the next family
-            final int currentNumGroups = groupedInstruments.size();
-            if (currentNumGroups < families.size()) {
-                final NameValPair nextFamily = families.get(currentNumGroups);
-                if (instrument.i >= nextFamily.i) {
-                    groupedInstruments.add(new ArrayList<NameValPair>());
-                }
+            // Seek forward to the family containing this item
+            boolean newFamily = false;
+            for (NameValPair nextFamily = families.get(familyIdx + 1);
+                 instrument.i >= nextFamily.i;
+                 nextFamily = families.get(familyIdx + 1)) {
+                familyIdx++;
+                newFamily = true;
+            }
+
+            // Check if we need to add space for a new family
+            if (newFamily) {
+                groupedInstruments.add(new ArrayList<NameValPair>());
+                familyNames.add(families.get(familyIdx).s);
             }
 
             // Add this item to the current sub-list, which is the most recent one
-            final int familyIdx = groupedInstruments.size() - 1;
-            List<NameValPair> familyGroup = groupedInstruments.get(familyIdx);
+            List<NameValPair> familyGroup = groupedInstruments.get(groupedInstruments.size() - 1);
             familyGroup.add(instrument);
         }
+
+        // Remove the family padding, to avoid trouble
+        families.remove(families.size() - 1);
 
         // Set up array adapters for each group
         final List<ArrayAdapter<NameValPair>> groupedInstrumentAdapters = new ArrayList<>();
@@ -353,12 +385,6 @@ public class MainActivity extends AppCompatActivity {
                 // Do nothing
             }
         });
-
-        // Extract the family names
-        List<String> familyNames = new ArrayList<>();
-        for (int i = 0; i < families.size(); i++) {
-            familyNames.add(families.get(i).s);
-        }
 
         // Instrument family spinner
         Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
