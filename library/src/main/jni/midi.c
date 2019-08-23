@@ -103,7 +103,6 @@ static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 // Fluid data
 static fluid_synth_t *fluidSynth = NULL;
 static fluid_settings_t *fluidSettings = NULL;
-static int soundFont = -1;
 
 // Recording buffer
 static enum State {
@@ -464,23 +463,11 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     const int recordingSamples = ms2Samples(recordingDurationMs);
     const int decaySamples = recordingSamples - noteSamples;
 
-    // Free the old recording
-    if (delete_recording() != SL_RESULT_SUCCESS) {
-        LOG_E(LOG_TAG, "Failed to delete previous recording.");
-        goto render_quit;
-    }
-    assert(record_buffer == NULL); // Should be freed by now
-    assert(state == IDLE); // Shouldn't be playing anything
-
-    // Allocate a new recording. Add an extra buffer at the end, to imitate looping behavior
-    const size_t recordBufferLength = getNumPcm(recordingSamples + bufferSizeMono);
-    if ((record_buffer = (output_t *) malloc(recordBufferLength * sizeof(output_t))) == NULL) {
-        LOG_E(LOG_TAG, "Insufficient memory for recording buffer.");
-        goto render_quit;
-    }
+    //------------------- RENDERING -------------------//
 
     // Allocate a buffer for the internal floating-point representation
-    if ((floatBuffer = malloc(recordBufferLength * sizeof(float))) == NULL) {
+    const size_t recordingLength = getNumPcm(recordingSamples);
+    if ((floatBuffer = malloc(recordingLength * sizeof(float))) == NULL) {
         LOG_E(LOG_TAG, "Insufficient memory for float buffer.");
         goto render_quit;
     }
@@ -511,11 +498,28 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     float *const rampStartPosition = decayEndPosition - rampDownNumPcm;
     rampDown(rampStartPosition, rampDownNumPcm, rampDb);
 
+    //------------------- CONVERSION TO FINAL RECORDING -------------------//
+
+    // Free the old recording
+    if (delete_recording() != SL_RESULT_SUCCESS) {
+        LOG_E(LOG_TAG, "Failed to delete previous recording.");
+        goto render_quit;
+    }
+    assert(record_buffer == NULL); // Should be freed by now
+    assert(state == IDLE); // Shouldn't be playing anything
+
+    // Allocate a new recording. Add an extra buffer at the end, to imitate looping behavior
+    const size_t recordBufferLength = getNumPcm(recordingSamples + bufferSizeMono);
+    if ((record_buffer = (output_t *) malloc(recordBufferLength * sizeof(output_t))) == NULL) {
+        LOG_E(LOG_TAG, "Insufficient memory for recording buffer.");
+        goto render_quit;
+    }
+
     // Compute the maximum level based on the velocity
     const double maxLevel = (double) velocity / (double) velocityMax;
 
     // Normalize the audio and convert to the final recording representation
-    if (normalize(floatBuffer, record_buffer, recordBufferLength, maxLevel))
+    if (normalize(floatBuffer, record_buffer, recordingLength, maxLevel))
         goto render_quit;
 
     // Clean up intermediates
@@ -523,10 +527,9 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     floatBuffer = NULL;
 
     // Set the end of the recording
-    recording_position = record_buffer + getNumPcm(recordingSamples);
+    recording_position = record_buffer + recordingLength;
 
     // Configure the loop imitation at the end of the recording
-    const size_t recordingLength = recording_position - record_buffer;
     const size_t endPaddingLength = recordBufferLength - recordingLength;
     memcpy(recording_position, record_buffer, endPaddingLength * sizeof(output_t));
 
@@ -795,7 +798,7 @@ int initFluid(const char *soundfontFilename) {
     }
 
     // Load the soundfont
-    if ((soundFont = fluid_synth_sfload(fluidSynth, soundfontFilename, 1)) < 0) {
+    if (fluid_synth_sfload(fluidSynth, soundfontFilename, 1) < 0) {
         LOG_E(LOG_TAG, "Failed to load soundfont %s", soundfontFilename);
         return -1;
     }

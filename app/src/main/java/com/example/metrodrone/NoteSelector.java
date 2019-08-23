@@ -32,12 +32,13 @@ public class NoteSelector {
 
     // Update the UI
     public void update() {
-        pitchSpinner.setSelection(droneBinder.getPitch(handle)); // Calls updateOctave()
+        pitchSpinner.setSelection(droneBinder.getPitch(handle), true); // Calls updateOctave()
+        updateOctave(); // Just in case--spinners are unreliable
     }
 
     private void updateOctave() {
         List<Integer> possibleOctaves = updateOctaveChoices();
-        octaveSpinner.setSelection(droneBinder.getOctave(handle) - possibleOctaves.get(0));
+        octaveSpinner.setSelection(droneBinder.getOctave(handle) - possibleOctaves.get(0), true);
     }
 
     // Query for the possible octaves for this note
@@ -74,21 +75,15 @@ public class NoteSelector {
 
         // ---Initialize UI elements---
 
-        // Disable sound updates so we don't create any new sounds
-        droneBinder.pushUpdates(false);
-
         // Set up pitch spinner
         this.pitchSpinner = pitchSpinner;
         pitchSpinner.setAdapter(pitchAdapter);
-        droneBinder.ignoreNextUpdate();
         pitchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos,
                                        long id) {
-                droneBinder.pushUpdates(false);
                 droneBinder.setPitch(handle,
                         str2Pitch((String) adapterView.getItemAtPosition(pos)));
-                droneBinder.popUpdates();
                 updateOctave();
             }
 
@@ -106,7 +101,6 @@ public class NoteSelector {
         // Set up octave spinner
         this.octaveSpinner = octaveSpinner;
         octaveSpinner.setAdapter(octaveAdapter);
-        droneBinder.ignoreNextUpdate();
         octaveSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos,
@@ -121,9 +115,8 @@ public class NoteSelector {
             }
         });
 
-        // Update the UI and re-enable sound updates
+        // Update the UI
         update();
-        droneBinder.popUpdates();
     }
 
     // Convert a string representation (e.g A#) to a pitch key number, in octave 0

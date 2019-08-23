@@ -11,7 +11,6 @@ import android.os.Binder;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Stack;
 
 import org.billthefarmer.mididriver.MidiDriver;
 
@@ -23,9 +22,6 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
     // State
     boolean isPlaying;
-    boolean soundUpdateEnabled;
-    int updateIgnoreCount; // Use this to preempt an asynchronous update
-    Stack<Boolean> updatesStack; // Allow storage of previous soundUpdateEnabled values
 
     // Sound parameters
     SoundSettings settings;
@@ -41,9 +37,6 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
         // Initialize the sound parameters
         isPlaying = false;
-        soundUpdateEnabled = true;
-        updatesStack = new Stack<>();
-        updateIgnoreCount = 0;
         settings = new SoundSettings();
 
         // Start with a single note
@@ -110,9 +103,7 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         int getOctave(int handle) { return settings.getOctave(handle); }
         List<Integer> getOctaveChoices(int handle) { return settings.getOctaveChoices(handle); }
         int setBpm(int bpm) {
-            bpm = settings.setBpm(bpm);
-            updateSound();
-            return bpm;
+            return settings.setBpm(bpm);
         }
         void setVelocity(double velocity) {
             settings.setVelocity(velocity);
@@ -124,19 +115,11 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         }
         void setPitch(int handle, int pitch) {
             settings.setPitch(handle, pitch);
-            updateSound();
         }
         void setOctave(int handle, int octave) {
             settings.setOctave(handle, octave);
-            updateSound();
         }
         void updateSound() { DroneService.this.updateSound(); }
-        void pushUpdates(boolean enable) { DroneService.this.pushUpdates(enable); }
-        boolean popUpdates() { return DroneService.this.popUpdates(); }
-        void ignoreNextUpdate() { updateIgnoreCount++; }
-        boolean updatesEnabled() { return soundUpdateEnabled; }
-        void enableUpdates() { soundUpdateEnabled = true; }
-        void disableUpdates() { soundUpdateEnabled = false; }
     }
 
     @Override
@@ -144,23 +127,10 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         return droneBinder;
     }
 
-    // Push the current updates() variable onto the stack and set the new one
-    void pushUpdates(boolean enable) {
-        updatesStack.push(soundUpdateEnabled);
-        soundUpdateEnabled = enable;
-    }
-
-    // Pop the top of the updates stack and set its value
-    boolean popUpdates() {
-        soundUpdateEnabled = updatesStack.pop();
-        return soundUpdateEnabled;
-    }
-
-    // Change the MIDI program, update note settings
+    // Change the MIDI program
     public void changeProgram(final int instrument) {
         midi.changeProgram((byte) instrument);
         settings.setKeyLimits(midi.getKeyMin(), midi.getKeyMax());
-        updateSound();
     }
 
     public void stop() {
@@ -210,19 +180,8 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
         isPlaying = false;
     }
 
-    // Update the sound if we are playing. Can be disabled with the soundUpdateEnabled flag.
+    // Update the sound if we are playing
     public void updateSound() {
-        // Check if updates are disabled
-        if (!soundUpdateEnabled)
-            return;
-
-        // Check the ignore counter
-        if (updateIgnoreCount > 0) {
-            updateIgnoreCount--;
-            return;
-        }
-
-        // Update the sound if we are playing something
         if (isPlaying)
             play();
     }

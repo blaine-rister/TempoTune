@@ -77,10 +77,8 @@ public class MainActivity extends AppCompatActivity {
         public void onServiceConnected(ComponentName className,
                                        IBinder service) {
             droneBinder = (DroneBinder) service;
-            droneBinder.pushUpdates(false);
             setupUI();
             updateUI();
-            droneBinder.popUpdates();
         }
 
         @Override
@@ -327,7 +325,7 @@ public class MainActivity extends AppCompatActivity {
         families.add(new NameValPair(null, instruments.get(instruments.size() - 1).i + 1));
 
         // Group the instruments into families
-        List<List<NameValPair>> groupedInstruments = new ArrayList<>();
+        final List<List<NameValPair>> groupedInstruments = new ArrayList<>();
         List<String> familyNames = new ArrayList<>();
         int familyIdx = -1;
         for (Iterator<NameValPair> it = instruments.iterator(); it.hasNext();) {
@@ -358,26 +356,18 @@ public class MainActivity extends AppCompatActivity {
         families.remove(families.size() - 1);
 
         // Set up array adapters for each group
-        final List<ArrayAdapter<NameValPair>> groupedInstrumentAdapters = new ArrayList<>();
-        for (int i = 0; i < groupedInstruments.size(); i++) {
-            ArrayAdapter<NameValPair> adapter = new ArrayAdapter<>(this,
-                    android.R.layout.simple_spinner_item, groupedInstruments.get(i));
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
-            groupedInstrumentAdapters.add(adapter);
-        }
+        final ArrayAdapter<NameValPair> instAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item);
+        instAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
 
         // Instrument name spinner
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
-        instrumentSpinner.setAdapter(groupedInstrumentAdapters.get(0));
-        droneBinder.ignoreNextUpdate();
+        instrumentSpinner.setAdapter(instAdapter);
         instrumentSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
-
                 // Change the instrument program
-                final int instrument = ((NameValPair) adapterView.getItemAtPosition(pos)).i - 1;
-                droneBinder.changeProgram(instrument);
-                updateUI();
+                setInstrument((NameValPair) adapterView.getItemAtPosition(pos));
             }
 
             @Override
@@ -392,12 +382,17 @@ public class MainActivity extends AppCompatActivity {
                 android.R.layout.simple_spinner_item, familyNames);
         familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
         familySpinner.setAdapter(familyAdapter);
-        droneBinder.ignoreNextUpdate();
         familySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
-                // Change the data of the instrument name spinner
-                instrumentSpinner.setAdapter(groupedInstrumentAdapters.get(pos));
+                // Change the instrument choices
+                List<NameValPair> instrumentGroup = groupedInstruments.get(pos);
+                instAdapter.clear();
+                instAdapter.addAll(instrumentGroup);
+                instrumentSpinner.setSelection(0, true);
+
+                // Update the instrument. Don't rely on the spinner to do it, this is unreliable
+                setInstrument((NameValPair) instrumentSpinner.getSelectedItem());
             }
 
             @Override
@@ -447,10 +442,8 @@ public class MainActivity extends AppCompatActivity {
             List<NameValPair> group = groups.get(familyIdx);
             for (int groupInstIdx = 0; groupInstIdx < group.size(); groupInstIdx++) {
                 if (group.get(groupInstIdx).i - 1 == currentProgram) {
-                    droneBinder.ignoreNextUpdate();
-                    familySpinner.setSelection(familyIdx);
-                    droneBinder.ignoreNextUpdate();
-                    instrumentSpinner.setSelection(groupInstIdx);
+                    familySpinner.setSelection(familyIdx, true);
+                    instrumentSpinner.setSelection(groupInstIdx, true);
                     return;
                 }
             }
@@ -536,14 +529,17 @@ public class MainActivity extends AppCompatActivity {
 
     // Retrieves the settings and updates the UI
     protected void updateUI() {
-        droneBinder.pushUpdates(false);
         displayBpm(droneBinder.getBpm());
         for (int i = 0; i < noteSelectors.size(); i++) {
             noteSelectors.get(i).update();
         }
-        droneBinder.popUpdates();
     }
 
+    // Sets the instrument to be played
+    public void setInstrument(NameValPair instrument){
+        droneBinder.changeProgram(instrument.i - 1);
+        updateUI();
+    }
 
     // Reads the BPM from the given textView
     public int readBpm(final TextView textView) {
