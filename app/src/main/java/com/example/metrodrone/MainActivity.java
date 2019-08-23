@@ -422,6 +422,7 @@ public class MainActivity extends AppCompatActivity {
                         public void onComplete(int bpm) {
                             isTapping = false;
                             droneBinder.setBpm(bpm);
+                            updateUI();
                         }
 
                         @Override
