@@ -64,6 +64,14 @@ public class MidiDriver
     }
 
     /**
+     * Round an int to the nearest byte value. This is important to avoid overflow e.g. in key
+     * ranges for soundfont files.
+     */
+    public static byte toByte(int i) {
+        return (byte) Math.max(Byte.MIN_VALUE, Math.min(i, Byte.MAX_VALUE));
+    }
+
+    /**
      * Start the midi driver, given a soundfont file stored as an Android asset. Must also pass an
      * AssetManager which is capable of reading the asset.
      */
@@ -167,7 +175,7 @@ public class MidiDriver
         final int keyMin = getKeyMinJNI();
         if (keyMin < 0)
             throw new RuntimeException("Failed to get the minimum key");
-        return (byte) keyMin;
+        return toByte(keyMin);
     }
 
     /**
@@ -177,7 +185,7 @@ public class MidiDriver
         final int keyMax = getKeyMaxJNI();
         if (keyMax < 0)
             throw new RuntimeException("Failed to get the maximum key");
-        return (byte) keyMax;
+        return toByte(keyMax);
     }
 
     /**
