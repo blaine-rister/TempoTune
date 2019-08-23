@@ -363,6 +363,19 @@ public class MainActivity extends AppCompatActivity {
         // Instrument name spinner
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
         instrumentSpinner.setAdapter(instAdapter);
+
+        // Instrument family spinner
+        Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
+        ArrayAdapter<String> familyAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, familyNames);
+        familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
+        familySpinner.setAdapter(familyAdapter);
+
+        // Set the spinners to reflect the current program
+        // Note: must do this before installing listeners, to avoid triggering them
+        updateInstrumentSpinners(groupedInstruments, familySpinner, instrumentSpinner);
+
+        // Install the instrument spinner listener
         instrumentSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
@@ -376,22 +389,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Instrument family spinner
-        Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
-        ArrayAdapter<String> familyAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, familyNames);
-        familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
-        familySpinner.setAdapter(familyAdapter);
+        // Install the family spinner listener
         familySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
+
                 // Change the instrument choices
-                List<NameValPair> instrumentGroup = groupedInstruments.get(pos);
-                instAdapter.clear();
-                instAdapter.addAll(instrumentGroup);
-                instrumentSpinner.setSelection(0, true);
+                setInstrumentChoices(instAdapter, groupedInstruments.get(pos));
 
                 // Update the instrument. Don't rely on the spinner to do it, this is unreliable
+                instrumentSpinner.setSelection(0, true);
                 setInstrument((NameValPair) instrumentSpinner.getSelectedItem());
             }
 
@@ -400,9 +407,6 @@ public class MainActivity extends AppCompatActivity {
                 // Do nothing
             }
         });
-
-        // Set the spinners to reflect the current program
-        updateInstrumentSpinners(groupedInstruments, familySpinner, instrumentSpinner);
 
         // Tempo tapper
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -432,6 +436,13 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // Set the instrument choices to the given list
+    private void setInstrumentChoices(ArrayAdapter<NameValPair> adapter,
+                                      List<NameValPair> instruments) {
+        adapter.clear();
+        adapter.addAll(instruments);
+    }
+
     // Set the instrument spinners to the current program
     private void updateInstrumentSpinners(List<List<NameValPair>> groups, Spinner familySpinner,
                                        Spinner instrumentSpinner){
@@ -443,6 +454,7 @@ public class MainActivity extends AppCompatActivity {
             for (int groupInstIdx = 0; groupInstIdx < group.size(); groupInstIdx++) {
                 if (group.get(groupInstIdx).i - 1 == currentProgram) {
                     familySpinner.setSelection(familyIdx, true);
+                    setInstrumentChoices((ArrayAdapter) instrumentSpinner.getAdapter(), group);
                     instrumentSpinner.setSelection(groupInstIdx, true);
                     return;
                 }

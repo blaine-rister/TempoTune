@@ -78,6 +78,20 @@ public class NoteSelector {
         // Set up pitch spinner
         this.pitchSpinner = pitchSpinner;
         pitchSpinner.setAdapter(pitchAdapter);
+
+        // Create an adapter for the octave spinner
+        ArrayAdapter<Integer> octaveAdapter = new ArrayAdapter<>(context,
+                android.R.layout.simple_spinner_item, getOctaveChoices());
+        octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
+
+        // Set up octave spinner
+        this.octaveSpinner = octaveSpinner;
+        octaveSpinner.setAdapter(octaveAdapter);
+
+        // Update the UI. Called before listeners are installed, to avoid triggering them
+        update();
+
+        // Install the pitch spinner listener
         pitchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos,
@@ -93,14 +107,7 @@ public class NoteSelector {
             }
         });
 
-        // Create an adapter for the octave spinner
-        ArrayAdapter<Integer> octaveAdapter = new ArrayAdapter<>(context,
-                android.R.layout.simple_spinner_item, getOctaveChoices());
-        octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
-
-        // Set up octave spinner
-        this.octaveSpinner = octaveSpinner;
-        octaveSpinner.setAdapter(octaveAdapter);
+        // Install the octave spinner listener
         octaveSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos,
@@ -114,9 +121,6 @@ public class NoteSelector {
                 // Do nothing
             }
         });
-
-        // Update the UI
-        update();
     }
 
     // Convert a string representation (e.g A#) to a pitch key number, in octave 0
