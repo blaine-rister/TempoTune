@@ -355,20 +355,18 @@ public class MainActivity extends AppCompatActivity {
         // Remove the family padding, to avoid trouble
         families.remove(families.size() - 1);
 
-        // Set up array adapters for each group
-        final ArrayAdapter<NameValPair> instAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item);
-        instAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
-
         // Instrument name spinner
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
+        final ArrayAdapter<NameValPair> instAdapter = new ArrayAdapter<>(this,
+                R.layout.instrument_spinner_item);
+        instAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
         instrumentSpinner.setAdapter(instAdapter);
 
         // Instrument family spinner
         Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
         ArrayAdapter<String> familyAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, familyNames);
-        familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
+                R.layout.instrument_spinner_item, familyNames);
+        familyAdapter.setDropDownViewResource(R.layout.instrument_spinner_item);
         familySpinner.setAdapter(familyAdapter);
 
         // Set the spinners to reflect the current program

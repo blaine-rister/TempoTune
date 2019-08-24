@@ -17,4 +17,9 @@
 
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 
+    <style name="AppTheme.instrumentSpinnerItemStyle"
+        parent="@android:style/Widget.TextView.SpinnerItem">
+        <item name="android:textSize">@dimen/instrument_text_size</item>
+    </style>
+
 </resources>
