@@ -473,7 +473,7 @@ public class MainActivity extends AppCompatActivity {
         // Inflate new spinners
         LayoutInflater inflater = LayoutInflater.from(layout.getContext());
         Spinner pitchSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
-        Spinner octaveSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
+        Spinner octaveSpinner = (Spinner) inflater.inflate(R.layout.octave_spinner, null);
 
         // Add a new note
         NoteSelector noteSelector = new NoteSelector(layout.getContext(), droneBinder, handle,

@@ -5,4 +5,4 @@
     android:paddingTop="@dimen/spinner_padding"
     android:paddingBottom="@dimen/spinner_padding"
     android:paddingRight="@dimen/spinner_padding"
-    android:background="@drawable/primary_inset" />
+    android:background="@drawable/dark_inset" />
