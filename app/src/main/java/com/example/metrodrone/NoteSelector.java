@@ -62,16 +62,12 @@ public class NoteSelector {
                         final DroneService.DroneBinder droneBinder,
                         final int handle,
                         Spinner pitchSpinner,
-                        final ArrayAdapter<CharSequence> pitchAdapter,
+                        final ArrayAdapter<NameValPair> pitchAdapter,
                         Spinner octaveSpinner) {
 
         // Initialize the drone interface
         this.droneBinder = droneBinder;
         this.handle = handle;
-
-        // Initialize the lookup table
-        if (pitchLookup == null)
-            initLookup(context);
 
         // ---Initialize UI elements---
 
@@ -81,7 +77,7 @@ public class NoteSelector {
 
         // Create an adapter for the octave spinner
         ArrayAdapter<Integer> octaveAdapter = new ArrayAdapter<>(context,
-                android.R.layout.simple_spinner_item, getOctaveChoices());
+                R.layout.pitch_spinner_item, getOctaveChoices());
         octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
 
         // Set up octave spinner
@@ -96,8 +92,7 @@ public class NoteSelector {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos,
                                        long id) {
-                droneBinder.setPitch(handle,
-                        str2Pitch((String) adapterView.getItemAtPosition(pos)));
+                droneBinder.setPitch(handle, ((NameValPair) adapterView.getItemAtPosition(pos)).i);
                 updateOctave();
             }
 
@@ -121,72 +116,5 @@ public class NoteSelector {
                 // Do nothing
             }
         });
-    }
-
-    // Convert a string representation (e.g A#) to a pitch key number, in octave 0
-    public static int str2Pitch(CharSequence pitchStr) {
-        // Convert the first character to an ASCII code
-        final char firstChar = pitchStr.charAt(0);
-        final boolean isSharp = pitchStr.length() > 1;
-        final int firstCharAscii = (int) firstChar;
-
-        // Make sure the character is in the range A-
-        final int asciiA = (int) 'A';
-        final int asciiG =  (int) 'G';
-        if (firstCharAscii < asciiA || firstCharAscii > asciiG)
-            throw new RuntimeException("Invalid pitch " + pitchStr);
-
-        // Convert the natural pitch using a lookup table
-        final int[] pitchLookup = {
-                0,  // A, A#
-                2,  // B
-                3,  // C, C#
-                5,  // D, D#
-                7,  // E
-                8,  // F, F#
-                10,  // G, G#
-        };
-        final int naturalPitch = pitchLookup[firstCharAscii - asciiA];
-
-        // Add sharps, update the drone
-        return isSharp ? naturalPitch + 1 : naturalPitch;
-    }
-
-    // Inverse of str2Pitch().
-    public static String pitch2Str(final int pitch) {
-        return pitchLookup[pitch];
-    }
-
-    // Initialize static variables
-    static {
-        pitchLookup = null;
-    }
-
-    // Initialize the pitch lookup table. This essentially inverts the pitch2Str() method.
-    private static void initLookup(Context context) {
-
-        // Initialize the lookup table to null
-        pitchLookup = new String[SoundSettings.pitchMax + 1];
-        for (int i = 0; i < pitchLookup.length; i++) {
-            pitchLookup[i] = null;
-        }
-
-        // Get the possible strings
-        final String[] pitchStrings = context.getResources().getStringArray(R.array.pitches_array);
-
-        // Write in the value of each string, checking for collisions
-        for (int i = 0; i < pitchStrings.length; i++) {
-            // Get the (pitch, string) pair
-            final String pitchStr = pitchStrings[i];
-            final int pitchCode = str2Pitch(pitchStr);
-
-            // Check for collisions
-            if (pitch2Str(pitchCode) != null)
-                throw new RuntimeException(String.format("Found a collision in pitch2Str: (%d, %s)",
-                        pitchCode, pitchStr));
-
-            // Save the inverse
-            pitchLookup[pitchCode] = pitchStr;
-        }
     }
 }

@@ -1,19 +1,35 @@
 <resources>
     <string name="app_name">MetroDrone</string>
     <string name="action_settings">Settings</string>
-    <string-array name="pitches_array">
+
+    <string-array name="pitches_sharp_array">
         <item>A</item>
-        <item>A#/Bb</item>
+        <item>A#</item>
         <item>B</item>
         <item>C</item>
-        <item>C#/Db</item>
+        <item>C#</item>
         <item>D</item>
-        <item>D#/Eb</item>
+        <item>D#</item>
         <item>E</item>
         <item>F</item>
-        <item>F#/Gb</item>
+        <item>F#</item>
         <item>G</item>
-        <item>G#/Ab</item>
+        <item>G#</item>
+    </string-array>
+
+    <string-array name="pitches_flat_array">
+        <item>A</item>
+        <item>Bb</item>
+        <item>B</item>
+        <item>C</item>
+        <item>Db</item>
+        <item>D</item>
+        <item>Eb</item>
+        <item>E</item>
+        <item>F</item>
+        <item>Gb</item>
+        <item>G</item>
+        <item>Ab</item>
     </string-array>
 
     <string name="real_banner_ad_unit_id">ca-app-pub-5040365596623384/7825322466</string>

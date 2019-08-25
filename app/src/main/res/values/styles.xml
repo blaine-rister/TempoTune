@@ -22,4 +22,12 @@
         <item name="android:textSize">@dimen/instrument_text_size</item>
     </style>
 
+    <style name="AppTheme.pitchSpinnerItemStyle"
+        parent="@android:style/Widget.TextView.SpinnerItem">
+        <item name="android:textSize">@dimen/pitch_text_size</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingLeft">@dimen/pitch_padding</item>
+        <item name="android:paddingRight">@dimen/pitch_padding</item>
+    </style>
+
 </resources>

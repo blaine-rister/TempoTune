@@ -3,6 +3,8 @@
     <dimen name="seekbar_padding">10dp</dimen>
     <dimen name="spinner_padding">12dp</dimen>
     <dimen name="instrument_text_size">18sp</dimen>
+    <dimen name="pitch_text_size">18sp</dimen>
     <dimen name="outline_width">2dp</dimen>
     <dimen name="pitch_inset">6dp</dimen>
+    <dimen name="pitch_padding">4dp</dimen>
 </resources>

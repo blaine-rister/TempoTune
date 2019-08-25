@@ -32,9 +32,11 @@ import android.view.LayoutInflater;
 
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Spinner;
 import android.widget.SeekBar;
@@ -201,10 +203,21 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // Create the pitch adapter
-        final ArrayAdapter<CharSequence> pitchAdapter = ArrayAdapter.createFromResource(this,
-                R.array.pitches_array, android.R.layout.simple_spinner_item);
+        final boolean startSharps = false; // TODO: retrieve the user choices on this.
+        final ArrayAdapter<NameValPair> pitchAdapter = new ArrayAdapter<>(this,
+                R.layout.pitch_spinner_item, getPitchChoices(startSharps));
         pitchAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
+        // Toggle sharps/flats switch
+        Switch sharpSwitch = findViewById(R.id.sharpSwitch);
+        sharpSwitch.setChecked(startSharps);
+        sharpSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                pitchAdapter.clear();
+                pitchAdapter.addAll(getPitchChoices(isChecked));
+            }
+        });
 
         // Add the existing notes to the UI
         final List<Integer> handles = droneBinder.getNoteHandles();
@@ -466,7 +479,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Add a new note the GUI
-    public void addNote(final int handle, final ArrayAdapter<CharSequence> pitchAdapter) {
+    public void addNote(final int handle, final ArrayAdapter<NameValPair> pitchAdapter) {
         // Get the pitch layout
         LinearLayout layout = findViewById(R.id.pitchLayout);
 
@@ -600,5 +613,25 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    // Get a string list of pitch choices
+    private List<NameValPair> getPitchChoices(boolean isSharp) {
+
+        // Extract the pitch strings
+        final int resourceId = isSharp ? R.array.pitches_sharp_array : R.array.pitches_flat_array;
+        final String[] pitchStrings = getResources().getStringArray(resourceId);
+
+        // Sanity checks
+        assert(pitchStrings.length <= 12);
+        assert(pitchStrings[0].compareTo("A") == 0);
+
+        // Convert to a list of (name, value) pairs
+        List<NameValPair> pitchNameVals = new ArrayList<>();
+        for (int i = 0; i < pitchStrings.length; i++) {
+            pitchNameVals.add(new NameValPair(pitchStrings[i], i));
+        }
+
+        return pitchNameVals;
     }
 }

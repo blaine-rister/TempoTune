@@ -5,6 +5,6 @@
     android:layout_height="match_parent"
     android:maxLines="1"
     android:singleLine="true"
-    android:ellipsize="end"
-    style="@style/AppTheme.instrumentSpinnerItemStyle"
+    android:ellipsize="marquee"
+    style="@style/AppTheme.pitchSpinnerItemStyle"
     />
