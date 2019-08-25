@@ -166,21 +166,23 @@ public class MainActivity extends AppCompatActivity {
         editBpm.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
-                if (id == EditorInfo.IME_ACTION_DONE) {
-                    // Read the text and update BPM
-                    droneBinder.setBpm(readBpm(textView));
+                switch (id) {
+                    case EditorInfo.IME_ACTION_DONE:
+                        // Read the text and update BPM
+                        droneBinder.setBpm(readBpm(textView));
+                        updateUI(); // In case the BPM is out of bounds
 
-                    // Remove the focus, but enable it to regain focus after touch
-                    textView.setFocusable(false);
-                    textView.setFocusableInTouchMode(true);
+                        // Remove the focus, but enable it to regain focus after touch
+                        textView.setFocusable(false);
+                        textView.setFocusableInTouchMode(true);
 
-                    // Return false to continue processing the action, close keyboard
+                        // Return false to continue processing the action, close keyboard
+                        return false;
+                    default:
+                        return false;
                 }
-
-                return false;
             }
         });
-
 
         // BPM increase button
         ImageButton bpmIncreaseButton = findViewById(R.id.bpmIncreaseButton);
@@ -499,14 +501,6 @@ public class MainActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         layout.addView(noteSelector.pitchSpinner, params);
         layout.addView(noteSelector.octaveSpinner, params);
-    }
-
-    // Check the BPM when 'back' is pressed: the user may use this to exit the keyboard
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        droneBinder.setBpm(readBpm(bpmTextView));
-        updateUI();
     }
 
     // Method to handle reading the instrument CSV file. Returns the results in these lists.
