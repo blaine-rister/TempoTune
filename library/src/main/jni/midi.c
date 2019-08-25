@@ -71,6 +71,7 @@ extern "C" {
 fluid_preset_t* fluid_synth_find_preset(fluid_synth_t* synth,
                                         unsigned int banknum,
                                         unsigned int prognum);
+int fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan);
 
 // Output audio datatype
 typedef int16_t output_t;
@@ -319,6 +320,11 @@ static int getProgramKeyMax(void) {
     return getProgramRange(NULL, &max) == JNI_TRUE ? max : -1;
 }
 
+// Mute all existing notes, including the release phase
+static int muteSounds() {
+    return !isInitialized("muteSounds") || fluid_synth_all_sounds_off(fluidSynth, midiChannel);
+}
+
 // Start a note
 static int startNote(const uint8_t pitch, const uint8_t velocity) {
     return !isInitialized("startNote") || fluid_synth_noteon(fluidSynth, midiChannel, pitch,
@@ -472,6 +478,12 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
         goto render_quit;
     }
 
+    // Mute all previous sounds
+    if (muteSounds()) {
+        LOG_E(LOG_TAG, "Failed to mute previous sounds.");
+        goto render_quit;
+    }
+
     // Send the note start messages
     for (i = 0; i < numPitches; i++) {
         if (startNote(pitchBytes[i], velocity))
@@ -509,8 +521,8 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     assert(state == IDLE); // Shouldn't be playing anything
 
     // Allocate a new recording. Add an extra buffer at the end, to imitate looping behavior
-    const size_t recordBufferLength = getNumPcm(recordingSamples + bufferSizeMono);
-    if ((record_buffer = (output_t *) malloc(recordBufferLength * sizeof(output_t))) == NULL) {
+    const size_t bufferLength = getNumPcm(recordingSamples + bufferSizeMono);
+    if ((record_buffer = (output_t *) malloc(bufferLength * sizeof(output_t))) == NULL) {
         LOG_E(LOG_TAG, "Insufficient memory for recording buffer.");
         goto render_quit;
     }
@@ -529,9 +541,20 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     // Set the end of the recording
     recording_position = record_buffer + recordingLength;
 
-    // Configure the loop imitation at the end of the recording
-    const size_t endPaddingLength = recordBufferLength - recordingLength;
-    memcpy(recording_position, record_buffer, endPaddingLength * sizeof(output_t));
+    // Configure the loop imitation at the end of the recording. Might theoretically need multiple
+    // copies if the buffer size exceeds the recording size
+    output_t *copySrcPosition, *copyDstPosition;
+    const output_t *const bufferEndPosition = record_buffer + bufferLength;
+    for (copySrcPosition = record_buffer, copyDstPosition = recording_position;
+        copyDstPosition < bufferEndPosition;
+        ) {
+        const size_t paddingCopyRemaining = bufferEndPosition - copyDstPosition;
+        const size_t amountToCopy = paddingCopyRemaining > recordingLength ? recordingLength :
+                paddingCopyRemaining;
+        memcpy(copyDstPosition, copySrcPosition, amountToCopy * sizeof(output_t));
+        copySrcPosition += amountToCopy;
+        copyDstPosition += amountToCopy;
+    }
 
     // Start playing the recording
     play();
