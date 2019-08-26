@@ -57,12 +57,14 @@ public class MainActivity extends AppCompatActivity {
     // Constants
     final static boolean testAds = true;
     final static String logTag = "metrodrone";
+    final static String displaySharpsKey = "DISPLAY_SHARPS";
 
     // Dynamic UI items
     List<NoteSelector> noteSelectors = new ArrayList<>(); // Stores the pitches to be played
 
     // State
     boolean isTapping = false;
+    boolean displaySharps;
     TempoTapper tempoTapper;
 
     // Persistent UI items
@@ -99,9 +101,20 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    // Save the UI state
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        savedInstanceState.putBoolean(displaySharpsKey, displaySharps);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // If the activity is being re-created, restore the previous UI state
+        final boolean restoreState = savedInstanceState != null;
+        displaySharps = restoreState ? savedInstanceState.getBoolean(displaySharpsKey) : false;
 
         // Start the drone service and bind to it. When bound, we will set up the UI.
         Intent intent = new Intent(this, DroneService.class);
@@ -205,17 +218,17 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // Create the pitch adapter
-        final boolean startSharps = false; // TODO: retrieve the user choices on this.
         final ArrayAdapter<NameValPair> pitchAdapter = new ArrayAdapter<>(this,
-                R.layout.pitch_spinner_item, getPitchChoices(startSharps));
+                R.layout.pitch_spinner_item, getPitchChoices(displaySharps));
         pitchAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         // Toggle sharps/flats switch
         Switch sharpSwitch = findViewById(R.id.sharpSwitch);
-        sharpSwitch.setChecked(startSharps);
+        sharpSwitch.setChecked(displaySharps);
         sharpSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                displaySharps = isChecked;
                 pitchAdapter.clear();
                 pitchAdapter.addAll(getPitchChoices(isChecked));
             }
