@@ -5,8 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
 import android.media.AudioManager;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Binder;
+import android.util.Log;
 
 import java.util.Set;
 import java.util.HashSet;
@@ -50,7 +52,8 @@ public class DroneService extends Service {
         // Query the device audio parameters, on supported devices
         int sampleRate = -1;
         int bufferSize = -1;
-        if (android.os.Build.VERSION.SDK_INT >= 17) {
+        final int audioParamsSdkVersion = 17;
+        if (android.os.Build.VERSION.SDK_INT >= audioParamsSdkVersion) {
 
             // Query the device sample rate
             AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
@@ -60,17 +63,21 @@ public class DroneService extends Service {
             bufferSize = Integer.parseInt(am.getProperty(
                     AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER));
         } else {
-            // TODO log warning
+            Log.w(MainActivity.logTag, String.format("Cannot query device audio parameters since " +
+                    "current SDK version %d < %d", Build.VERSION.SDK_INT,
+                    audioParamsSdkVersion));
         }
 
         // Substitute default parameters if querying failed
         if (sampleRate < 1) {
-            // TODO log warning
             sampleRate = 44100;
+            Log.w(MainActivity.logTag, String.format("Failed to query the device sample rate. " +
+                    "Defaulting to %d", sampleRate));
         }
         if (bufferSize < 1) {
-            // TODO log warning
             bufferSize = 256;
+            Log.w(MainActivity.logTag, String.format("Failed to query the device buffer size. " +
+                    "Defaulting to %d", bufferSize));
         }
 
         // Start the midi
