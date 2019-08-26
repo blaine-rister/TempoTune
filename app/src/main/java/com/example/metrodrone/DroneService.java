@@ -12,10 +12,8 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
 
-import org.billthefarmer.mididriver.MidiDriver;
-
 // Responsible for playing sound through the MIDI driver //
-public class DroneService extends Service implements MidiDriver.OnMidiStartListener {
+public class DroneService extends Service {
 
     // Constants
     final static int programMax = 127;
@@ -44,7 +42,6 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
 
         // Initialize the MIDI class
         midi = new MidiDriverHelper();
-        midi.setOnMidiStartListener(this);
 
         // Initialize the asset retrieval data
         AssetManager assetManager = getAssets();
@@ -184,13 +181,5 @@ public class DroneService extends Service implements MidiDriver.OnMidiStartListe
     public void updateSound() {
         if (isPlaying)
             play();
-    }
-
-    // Listener for sending initial midi messages when the Sonivox
-    // synthesizer has been started, such as program change.
-    @Override
-    public void onMidiStart()
-    {
-        // Nothing happens here, the program is set in play()
     }
 }

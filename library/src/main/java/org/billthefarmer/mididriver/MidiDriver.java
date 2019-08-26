@@ -35,9 +35,7 @@
 
 package org.billthefarmer.mididriver;
 
-import android.content.Context;
 import android.content.res.AssetManager;
-import android.media.AudioManager;
 
 import java.util.Set;
 import java.util.Iterator;
@@ -50,10 +48,6 @@ import java.io.InputStream;
  */
 public class MidiDriver
 {
-    /**
-     * Midi start listener
-     */
-    private OnMidiStartListener listener;
     private static boolean isStarted;
 
     /**
@@ -92,10 +86,6 @@ public class MidiDriver
             throw new RuntimeException("Failed to initialize MIDI");
         }
         isStarted = true;
-
-        // Call the listener
-        if (listener != null)
-            listener.onMidiStart();
     }
 
     /**
@@ -105,24 +95,6 @@ public class MidiDriver
     {
         shutdown();
         isStarted = false;
-    }
-
-    /**
-     * Set midi driver start listener
-     *
-     * @param OnMidiStartListener
-     */
-    public void setOnMidiStartListener(OnMidiStartListener l)
-    {
-        listener = l;
-    }
-
-    /**
-     * Midi start listener interface
-     */
-    public interface OnMidiStartListener
-    {
-        void onMidiStart();
     }
 
     /*

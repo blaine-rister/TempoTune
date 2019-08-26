@@ -1,8 +1,5 @@
 package com.example.metrodrone;
 
-import android.content.Context;
-import android.app.Application;
-
 import org.billthefarmer.mididriver.MidiDriver;
 
 public class MidiDriverHelper extends MidiDriver {
