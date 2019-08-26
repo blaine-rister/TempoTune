@@ -551,9 +551,14 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
         const size_t paddingCopyRemaining = bufferEndPosition - copyDstPosition;
         const size_t amountToCopy = paddingCopyRemaining > recordingLength ? recordingLength :
                 paddingCopyRemaining;
+        // Copy the recording circularly
         memcpy(copyDstPosition, copySrcPosition, amountToCopy * sizeof(output_t));
-        copySrcPosition += amountToCopy;
         copyDstPosition += amountToCopy;
+        copySrcPosition += amountToCopy;
+        if (copySrcPosition >= recording_position) {
+            assert(copySrcPosition == recording_position);
+            copySrcPosition = record_buffer;
+        }
     }
 
     // Start playing the recording
