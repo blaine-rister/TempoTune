@@ -62,10 +62,15 @@ extern "C" {
 
 #define LOG_TAG "MidiDriver"
 
+// Logging macros
 #define LOG_D(tag, ...) __android_log_print(ANDROID_LOG_DEBUG, tag, __VA_ARGS__)
 #define LOG_E(tag, ...) __android_log_print(ANDROID_LOG_ERROR, tag, __VA_ARGS__)
 #define LOG_I(tag, ...) __android_log_print(ANDROID_LOG_INFO, tag, __VA_ARGS__)
 #define LOG_W(tag, ...) __android_log_print(ANDROID_LOG_WARN, tag, __VA_ARGS__)
+
+// Math macros
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 // Internal fluid functions which are not in the public header
 fluid_preset_t* fluid_synth_find_preset(fluid_synth_t* synth,
@@ -346,6 +351,16 @@ static int endNote(const uint8_t pitch) {
     return fluid_synth_noteoff(fluidSynth, midiChannel, pitch) == 0 ? 0 : 1;
 }
 
+// Return a uniformly distributed R.V. in the range [0,1]
+static float uniform(void) {
+    return ((float) rand()) / (float) RAND_MAX;
+}
+
+// Return triangularly-distributed dither in the range [-1, 1].
+static float dither(void) {
+    return (uniform() + uniform()) / 2;
+}
+
 // Normalize the audio so the maximum value is given by maxLevel, on a scale of 0-1. This is the
 // final processing stage so it also converts the audio to fixed-point at the end.
 static int normalize(const float *const inBuffer, output_t *const outBuffer,
@@ -354,12 +369,12 @@ static int normalize(const float *const inBuffer, output_t *const outBuffer,
     float maxBefore;
     size_t i;
 
-    assert(sizeof(short) == sizeof(output_t));
     if (maxLevel < 0. || maxLevel > 1.) {
         LOG_E(LOG_TAG, "normalize: invalid maxLevel: %f", maxLevel);
         return -1;
     }
 
+    assert(sizeof(short) == sizeof(output_t));
     const double maxPcm = (double) SHRT_MAX * maxLevel;
 
     // Get the maximum value of the un-normalized stream
@@ -374,8 +389,11 @@ static int normalize(const float *const inBuffer, output_t *const outBuffer,
 
     // Apply the gain and convert to fixed-point
     for (i = 0; i < bufferLength; i++) {
-        // TODO also perform dithering here
-        outBuffer[i] = (output_t) (inBuffer[i] * gain);
+        // Apply gain and dither
+        const float dithered = inBuffer[i] * gain + dither();
+
+        // Convert with truncation to avoid overflow
+        outBuffer[i] = (output_t) MIN(MAX(dithered, (float) SHRT_MIN), (float) SHRT_MAX);
     }
 
     return 0;
