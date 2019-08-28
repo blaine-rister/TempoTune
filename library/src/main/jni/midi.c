@@ -73,6 +73,9 @@ fluid_preset_t* fluid_synth_find_preset(fluid_synth_t* synth,
                                         unsigned int prognum);
 int fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan);
 
+// Internal functions
+static int get_program();
+
 // Output audio datatype
 typedef int16_t output_t;
 
@@ -332,9 +335,15 @@ static int startNote(const uint8_t pitch, const uint8_t velocity) {
 
 }
 
-// End a note
+// End a note. Returns 0 on success, -1 on error, and 1 if the note failed to end. This can happen
+// e.g. if the note is silent and fluid automatically kills it.
 static int endNote(const uint8_t pitch) {
-    return !isInitialized("endNote") || fluid_synth_noteoff(fluidSynth, midiChannel, pitch);
+    if (!isInitialized("endNote"))
+        return -1;
+
+    // Return something different if the note end call fails. This can happen when the note is
+    // silent.
+    return fluid_synth_noteoff(fluidSynth, midiChannel, pitch) == 0 ? 0 : 1;
 }
 
 // Normalize the audio so the maximum value is given by maxLevel, on a scale of 0-1. This is the
@@ -486,23 +495,39 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
 
     // Send the note start messages
     for (i = 0; i < numPitches; i++) {
-        if (startNote(pitchBytes[i], velocity))
+        const uint8_t pitch = pitchBytes[i];
+        if (startNote(pitch, velocity)) {
+            LOG_E(LOG_TAG, "Failed to start note (key %d velocity %d)", pitch, velocity);
             goto render_quit;
+        }
     }
 
     // Render the note attacks and sustains
-    if ((noteEndPosition = renderSamples(noteSamples, floatBuffer)) == NULL)
+    if ((noteEndPosition = renderSamples(noteSamples, floatBuffer)) == NULL) {
+        LOG_E(LOG_TAG, "Failed primary phase render");
         goto render_quit;
+    }
 
     // Send the note end messages
     for (i = 0; i < numPitches; i++) {
-        if (endNote(pitchBytes[i]))
-            goto render_quit;
+        switch (endNote(pitchBytes[i])) {
+            case 0:
+                break;
+            case 1:
+                LOG_W(LOG_TAG, "Failed to end the note at duration %d (program %d)",
+                      (int) noteDurationMs, get_program());
+                break;
+            default:
+                LOG_E(LOG_TAG, "Critical error ending note %d", i);
+                goto render_quit;
+        }
     }
 
     // Render the note decays
-    if ((decayEndPosition = renderSamples(decaySamples, noteEndPosition)) == NULL)
+    if ((decayEndPosition = renderSamples(decaySamples, noteEndPosition)) == NULL) {
+        LOG_E(LOG_TAG, "Failed release phase render");
         goto render_quit;
+    }
 
     // Ramp down the audio at the end of the recording
     const size_t rampDownNumPcm = getNumPcm(ms2Samples(
@@ -531,8 +556,10 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     const double maxLevel = (double) velocity / (double) velocityMax;
 
     // Normalize the audio and convert to the final recording representation
-    if (normalize(floatBuffer, record_buffer, recordingLength, maxLevel))
+    if (normalize(floatBuffer, record_buffer, recordingLength, maxLevel)) {
+        LOG_E(LOG_TAG, "Failed normalization.");
         goto render_quit;
+    }
 
     // Clean up intermediates
     free(floatBuffer);
@@ -981,7 +1008,7 @@ Java_org_billthefarmer_mididriver_MidiDriver_changeProgramJNI(JNIEnv *env,
 }
 
 // Get the current MIDI program number
-int get_program() {
+static int get_program() {
 
     unsigned int soundfontReturn, bankReturn, programReturn;
 
