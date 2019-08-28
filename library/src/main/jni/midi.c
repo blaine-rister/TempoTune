@@ -79,7 +79,9 @@ fluid_preset_t* fluid_synth_find_preset(fluid_synth_t* synth,
 int fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan);
 
 // Internal functions
-static int get_program();
+static int get_program(void);
+static size_t ms2Samples(const size_t ms);
+int delete_recording(void);
 
 // Output audio datatype
 typedef int16_t output_t;
@@ -89,6 +91,7 @@ static const int midiChannel = 0;
 static const int sfBank = 0;
 static const int maxVoices = 64; // TODO this is certainly too many for our application
 static const int numChannels = 2; // Stereo
+static const int pauseDurationMs = 10;
 
 // Sound parameters
 int sampleRate;
@@ -121,6 +124,10 @@ static output_t *record_buffer = NULL; // Storage for the recording
 static output_t *recording_position = NULL; // Current recording position
 static output_t *playback_position = NULL; // Current playback position
 
+// State for pausing the sound
+static size_t pause_count; // Counts down to zero
+static size_t pause_length; // The total number of samples to count
+
 // Function declarations
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
 
@@ -140,7 +147,7 @@ static size_t getNumPcm(const size_t numSamples) {
 }
 
 // Set the player's state to playing
-SLresult play() {
+SLresult play(void) {
 
     SLresult result;
 
@@ -165,13 +172,16 @@ SLresult play() {
 }
 
 // Set the player's state to paused. If currently playing, waits for the buffer to empty.
-SLresult idle(void) {
+int idle(void) {
 
     // Do nothing if we're already idle
     if (state == IDLE)
-        return SL_RESULT_SUCCESS;
+        return 0;
 
-    // Stop playing
+    // Initialize the pausing parameters
+    pause_count = pause_length = ms2Samples(pauseDurationMs);
+
+    // Initiate the pausing phase
     state = STOPPING;
 
     // Block until we have confirmation that there are no more callbacks
@@ -179,7 +189,12 @@ SLresult idle(void) {
     state = IDLE;
 
     // Tell OpenSL ES to stop playing sound. Note: this is non-blocking
-    return (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PAUSED);
+    if ((*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PAUSED) != SL_RESULT_SUCCESS)
+        return -1;
+
+    // Delete the existing sound. It's corrupted by the pausing phase. Note: this will call idle()
+    // itself so make sure state = IDLE before calling this.
+    return delete_recording();
 }
 
 
@@ -209,28 +224,44 @@ void enqueueBuffer(const output_t *const data) {
 // this callback handler is called every time a buffer finishes
 // playing
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
-    int i;
+
+    int i, j;
 
     const size_t bufferSizePcm = getNumPcm(bufferSizeMono);
 
     assert(bq == bqPlayerBufferQueue);
     assert(NULL == context);
 
+    // Update the playback position circularly
+    playback_position += bufferSizePcm;
+    if (playback_position >= recording_position) {
+        playback_position = record_buffer + (playback_position - recording_position);
+    }
+
     switch (state) {
         case IDLE:
             // This shouldn't happen
             assert(0);
         case STOPPING:
-            // Tell the main thread that we are done playing
-            sem_post(&is_idle);
-            return;
-        case PLAYING:
-            // Update the playback position circularly
-            playback_position += bufferSizePcm;
-            if (playback_position >= recording_position) {
-                playback_position = record_buffer + (playback_position - recording_position);
+            // Quit playing once the ramp is done
+            if (pause_count <= 0) {
+                sem_post(&is_idle);
+                return;
             }
 
+            // Apply a linear ramp to the audio signal. Assumes interleaved channels
+            for (i = 0; i < bufferSizeMono; i++) {
+                const float rampFactor = pause_count > 0 ? (float) pause_count-- / pause_length : 0;
+                for (j = 0; j < numChannels; j++) {
+                    const int sampleIdx = getNumPcm(i) + j;
+                    const float sample = playback_position[sampleIdx];
+                    const float ramped = sample * rampFactor;
+                    playback_position[sampleIdx] = (output_t) ramped;
+                }
+            }
+
+            // Falls through to playback
+        case PLAYING:
             // Enqueue playback of a buffer's portion of the recording
             enqueueBuffer(playback_position);
             return;
@@ -244,14 +275,11 @@ static size_t ms2Samples(const size_t ms) {
 }
 
 // Deletes the existing recording and cancels playback
-SLresult delete_recording() {
-
-    SLresult result;
+int delete_recording(void) {
 
     // Transition to idle state, wait until playback has ended
-    result = idle();
-    if (result != SL_RESULT_SUCCESS)
-        return result;
+    if (idle())
+        return -1;
 
     // Sweep up unused memory
     if (record_buffer != NULL) {
@@ -259,7 +287,7 @@ SLresult delete_recording() {
         record_buffer = NULL;
     }
 
-    return SL_RESULT_SUCCESS;
+    return 0;
 }
 
 // Check if the given program number is available in the soundfont.
@@ -662,7 +690,7 @@ SLresult createEngine() {
 }
 
 // create buffer queue audio player
-SLresult createBufferQueueAudioPlayer() {
+SLresult createBufferQueueAudioPlayer(void) {
 
     SLAndroidConfigurationItf configItf;
     SLVolumeItf volumeItf;
@@ -810,7 +838,7 @@ SLresult createBufferQueueAudioPlayer() {
 }
 
 // shut down the native audio system
-void shutdownAudio() {
+void shutdownAudio(void) {
     // destroy buffer queue audio player object, and invalidate all
     // associated interfaces
     if (bqPlayerObject != NULL) {
@@ -835,7 +863,7 @@ void shutdownAudio() {
 }
 
 // Shut down fluid synth
-void shutdownFluid() {
+void shutdownFluid(void) {
     if (fluidSynth != NULL) {
         delete_fluid_synth(fluidSynth);
         fluidSynth = NULL;
@@ -1026,7 +1054,7 @@ Java_org_billthefarmer_mididriver_MidiDriver_changeProgramJNI(JNIEnv *env,
 }
 
 // Get the current MIDI program number
-static int get_program() {
+static int get_program(void) {
 
     unsigned int soundfontReturn, bankReturn, programReturn;
 
