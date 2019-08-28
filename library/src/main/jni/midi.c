@@ -126,7 +126,7 @@ static output_t *playback_position = NULL; // Current playback position
 
 // State for pausing the sound
 static size_t pause_count; // Counts down to zero
-static size_t pause_length; // The total number of samples to count
+static float pause_factor; // Ramp slope
 
 // Function declarations
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
@@ -179,7 +179,8 @@ int idle(void) {
         return 0;
 
     // Initialize the pausing parameters
-    pause_count = pause_length = ms2Samples(pauseDurationMs);
+    pause_count = ms2Samples(pauseDurationMs);
+    pause_factor = 1.F / (float) pause_count;
 
     // Initiate the pausing phase
     state = STOPPING;
@@ -251,7 +252,7 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
 
             // Apply a linear ramp to the audio signal. Assumes interleaved channels
             for (i = 0; i < bufferSizeMono; i++) {
-                const float rampFactor = pause_count > 0 ? (float) pause_count-- / pause_length : 0;
+                const float rampFactor = pause_count > 0 ? (float) pause_count-- * pause_factor : 0;
                 for (j = 0; j < numChannels; j++) {
                     const int sampleIdx = getNumPcm(i) + j;
                     const float sample = playback_position[sampleIdx];
