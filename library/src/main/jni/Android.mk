@@ -35,7 +35,7 @@ LOCAL_SRC_FILES = \
 	fluidlite_squash/fluid_voice.c \
 	fluidlite_squash/aasset_stdio_adapter.c
 
-LOCAL_CFLAGS += -std=gnu99 -D UNIFIED_DEBUG_MESSAGES
+LOCAL_CFLAGS += -O3 -DNDEBUG -std=gnu99 -fvisibility=hidden -D UNIFIED_DEBUG_MESSAGES
 
 LOCAL_C_INCLUDES := \
 	${LOCAL_PATH}/fluidlite_squash
@@ -53,5 +53,7 @@ LOCAL_SRC_FILES := midi.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/host_src ${LOCAL_PATH}/fluidlite_squash
 LOCAL_STATIC_LIBRARIES := fluidlite
 LOCAL_LDLIBS := -lOpenSLES -llog -landroid -lm
+
+LOCAL_CFLAGS += -O3 -DNDEBUG -fvisibility=hidden
 
 include $(BUILD_SHARED_LIBRARY)

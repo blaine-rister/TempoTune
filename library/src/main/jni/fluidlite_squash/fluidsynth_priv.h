@@ -216,11 +216,18 @@ typedef struct _fluid_client_t fluid_client_t;
 #define FLUID_FLUSH()                fflush(stdout)
 #endif
 
+// Substitute Android log functions
 #ifdef ANDROID_LOGGING
 #include <android/log.h>
 #define FLUID_LOG(type, ...) __android_log_print(ANDROID_LOG_ERROR, "", __VA_ARGS__)
 #else
 #define FLUID_LOG                    fluid_log
+#endif
+
+// Disable all logging for NDEBUG mode
+#ifdef NDEBUG
+#undef FLUID_LOG
+#define FLUID_LOG(...) ;
 #endif
 
 #ifndef M_PI

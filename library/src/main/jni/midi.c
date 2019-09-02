@@ -62,10 +62,15 @@ extern "C" {
 #define LOG_TAG "MidiDriver"
 
 // Logging macros
-#define LOG_D(tag, ...) __android_log_print(ANDROID_LOG_DEBUG, tag, __VA_ARGS__)
-#define LOG_E(tag, ...) __android_log_print(ANDROID_LOG_ERROR, tag, __VA_ARGS__)
-#define LOG_I(tag, ...) __android_log_print(ANDROID_LOG_INFO, tag, __VA_ARGS__)
-#define LOG_W(tag, ...) __android_log_print(ANDROID_LOG_WARN, tag, __VA_ARGS__)
+#ifdef NDEBUG
+#define LOG(...) ;
+#else
+#define LOG __android_log_print
+#endif
+#define LOG_D(tag, ...) LOG(ANDROID_LOG_DEBUG, tag, __VA_ARGS__)
+#define LOG_E(tag, ...) LOG(ANDROID_LOG_ERROR, tag, __VA_ARGS__)
+#define LOG_I(tag, ...) LOG(ANDROID_LOG_INFO, tag, __VA_ARGS__)
+#define LOG_W(tag, ...) LOG(ANDROID_LOG_WARN, tag, __VA_ARGS__)
 
 // Math macros
 #define MAX(x, y) ((x) > (y) ? (x) : (y))

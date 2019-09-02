@@ -36,8 +36,8 @@
             android:layout_toLeftOf="@id/editBpm"
             android:layout_toStartOf="@id/editBpm"
             android:background="@android:color/transparent"
-            app:srcCompat="@drawable/ic_transparent_plus_circle"
-            android:tint="@color/colorPrimary" />
+            android:tint="@color/colorPrimary"
+            app:srcCompat="@drawable/ic_transparent_plus_circle" />
 
         <EditText
             android:id="@+id/editBpm"
