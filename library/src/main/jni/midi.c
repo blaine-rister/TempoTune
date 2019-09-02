@@ -52,7 +52,6 @@
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
 
-#include "org_billthefarmer_mididriver_MidiDriver.h"
 #include "midi.h"
 #include "../../../../../../AppData/Local/Android/Sdk/ndk-bundle/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/jni.h"
 
@@ -85,6 +84,9 @@ int delete_recording(void);
 
 // Output audio datatype
 typedef int16_t output_t;
+
+// MIDI info
+const uint8_t velocityMax = 127; // Maximum allowed velocity in MIDI
 
 // Constants
 static const int midiChannel = 0;
@@ -428,6 +430,119 @@ static int normalize(const float *const inBuffer, output_t *const outBuffer,
     return 0;
 }
 
+// Convert a MIDI pitch number to a frequency. pitch 0 corresponds to A0
+static double pitch2frequency(const int pitch) {
+    const double a4 = 440;
+    const int pitchesPerOctave = 12;
+    const int a0key = 21;
+    const int a4key = a0key + pitchesPerOctave * 4;
+    return a4 * pow(2, (double) (pitch - a4key) / pitchesPerOctave);
+}
+
+// Squared linear value to decibels
+static float linSq2db(const float linSq) {
+    const float minVal = 0.00001f; // To avoid really small values
+    return 0.5 * 20 * ((linSq) > minVal ? log10f(linSq) : log10f(minVal));
+}
+
+// Decibels to linear
+static float db2lin(const float db) {
+    return powf(10, db / 20);
+}
+
+// RMS level detector, extrapolates with value 0. Applies a 1st-order IIR filter with parameters a0,
+// b0 = 1 - a0
+static float update_level(const float sample, const float level, const float a0) {
+    const float sampleSq = sample * sample;
+    return a0 * level + (1.f - a0) * sampleSq;
+}
+
+// Compute the time constant to decay by a certain amount in a certain number of samples.
+static float getTimeConstant(const double decay, const double numSamples) {
+    // Impulse invariance: a0^T = decay <-> log(a0) = log(decay) / T <-> a0 = exp(log(decay) / T)
+    return numSamples == 0 ? 1 : expf((float) (log(decay) / numSamples));
+}
+
+// Like getTimeConstant, but for squared levels
+static float getSquaredTimeConstant(const double decay, const double numSamples) {
+    return getTimeConstant(decay * decay, numSamples);
+}
+
+// Compress the dynamic range of the audio. The allowable dynamic range is given by the velocity
+// parameter. minFrequency is the fundamental frequency of the pitch, which determines the level
+// detector window length.
+static int compressDNR(float *const buffer, const size_t bufferLength, const size_t attackLength,
+        const uint8_t velocity, const double minFrequency) {
+
+    int i, maxLevelIdx;
+    float level, maxLevelSq;
+
+    // Verify inputs
+    if (attackLength > bufferLength) {
+        LOG_E(LOG_TAG, "Attack length %d greater than buffer length %d", (int) attackLength,
+              (int) bufferLength);
+        return -1;
+    }
+
+    // Internal parameters
+    const double minCompressionRatio = 2.0; // This is reached at maximum velocity
+    const double maxCompressionRatio = 5.0; // This is reached at minimum velocity
+    const double periodDecay = 0.8; // Decay this much in one note period
+
+    // Derived parameters -- compression ratio increases as velocity decreases
+    const double compressionRatio = minCompressionRatio +
+            (maxCompressionRatio - minCompressionRatio) *
+            (1.0 - ((double) velocity + 1) / ((double) velocityMax + 1));
+    const float compressionFactor = 1.f / (float) compressionRatio;
+
+    // Convert the minimum frequency to a period in samples
+    const double periodSamples = ceil((double) sampleRate / minFrequency);
+
+    // Filter parameters -- note we're using levels squared
+    const float a0Attack = getSquaredTimeConstant(periodDecay, periodSamples);
+
+    // Run the level detector over the attack phase, recording the maximum level
+    maxLevelIdx = maxLevelSq = level = 0;
+    for (i = 0; i < attackLength; i++) {
+        // Level detection
+        level = update_level(buffer[i], level, a0Attack);
+
+        // Maximum
+        if (level > maxLevelSq) {
+            maxLevelSq = level;
+            maxLevelIdx = i;
+        }
+    }
+
+    // Exit if the signal is zero
+    if (maxLevelSq == 0)
+        return 0;
+
+    // Pass through the sustained portion of the note. This time apply compession.
+    level = maxLevelSq;
+    float gainLin = 1;
+    const float maxDb = linSq2db(maxLevelSq);
+    for (i = maxLevelIdx; i < attackLength; i++) {
+        // Level detection
+        level = update_level(buffer[i], level, a0Attack);
+
+        // Get the gain
+        const float currentDb = linSq2db(level);
+        const float gainDb = (maxDb - currentDb) * compressionFactor;
+        gainLin = db2lin(gainDb);
+
+        // Apply the gain
+        buffer[i] *= gainLin;
+    }
+
+    // Pass through the release stage. Keep the gain constant.
+    for (i = attackLength; i < bufferLength; i++) {
+        buffer[i] *= gainLin;
+    }
+
+    return 0;
+}
+
 // Ramp down the audio in the given buffer. The gain reaches the given number of decibels
 // by the end of the buffer. Positive or negative values of dB are interpreted the same.
 static void rampDown(float *const buffer, const size_t bufferLength, const double dB) {
@@ -471,9 +586,6 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     float *noteEndPosition, *decayEndPosition, *floatBuffer = NULL;
     int i;
 
-    // MIDI info
-    const uint8_t velocityMax = 127; // Maximum allowed velocity in MIDI
-
     // Internal parameters
     const long rampDownMs = 15; // Time for the ramp-down of a note
     const double rampDb = -40; // Amount of ramping down
@@ -515,7 +627,7 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
 
         if (pitch < keyMin || pitch > keyMax) {
             LOG_E(LOG_TAG, "Key %u is outside the range [%d, %d] of the current program.", pitch,
-                    keyMin, keyMax);
+                  keyMin, keyMax);
             goto render_quit;
         }
     }
@@ -573,6 +685,19 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
     // Render the note decays
     if ((decayEndPosition = renderSamples(decaySamples, noteEndPosition)) == NULL) {
         LOG_E(LOG_TAG, "Failed release phase render");
+        goto render_quit;
+    }
+
+    // Get the minimum pitch which is used
+    uint8_t minPitch = UCHAR_MAX;
+    for (i = 0; i < numPitches; i++) {
+        minPitch = MIN(pitchBytes[i], minPitch);
+    }
+
+    // Apply velocity-dependent DNR compression
+    const double minFrequency = pitch2frequency(minPitch);
+    if (compressDNR(floatBuffer, recordingLength, noteSamples, velocity, minFrequency)) {
+        LOG_E(LOG_TAG, "Failed to apply DNR compression.");
         goto render_quit;
     }
 
@@ -960,6 +1085,7 @@ jboolean midi_init(const char *soundfontFilename, const int deviceSampleRate,
     return JNI_TRUE;
 }
 
+JNIEXPORT
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
                                                   jobject obj,
@@ -988,6 +1114,7 @@ Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
 }
 
 // Stop looping, delete the recording
+JNIEXPORT
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_pauseJNI(JNIEnv *env,
                                                       jobject jobj) {
@@ -995,18 +1122,21 @@ Java_org_billthefarmer_mididriver_MidiDriver_pauseJNI(JNIEnv *env,
 }
 
 // Get the minimum allowed key for the currently selected program
+JNIEXPORT
 jint Java_org_billthefarmer_mididriver_MidiDriver_getKeyMinJNI(JNIEnv *env,
                                                             jobject jobj) {
     return getProgramKeyMin();
 }
 
 // Get the maximum allowed key for the currently selected program
+JNIEXPORT
 jint Java_org_billthefarmer_mididriver_MidiDriver_getKeyMaxJNI(JNIEnv *env,
                                                             jobject jobj) {
     return getProgramKeyMax();
 }
 
 // Render and then start looping
+JNIEXPORT
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_render(JNIEnv *env,
                                                     jobject obj,
@@ -1030,6 +1160,7 @@ Java_org_billthefarmer_mididriver_MidiDriver_render(JNIEnv *env,
 
 // Query if a program number is valid in the given soundfont. Returns 1 if valid, 0 if invalid, -1
 // on error.
+JNIEXPORT
 jint
 Java_org_billthefarmer_mididriver_MidiDriver_queryProgramJNI(JNIEnv *env,
                                                               jobject obj,
@@ -1039,6 +1170,7 @@ Java_org_billthefarmer_mididriver_MidiDriver_queryProgramJNI(JNIEnv *env,
 }
 
 // Get the name of a program, given the program number. Returns an empty string on error.
+JNIEXPORT
 jstring
 Java_org_billthefarmer_mididriver_MidiDriver_getProgramNameJNI(JNIEnv *env,
                                                                jobject obj,
@@ -1047,6 +1179,7 @@ Java_org_billthefarmer_mididriver_MidiDriver_getProgramNameJNI(JNIEnv *env,
     return (*env)->NewStringUTF(env, name == NULL ? "" : name);
 }
 // Change the MIDI program
+JNIEXPORT
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_changeProgramJNI(JNIEnv *env,
                                                               jobject obj,
@@ -1067,6 +1200,7 @@ static int get_program(void) {
 }
 
 // Get the current MIDI program, JNI wrapper
+JNIEXPORT
 jint
 Java_org_billthefarmer_mididriver_MidiDriver_getProgramJNI(JNIEnv *env,
                                                            jobject obj) {
@@ -1088,6 +1222,7 @@ jboolean midi_shutdown() {
     return JNI_TRUE;
 }
 
+JNIEXPORT
 jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_shutdown(JNIEnv *env,
                                                       jobject obj) {
