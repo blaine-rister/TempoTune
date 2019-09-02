@@ -182,12 +182,7 @@ public class MainActivity extends AppCompatActivity {
                 switch (id) {
                     case EditorInfo.IME_ACTION_DONE:
                         // Read the text and update BPM
-                        droneBinder.setBpm(readBpm(textView));
-                        updateUI(); // In case the BPM is out of bounds
-
-                        // Remove the focus, but enable it to regain focus after touch
-                        textView.setFocusable(false);
-                        textView.setFocusableInTouchMode(true);
+                        sendDisplayedBpm(textView);
 
                         // Return false to continue processing the action, close keyboard
                         return false;
@@ -550,6 +545,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Tell the service to start playing sound
     protected void play() {
+        sendDisplayedBpm(bpmTextView); // In case the user never pressed "done" on the keyboard
         droneBinder.play();
     }
 
@@ -570,6 +566,17 @@ public class MainActivity extends AppCompatActivity {
     public void setInstrument(NameValPair instrument){
         droneBinder.changeProgram(instrument.i - 1);
         updateUI();
+    }
+
+    // Sends the currently-displayed BPM to the model, and updates the UI if the model changes it
+    public void sendDisplayedBpm(final TextView textView) {
+        // Send the new BPM to the model, query the final setting
+        droneBinder.setBpm(readBpm(textView));
+        updateUI(); // In case the BPM is out of bounds
+
+        // Remove the focus from BPM text, but enable it to regain focus after touch
+        textView.setFocusable(false);
+        textView.setFocusableInTouchMode(true);
     }
 
     // Reads the BPM from the given textView
