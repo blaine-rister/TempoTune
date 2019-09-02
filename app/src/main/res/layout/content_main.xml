@@ -98,14 +98,22 @@
             android:id="@+id/pitchLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content">
-        <Switch
-            android:id="@+id/sharpSwitch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:showText="true"
-            android:textAllCaps="false"
-            android:textOn="♯"
-            android:textOff="♭" />
+
+            <Switch
+                android:id="@+id/sharpSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:showText="true"
+                android:textAllCaps="false"
+                android:textOn="♯"
+                android:textOff="♭" />
+
+            <ImageView
+                android:id="@+id/imageView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                app:srcCompat="@drawable/ic_treble_clef" />
         </LinearLayout>
 
     </HorizontalScrollView>
