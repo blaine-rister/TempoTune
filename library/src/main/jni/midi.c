@@ -91,7 +91,7 @@ const uint8_t velocityMax = 127; // Maximum allowed velocity in MIDI
 // Constants
 static const int midiChannel = 0;
 static const int sfBank = 0;
-static const int maxVoices = 64; // TODO this is certainly too many for our application
+static const int maxVoices = 8;
 static const int numChannels = 2; // Stereo
 static const int pauseDurationMs = 10;
 
@@ -1111,6 +1111,14 @@ Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
     (*env)->ReleaseStringUTFChars(env, soundfontAAssetName, soundfontName);
 
     return result;
+}
+
+// Get the maximum number of concurrent voices
+JNIEXPORT
+jint
+Java_org_billthefarmer_mididriver_MidiDriver_getMaxVoices(JNIEnv *env,
+                                                          jobject jobj) {
+    return maxVoices;
 }
 
 // Stop looping, delete the recording

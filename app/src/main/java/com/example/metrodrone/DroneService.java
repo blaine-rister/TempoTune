@@ -35,19 +35,21 @@ public class DroneService extends Service {
     public void onCreate() {
         super.onCreate();
 
+        // Initialize the sound driver
+        midi = new MidiDriverHelper();
+
         // Initialize the sound parameters
         isPlaying = false;
-        settings = new SoundSettings();
+        settings = new SoundSettings(midi.getMaxVoices());
 
         // Start with a single note
         settings.addNote();
 
-        // Initialize the MIDI class
-        midi = new MidiDriverHelper();
-
         // Initialize the asset retrieval data
         AssetManager assetManager = getAssets();
-        final String soundfontFilename = "fluidr3_gm_with_holes.sf2";
+        final boolean testMode = true;
+        final String soundfontFilename = testMode ? "fluidr3_gm_with_holes_small.sf2" :
+                "fluidr3_gm_with_holes.sf2";
 
         // Query the device audio parameters, on supported devices
         int sampleRate = -1;

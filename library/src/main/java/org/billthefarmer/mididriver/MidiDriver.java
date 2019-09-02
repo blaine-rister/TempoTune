@@ -195,22 +195,18 @@ public class MidiDriver
     private native boolean init(Object assetManager, String soundfontFilename, int sampleRate,
                                 int bufferSize);
 
-    /**
-     * Returm part of EAS config
-     *
-     * @return Int array of part of EAS config
-     *   config[0] = pLibConfig->maxVoices;
-     *   config[1] = pLibConfig->numChannels;
-     *   config[2] = pLibConfig->sampleRate;
-     *   config[3] = pLibConfig->mixBufferSize;
-     */
-    public  native int[]   config();
 
     /**
      *
-     * @return
+     * @return The maximum polyphony count.
      */
-    public native boolean pauseJNI();
+    public native int getMaxVoices();
+
+    /**
+     *
+     * @return true on success.
+     */
+    private native boolean pauseJNI();
 
     /**
      * Renders an audio signal, then loops it.
@@ -229,40 +225,40 @@ public class MidiDriver
      *
      * @return 1 if valid, 0 if invalid, -1 on error.
      */
-    public native int queryProgramJNI(byte programNum);
+    private native int queryProgramJNI(byte programNum);
 
     /*
      * Get the name of a given MIDI program.
      *
      * @return The program name.
      */
-    public native String getProgramNameJNI(byte programNum);
+    private native String getProgramNameJNI(byte programNum);
 
     /**
      *  Change the MIDI program.
      *
      * @return True on success
      */
-    public native boolean changeProgramJNI(byte programNum);
+    private native boolean changeProgramJNI(byte programNum);
 
     /**
      * Retrieve the current MIDI program.
      *
      * @return Program number, or -1 on failure.
      */
-    public native int getProgramJNI();
+    private native int getProgramJNI();
 
     /**
      * Get the minimum key for the current program.
      * @return The key value, or -1 on error.
      */
-    public native int getKeyMinJNI();
+    private native int getKeyMinJNI();
 
     /**
      * Get the maximum key for the current program.
      * @return The key value, or -1 on error.
      */
-    public native int getKeyMaxJNI();
+    private native int getKeyMaxJNI();
 
     /**
      * Shut down native code

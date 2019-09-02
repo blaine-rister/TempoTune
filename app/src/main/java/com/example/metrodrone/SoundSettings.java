@@ -25,12 +25,12 @@ public class SoundSettings {
     private List<Integer> freeHandles;
     private List<Integer> occupiedHandles;
 
-    public SoundSettings() {
+    public SoundSettings(final int maxNumNotes) {
         // Initialize the array, mark all spots as open
-        notes = new NoteSettings[MidiDriverHelper.maxNumNotes];
+        notes = new NoteSettings[maxNumNotes];
         freeHandles = new LinkedList<>();
         occupiedHandles = new LinkedList<>();
-        for (int i = 0; i < MidiDriverHelper.maxNumNotes; i++) {
+        for (int i = 0; i < maxNumNotes; i++) {
             freeHandles.add(i);
         }
     }
