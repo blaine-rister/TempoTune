@@ -51,29 +51,29 @@
 
 typedef struct _SFVersion
 {				/* version structure */
-  unsigned short major;
-  unsigned short minor;
+  uint16_t major;
+  uint16_t minor;
 }
 SFVersion;
 
 typedef struct _SFMod
 {				/* Modulator structure */
-  unsigned short src;			/* source modulator */
-  unsigned short dest;			/* destination generator */
-  signed short amount;		/* signed, degree of modulation */
-  unsigned short amtsrc;		/* second source controls amnt of first */
-  unsigned short trans;		/* transform applied to source */
+  uint16_t src;			/* source modulator */
+  uint16_t dest;			/* destination generator */
+  int16_t amount;		/* signed, degree of modulation */
+  uint16_t amtsrc;		/* second source controls amnt of first */
+  uint16_t trans;		/* transform applied to source */
 }
 SFMod;
 
 typedef union _SFGenAmount
 {				/* Generator amount structure */
-  signed short sword;			/* signed 16 bit value */
-  unsigned short uword;		/* unsigned 16 bit value */
+  int16_t sword;			/* signed 16 bit value */
+  uint16_t uword;		/* unsigned 16 bit value */
   struct
   {
-    unsigned char lo;			/* low value for ranges */
-    unsigned char hi;			/* high value for ranges */
+    uint8_t lo;			/* low value for ranges */
+    uint8_t hi;			/* high value for ranges */
   }
   range;
 }
@@ -81,7 +81,7 @@ SFGenAmount;
 
 typedef struct _SFGen
 {				/* Generator structure */
-  unsigned short id;			/* generator ID */
+  uint16_t id;			/* generator ID */
   SFGenAmount amount;		/* generator value */
 }
 SFGen;
@@ -97,22 +97,22 @@ SFZone;
 typedef struct _SFSample
 {				/* Sample structure */
   char name[21];		/* Name of sample */
-  unsigned char samfile;		/* Loaded sfont/sample buffer = 0/1 */
-  unsigned int start;		/* Offset in sample area to start of sample */
-  unsigned int end;			/* Offset from start to end of sample,
+  uint8_t samfile;		/* Loaded sfont/sample buffer = 0/1 */
+  uint32_t start;		/* Offset in sample area to start of sample */
+  uint32_t end;			/* Offset from start to end of sample,
 				   this is the last point of the
 				   sample, the SF spec has this as the
 				   1st point after, corrected on
 				   load/save */
-  unsigned int loopstart;		/* Offset from start to start of loop */
-  unsigned int loopend;		/* Offset from start to end of loop,
+  uint32_t loopstart;		/* Offset from start to start of loop */
+  uint32_t loopend;		/* Offset from start to end of loop,
 				   marks the first point after loop,
 				   whose sample value is ideally
 				   equivalent to loopstart */
-  unsigned int samplerate;		/* Sample rate recorded at */
-  unsigned char origpitch;		/* root midi key number */
-  signed char pitchadj;		/* pitch correction in cents */
-  unsigned short sampletype;		/* 1 mono,2 right,4 left,linked 8,0x8000=ROM */
+  uint32_t samplerate;		/* Sample rate recorded at */
+  uint8_t origpitch;		/* root midi key number */
+  int8_t pitchadj;		/* pitch correction in cents */
+  uint16_t sampletype;		/* 1 mono,2 right,4 left,linked 8,0x8000=ROM */
 }
 SFSample;
 
@@ -126,11 +126,11 @@ SFInst;
 typedef struct _SFPreset
 {				/* Preset structure */
   char name[21];		/* preset name */
-  unsigned short prenum;		/* preset number */
-  unsigned short bank;			/* bank number */
-  unsigned int libr;			/* Not used (preserved) */
-  unsigned int genre;		/* Not used (preserved) */
-  unsigned int morph;		/* Not used (preserved) */
+  uint16_t prenum;		/* preset number */
+  uint16_t bank;			/* bank number */
+  uint32_t libr;			/* Not used (preserved) */
+  uint32_t genre;		/* Not used (preserved) */
+  uint32_t morph;		/* Not used (preserved) */
   fluid_list_t *zone;			/* list of preset zones */
 }
 SFPreset;
@@ -246,49 +246,49 @@ int gen_validp (int gen);
 /* sfont file data structures */
 typedef struct _SFChunk
 {				/* RIFF file chunk structure */
-  unsigned int id;			/* chunk id */
-  unsigned int size;			/* size of the following chunk */
+  uint32_t id;			/* chunk id */
+  uint32_t size;			/* size of the following chunk */
 }
 SFChunk;
 
 typedef struct _SFPhdr
 {
   unsigned char name[20];		/* preset name */
-  unsigned short preset;		/* preset number */
-  unsigned short bank;			/* bank number */
-  unsigned short pbagndx;		/* index into preset bag */
-  unsigned int library;		/* just for preserving them */
-  unsigned int genre;		/* Not used */
-  unsigned int morphology;		/* Not used */
+  uint16_t preset;		/* preset number */
+  uint16_t bank;			/* bank number */
+  uint16_t pbagndx;		/* index into preset bag */
+  uint32_t library;		/* just for preserving them */
+  uint32_t genre;		/* Not used */
+  uint32_t morphology;		/* Not used */
 }
 SFPhdr;
 
 typedef struct _SFBag
 {
-  unsigned short genndx;		/* index into generator list */
-  unsigned short modndx;		/* index into modulator list */
+  uint16_t genndx;		/* index into generator list */
+  uint16_t modndx;		/* index into modulator list */
 }
 SFBag;
 
 typedef struct _SFIhdr
 {
   char name[20];		/* Name of instrument */
-  unsigned short ibagndx;		/* Instrument bag index */
+  uint16_t ibagndx;		/* Instrument bag index */
 }
 SFIhdr;
 
 typedef struct _SFShdr
 {				/* Sample header loading struct */
   char name[20];		/* Sample name */
-  unsigned int start;		/* Offset to start of sample */
-  unsigned int end;			/* Offset to end of sample */
-  unsigned int loopstart;		/* Offset to start of loop */
-  unsigned int loopend;		/* Offset to end of loop */
-  unsigned int samplerate;		/* Sample rate recorded at */
-  unsigned char origpitch;		/* root midi key number */
-  signed char pitchadj;		/* pitch correction in cents */
-  unsigned short samplelink;		/* Not used */
-  unsigned short sampletype;		/* 1 mono,2 right,4 left,linked 8,0x8000=ROM */
+  uint32_t start;		/* Offset to start of sample */
+  uint32_t end;			/* Offset to end of sample */
+  uint32_t loopstart;		/* Offset to start of loop */
+  uint32_t loopend;		/* Offset to end of loop */
+  uint32_t samplerate;		/* Sample rate recorded at */
+  uint8_t origpitch;		/* root midi key number */
+  int8_t pitchadj;		/* pitch correction in cents */
+  uint16_t samplelink;		/* Not used */
+  uint16_t sampletype;		/* 1 mono,2 right,4 left,linked 8,0x8000=ROM */
 }
 SFShdr;
 
@@ -339,8 +339,8 @@ SFData *sfload_file (const char * fname);
 #define	TRUE	(!FALSE)
 #endif
 
-#define GPOINTER_TO_INT(p)	((int)   (p))
-#define GINT_TO_POINTER(i)      ((void *)  (i))
+#define GPOINTER_TO_INT(p)	((intptr_t)   (p))
+#define GINT_TO_POINTER(i)      ((void *)  ((intptr_t) (i)))
 
 char*	 g_strdup		(const char *str);
 
@@ -375,25 +375,25 @@ char*	 g_strdup		(const char *str);
 
 /* Basic bit swapping functions
  */
-#define GUINT16_SWAP_LE_BE_CONSTANT(val)	((unsigned short) ( \
-    (((unsigned short) (val) & (unsigned short) 0x00ffU) << 8) | \
-    (((unsigned short) (val) & (unsigned short) 0xff00U) >> 8)))
-#define GUINT32_SWAP_LE_BE_CONSTANT(val)	((unsigned int) ( \
-    (((unsigned int) (val) & (unsigned int) 0x000000ffU) << 24) | \
-    (((unsigned int) (val) & (unsigned int) 0x0000ff00U) <<  8) | \
-    (((unsigned int) (val) & (unsigned int) 0x00ff0000U) >>  8) | \
-    (((unsigned int) (val) & (unsigned int) 0xff000000U) >> 24)))
+#define GUINT16_SWAP_LE_BE_CONSTANT(val)	((uint16_t) ( \
+    (((uint16_t) (val) & (uint16_t) 0x00ffU) << 8) | \
+    (((uint16_t) (val) & (uint16_t) 0xff00U) >> 8)))
+#define GUINT32_SWAP_LE_BE_CONSTANT(val)	((uint32_t) ( \
+    (((uint32_t) (val) & (uint32_t) 0x000000ffU) << 24) | \
+    (((uint32_t) (val) & (uint32_t) 0x0000ff00U) <<  8) | \
+    (((uint32_t) (val) & (uint32_t) 0x00ff0000U) >>  8) | \
+    (((uint32_t) (val) & (uint32_t) 0xff000000U) >> 24)))
 
 #define GUINT16_SWAP_LE_BE(val) (GUINT16_SWAP_LE_BE_CONSTANT (val))
 #define GUINT32_SWAP_LE_BE(val) (GUINT32_SWAP_LE_BE_CONSTANT (val))
 
-#define GINT16_TO_LE(val)	((signed short) (val))
-#define GUINT16_TO_LE(val)	((unsigned short) (val))
-#define GINT16_TO_BE(val)	((signed short) GUINT16_SWAP_LE_BE (val))
+#define GINT16_TO_LE(val)	((int16_t) (val))
+#define GUINT16_TO_LE(val)	((uint16_t) (val))
+#define GINT16_TO_BE(val)	((int16_t) GUINT16_SWAP_LE_BE (val))
 #define GUINT16_TO_BE(val)	(GUINT16_SWAP_LE_BE (val))
-#define GINT32_TO_LE(val)	((signed int) (val))
-#define GUINT32_TO_LE(val)	((unsigned int) (val))
-#define GINT32_TO_BE(val)	((signed int) GUINT32_SWAP_LE_BE (val))
+#define GINT32_TO_LE(val)	((int32_t) (val))
+#define GUINT32_TO_LE(val)	((uint32_t) (val))
+#define GINT32_TO_BE(val)	((int32_t) GUINT32_SWAP_LE_BE (val))
 #define GUINT32_TO_BE(val)	(GUINT32_SWAP_LE_BE (val))
 
 /* The G*_TO_?E() macros are defined in glibconfig.h.

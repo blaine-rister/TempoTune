@@ -1019,7 +1019,7 @@ fluid_defpreset_import_sfont(fluid_defpreset_t* preset,
   fluid_preset_zone_t* zone;
   int count;
   char zone_name[256];
-  if ((sfpreset->name != NULL) && (FLUID_STRLEN(sfpreset->name) > 0)) {
+  if (FLUID_STRLEN(sfpreset->name) > 0) {
     FLUID_STRCPY(preset->name, sfpreset->name);
   } else {
     FLUID_SPRINTF(preset->name, "Bank%d,Preset%d", sfpreset->bank, sfpreset->prenum);
@@ -1419,7 +1419,7 @@ fluid_inst_import_sfont(fluid_inst_t* inst, SFInst *sfinst, fluid_defsfont_t* sf
   int count;
 
   p = sfinst->zone;
-  if ((sfinst->name != NULL) && (FLUID_STRLEN(sfinst->name) > 0)) {
+  if (FLUID_STRLEN(sfinst->name) > 0) {
     FLUID_STRCPY(inst->name, sfinst->name);
   } else {
     FLUID_STRCPY(inst->name, "<untitled>");
@@ -1968,6 +1968,7 @@ char idlist[] = {
 static unsigned int sdtachunk_size;
 
 /* sound font file load functions */
+
 static int
 chunkid (unsigned int id)
 {
@@ -3079,7 +3080,7 @@ fixup_pgen (SFData * sf)
 {
   fluid_list_t *p, *p2, *p3;
   SFZone *z;
-  int i;
+  intptr_t i;
 
   p = sf->preset;
   while (p)
