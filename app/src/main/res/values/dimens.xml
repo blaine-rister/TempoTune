@@ -7,4 +7,5 @@
     <dimen name="outline_width">2dp</dimen>
     <dimen name="pitch_inset">6dp</dimen>
     <dimen name="pitch_padding">4dp</dimen>
+    <dimen name="plus_minus_buttons_margin">18dp</dimen>
 </resources>

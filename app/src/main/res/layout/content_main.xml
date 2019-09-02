@@ -28,13 +28,17 @@
 
         <ImageButton
             android:id="@+id/bpmIncreaseButton"
-            android:layout_width="110dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
+            android:layout_marginRight="@dimen/plus_minus_buttons_margin"
+            android:layout_marginEnd="@dimen/plus_minus_buttons_margin"
             android:layout_toLeftOf="@id/editBpm"
             android:layout_toStartOf="@id/editBpm"
             android:background="@android:color/transparent"
-            app:srcCompat="@android:drawable/ic_input_add" />
+            app:srcCompat="@drawable/ic_transparent_plus_circle"
+            android:tint="@color/colorPrimary" />
+
         <EditText
             android:id="@+id/editBpm"
             android:layout_width="120dp"
@@ -64,10 +68,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
+            android:layout_marginLeft="@dimen/plus_minus_buttons_margin"
+            android:layout_marginStart="@dimen/plus_minus_buttons_margin"
             android:layout_toRightOf="@id/editBpm"
             android:layout_toEndOf="@id/editBpm"
             android:background="@android:color/transparent"
-            app:srcCompat="@android:drawable/btn_minus" />
+            app:srcCompat="@drawable/ic_minus_with_circle"
+            android:tint="@color/colorPrimary" />
     </RelativeLayout>
 
     <TextView
@@ -186,6 +193,7 @@
         android:layout_alignParentRight="true"
         android:layout_marginTop="@dimen/fab_margin"
         android:layout_marginBottom="@dimen/fab_margin"
-        android:layout_marginHorizontal="@dimen/fab_margin"
+        android:layout_marginRight="@dimen/fab_margin"
+        android:layout_marginLeft="@dimen/fab_margin"
         app:srcCompat="@android:drawable/ic_dialog_email" />
 </RelativeLayout>
