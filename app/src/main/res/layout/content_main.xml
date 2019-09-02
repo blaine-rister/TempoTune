@@ -103,10 +103,11 @@
                 android:id="@+id/sharpSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:showText="true"
                 android:textAllCaps="false"
+                android:textOff="♭"
                 android:textOn="♯"
-                android:textOff="♭" />
+                android:showText="true"
+            />
 
             <ImageView
                 android:id="@+id/imageView"
@@ -193,15 +194,16 @@
         android:layout_below="@id/velocityTextView" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab"
+        android:id="@+id/tempoTapperFab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/velocitySeekBar"
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
-        android:layout_marginTop="@dimen/fab_margin"
-        android:layout_marginBottom="@dimen/fab_margin"
-        android:layout_marginRight="@dimen/fab_margin"
         android:layout_marginLeft="@dimen/fab_margin"
-        app:srcCompat="@android:drawable/ic_dialog_email" />
+        android:layout_marginTop="@dimen/fab_margin"
+        android:layout_marginRight="@dimen/fab_margin"
+        android:layout_marginBottom="@dimen/fab_margin"
+        android:tint="@color/colorWhite"
+        app:srcCompat="@drawable/ic_hourglass_simple" />
 </RelativeLayout>

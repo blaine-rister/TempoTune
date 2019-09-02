@@ -430,8 +430,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // Tempo tapper
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton tempoTapperFab = findViewById(R.id.tempoTapperFab);
+        tempoTapperFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if (isTapping) {
