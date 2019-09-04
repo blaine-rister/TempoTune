@@ -78,12 +78,13 @@ public class MidiDriver
            stream.close();
         } catch (IOException e) {
             e.printStackTrace();
-            throw new RuntimeException("Failed to open soundfont " + soundfontFilename);
+            throw new RuntimeException(BuildConfig.DEBUG ?
+                    "Failed to open soundfont " + soundfontFilename : "");
         }
 
         // Initialize the MIDI, if it hasn't been
-        if (!isStarted && !init(assetManager, soundfontFilename, sampleRate, bufferSize)) {
-            throw new RuntimeException("Failed to initialize MIDI");
+        if (!isStarted && !initJNI(assetManager, soundfontFilename, sampleRate, bufferSize)) {
+            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to initialize MIDI" : "");
         }
         isStarted = true;
     }
@@ -93,7 +94,7 @@ public class MidiDriver
      */
     public void stop()
     {
-        shutdown();
+        shutdownJNI();
         isStarted = false;
     }
 
@@ -103,8 +104,8 @@ public class MidiDriver
     public boolean queryProgram(byte programNumber) {
         int result = queryProgramJNI(programNumber);
         if (result < 0)
-            throw new RuntimeException(String.format("Failed to query program number %d",
-                    programNumber));
+            throw new RuntimeException(BuildConfig.DEBUG ? String.format(
+                    "Failed to query program number %d", programNumber) : "");
 
         return result > 0;
     }
@@ -115,8 +116,8 @@ public class MidiDriver
     public String getProgramName(byte programNumber) {
         String name = getProgramNameJNI(programNumber);
         if (name.isEmpty())
-            throw new RuntimeException(String.format("Failed to get the name of program %d",
-                    programNumber));
+            throw new RuntimeException(BuildConfig.DEBUG ? String.format(
+                    "Failed to get the name of program %d", programNumber) : "");
 
         return name;
     }
@@ -127,7 +128,8 @@ public class MidiDriver
     public void changeProgram(byte programNumber) {
 
         if (!changeProgramJNI(programNumber))
-            throw new RuntimeException("Failed to change the MIDI program");
+            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to change the MIDI program" :
+                    "");
     }
 
     /**
@@ -136,7 +138,7 @@ public class MidiDriver
     public int getProgram() {
         final int program = getProgramJNI();
         if (program < 0)
-            throw new RuntimeException("Failed to get the MIDI program");
+            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to get the MIDI program" : "");
         return program;
     }
 
@@ -146,7 +148,7 @@ public class MidiDriver
     public byte getKeyMin() {
         final int keyMin = getKeyMinJNI();
         if (keyMin < 0)
-            throw new RuntimeException("Failed to get the minimum key");
+            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to get the minimum key" : "");
         return toByte(keyMin);
     }
 
@@ -156,7 +158,7 @@ public class MidiDriver
     public byte getKeyMax() {
         final int keyMax = getKeyMaxJNI();
         if (keyMax < 0)
-            throw new RuntimeException("Failed to get the maximum key");
+            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to get the maximum key" : "");
         return toByte(keyMax);
     }
 
@@ -173,8 +175,8 @@ public class MidiDriver
             pitchArray[i] = it.next();
         }
 
-        if (!render(pitchArray, velocity, noteDurationMs, recordDurationMs))
-            throw new RuntimeException("Failed to render pitches");
+        if (!renderJNI(pitchArray, velocity, noteDurationMs, recordDurationMs))
+            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to render pitches" : "");
     }
 
     /*
@@ -182,7 +184,14 @@ public class MidiDriver
      */
     public void pause() {
         if (!pauseJNI())
-            throw new RuntimeException("Failed to pause playback");
+            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to pause playback" : "");
+    }
+
+    /*
+     * Get the synth maximum polyphony count.
+     */
+    public int getMaxVoices() {
+        return getMaxVoicesJNI();
     }
 
     // Native midi methods
@@ -192,7 +201,11 @@ public class MidiDriver
      *
      * @return true for success
      */
-    private native boolean init(Object assetManager, String soundfontFilename, int sampleRate,
+    private boolean initJNI(Object assetManager, String soundfontFilename, int sampleRate,
+                             int bufferSize) {
+        return A(assetManager, soundfontFilename, sampleRate, bufferSize);
+    }
+    private native boolean A(Object assetManager, String soundfontFilename, int sampleRate,
                                 int bufferSize);
 
 
@@ -200,13 +213,37 @@ public class MidiDriver
      *
      * @return The maximum polyphony count.
      */
-    public native int getMaxVoices();
+    private int getMaxVoicesJNI() {
+        return B();
+    }
+    private native int B();
 
     /**
-     *
+     * Pause the program.
      * @return true on success.
      */
-    private native boolean pauseJNI();
+    private boolean pauseJNI() {
+        return C();
+    }
+    private native boolean C();
+
+    /**
+     * Get the minimum key for the current program.
+     * @return The key value, or -1 on error.
+     */
+    private int getKeyMinJNI() {
+        return D();
+    }
+    private native int D();
+
+    /**
+     * Get the maximum key for the current program.
+     * @return The key value, or -1 on error.
+     */
+    private int getKeyMaxJNI() {
+        return E();
+    }
+    private native int E();
 
     /**
      * Renders an audio signal, then loops it.
@@ -217,7 +254,11 @@ public class MidiDriver
      * @param recordDurationMs - The total duration of the recording, in ms.
      *
      */
-    private native boolean render(byte pitches[], byte velocity, long noteDurationMs,
+    private boolean renderJNI(byte pitches[], byte velocity, long noteDurationMs,
+                              long recordDurationMs) {
+        return F(pitches, velocity, noteDurationMs, recordDurationMs);
+    }
+    private native boolean F(byte pitches[], byte velocity, long noteDurationMs,
                                  long recordDurationMs);
 
     /*
@@ -225,47 +266,50 @@ public class MidiDriver
      *
      * @return 1 if valid, 0 if invalid, -1 on error.
      */
-    private native int queryProgramJNI(byte programNum);
+    private int queryProgramJNI(byte programNum) {
+        return G(programNum);
+    }
+    private native int G(byte programNum);
 
     /*
      * Get the name of a given MIDI program.
      *
      * @return The program name.
      */
-    private native String getProgramNameJNI(byte programNum);
+    private String getProgramNameJNI(byte programNum) {
+        return H(programNum);
+    }
+    private native String H(byte programNum);
 
     /**
      *  Change the MIDI program.
      *
      * @return True on success
      */
-    private native boolean changeProgramJNI(byte programNum);
+    private boolean changeProgramJNI(byte programNum) {
+        return I(programNum);
+    }
+    private native boolean I(byte programNum);
 
     /**
      * Retrieve the current MIDI program.
      *
      * @return Program number, or -1 on failure.
      */
-    private native int getProgramJNI();
-
-    /**
-     * Get the minimum key for the current program.
-     * @return The key value, or -1 on error.
-     */
-    private native int getKeyMinJNI();
-
-    /**
-     * Get the maximum key for the current program.
-     * @return The key value, or -1 on error.
-     */
-    private native int getKeyMaxJNI();
+    private int getProgramJNI() {
+        return J();
+    }
+    private native int J();
 
     /**
      * Shut down native code
      *
      * @return true for success
      */
-    private native boolean shutdown();
+    private boolean shutdownJNI() {
+        return K();
+    }
+    private native boolean K();
 
     // Load midi library
     static

@@ -583,7 +583,7 @@ static float *renderSamples(const int numSamples, float *buffer) {
 }
 
 // Render the data offline, then start looping it
-jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
+int render(const uint8_t *const pitchBytes, const jint numPitches,
                 const uint8_t velocity,
                 const jlong noteDurationMs,
                 const jlong recordingDurationMs) {
@@ -767,12 +767,12 @@ jboolean render(const uint8_t *const pitchBytes, const jint numPitches,
 
     // Start playing the recording
     play();
-    return JNI_TRUE;
+    return 0;
 
     render_quit:
     if (floatBuffer != NULL)
         free(floatBuffer);
-    return JNI_FALSE;
+    return -1;
 }
 
 // create the engine and output mix objects
@@ -1090,19 +1090,19 @@ jboolean midi_init(const char *soundfontFilename, const int deviceSampleRate,
     return JNI_TRUE;
 }
 
-JNIEXPORT
+// Main initialization function
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
-                                                  jobject obj,
-                                                  jobject AAssetAdapter,
-                                                  jstring soundfontAAssetName,
-                                                  jint deviceSampleRate,
-                                                  jint deviceBufferSize) {
+initJNI(JNIEnv *env,
+         jobject obj,
+         jobject AAssetAdapter,
+         jstring soundfontAAssetName,
+         jint deviceSampleRate,
+         jint deviceBufferSize) {
+
     jboolean result;
 
     // Initialize the AAssets wrapper, so we can do file I/O
-    if (init_AAssets(env, AAssetAdapter)) {
-        LOG_E(LOG_TAG, "Failed to initialize AAssets.");
+    if (init_AAssets(env, AAssetAdapter)) { LOG_E(LOG_TAG, "Failed to initialize AAssets.");
         return JNI_FALSE;
     }
 
@@ -1118,46 +1118,80 @@ Java_org_billthefarmer_mididriver_MidiDriver_init(JNIEnv *env,
     return result;
 }
 
-// Get the maximum number of concurrent voices
+// Obfuscated JNI wrapper for the former
 JNIEXPORT
+jboolean
+Java_org_billthefarmer_mididriver_MidiDriver_A(JNIEnv *env,
+                                               jobject obj,
+                                               jobject AAssetAdapter,
+                                               jstring soundfontAAssetName,
+                                               jint deviceSampleRate,
+                                               jint deviceBufferSize) {
+    return initJNI(env, obj, AAssetAdapter, soundfontAAssetName, deviceSampleRate,
+            deviceBufferSize);
+}
+
+// Get the maximum number of concurrent voices
 jint
-Java_org_billthefarmer_mididriver_MidiDriver_getMaxVoices(JNIEnv *env,
-                                                          jobject jobj) {
+getMaxVoicesJNI(void) {
     return maxVoices;
 }
 
+// Obfuscated JNI wrapper for the former
+JNIEXPORT
+jint
+Java_org_billthefarmer_mididriver_MidiDriver_B(JNIEnv *env, jobject jobj) {
+    return getMaxVoicesJNI();
+}
+
+jboolean
+pauseJNI(void) {
+    return (jboolean) (delete_recording() == SL_RESULT_SUCCESS ? JNI_TRUE : JNI_FALSE);
+}
+
 // Stop looping, delete the recording
+// Formerly: pauseJNI();
 JNIEXPORT
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_pauseJNI(JNIEnv *env,
-                                                      jobject jobj) {
-    return delete_recording() == SL_RESULT_SUCCESS ? JNI_TRUE : JNI_FALSE;
+Java_org_billthefarmer_mididriver_MidiDriver_C(JNIEnv *env,
+                                               jobject jobj) {
+   return pauseJNI();
 }
 
 // Get the minimum allowed key for the currently selected program
-JNIEXPORT
-jint Java_org_billthefarmer_mididriver_MidiDriver_getKeyMinJNI(JNIEnv *env,
-                                                            jobject jobj) {
+jint
+getProgramKeyMinJNI(void) {
     return getProgramKeyMin();
 }
 
-// Get the maximum allowed key for the currently selected program
+// Obfuscated JNI wrapper for the former
 JNIEXPORT
-jint Java_org_billthefarmer_mididriver_MidiDriver_getKeyMaxJNI(JNIEnv *env,
+jint Java_org_billthefarmer_mididriver_MidiDriver_D(JNIEnv *env,
                                                             jobject jobj) {
+    return getProgramKeyMinJNI();
+}
+
+// Get the maximum allowed key for the currently selected program
+jint
+getProgramKeyMaxJNI(void) {
     return getProgramKeyMax();
 }
 
-// Render and then start looping
+// Obfuscated JNI wrapper for the former
 JNIEXPORT
-jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_render(JNIEnv *env,
-                                                    jobject obj,
-                                                    jbyteArray pitches,
-                                                    jbyte velocity,
-                                                    jlong noteDurationMs,
-                                                    jlong recordingDurationMs) {
+jint Java_org_billthefarmer_mididriver_MidiDriver_E(JNIEnv *env,
+                                                            jobject jobj) {
+    return getProgramKeyMaxJNI();
+}
 
+// Render and then start looping
+jboolean
+renderJNI(JNIEnv *env,
+          jobject obj,
+          jbyteArray pitches,
+          jbyte velocity,
+          jlong noteDurationMs,
+          jlong recordingDurationMs) {
     int result;
     jboolean isCopy;
 
@@ -1168,36 +1202,68 @@ Java_org_billthefarmer_mididriver_MidiDriver_render(JNIEnv *env,
 
     (*env)->ReleaseByteArrayElements(env, pitches, (jbyte *) pitchBytes, 0);
 
-    return result;
+    return (jboolean) (result == 0);
+}
+
+// Obfuscated JNI wrapper for the former
+JNIEXPORT
+jboolean
+Java_org_billthefarmer_mididriver_MidiDriver_F(JNIEnv *env,
+                                               jobject obj,
+                                               jbyteArray pitches,
+                                               jbyte velocity,
+                                               jlong noteDurationMs,
+                                               jlong recordingDurationMs) {
+    return renderJNI(env, obj, pitches, velocity, noteDurationMs, recordingDurationMs);
 }
 
 // Query if a program number is valid in the given soundfont. Returns 1 if valid, 0 if invalid, -1
 // on error.
-JNIEXPORT
 jint
-Java_org_billthefarmer_mididriver_MidiDriver_queryProgramJNI(JNIEnv *env,
-                                                              jobject obj,
-                                                              jbyte programNum) {
+queryProgramJNI(jbyte programNum) {
     int isAvailable;
     return (queryProgram(programNum, &isAvailable) == 0) ? isAvailable : -1;
 }
 
-// Get the name of a program, given the program number. Returns an empty string on error.
+// Obfuscated JNI wrapper for the former
 JNIEXPORT
+jint
+Java_org_billthefarmer_mididriver_MidiDriver_G(JNIEnv *env,
+                                               jobject obj,
+                                               jbyte programNum) {
+    return queryProgramJNI(programNum);
+}
+
+// Get the name of a program, given the program number. Returns an empty string on error.
 jstring
-Java_org_billthefarmer_mididriver_MidiDriver_getProgramNameJNI(JNIEnv *env,
-                                                               jobject obj,
-                                                               jbyte programNum) {
+getProgramNameJNI(JNIEnv *env,
+                  jobject obj,
+                  jbyte programNum) {
     const char *const name = getProgramName(programNum);
     return (*env)->NewStringUTF(env, name == NULL ? "" : name);
 }
+
+// Obfuscated JNI wrapper for the former
+JNIEXPORT
+jstring
+Java_org_billthefarmer_mididriver_MidiDriver_H(JNIEnv *env,
+                                               jobject obj,
+                                               jbyte programNum) {
+    return getProgramNameJNI(env, obj, programNum);
+}
 // Change the MIDI program
+jboolean
+changeProgramJNI(jbyte programNum) {
+    return (changeProgram(programNum) == 0) ? JNI_TRUE : JNI_FALSE;
+}
+
+// Obfuscated JNI wrapper for the former
 JNIEXPORT
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_changeProgramJNI(JNIEnv *env,
-                                                              jobject obj,
-                                                              jbyte programNum) {
-    return (changeProgram(programNum) == 0) ? JNI_TRUE : JNI_FALSE;
+Java_org_billthefarmer_mididriver_MidiDriver_I(JNIEnv *env,
+                                               jobject obj,
+                                               jbyte programNum) {
+    return changeProgramJNI(programNum);
 }
 
 // Get the current MIDI program number
@@ -1213,11 +1279,17 @@ static int get_program(void) {
 }
 
 // Get the current MIDI program, JNI wrapper
+jint
+getProgramJNI(void) {
+    return get_program();
+}
+
+// Obfuscated JNI wrapper for the former
 JNIEXPORT
 jint
-Java_org_billthefarmer_mididriver_MidiDriver_getProgramJNI(JNIEnv *env,
-                                                           jobject obj) {
-    return get_program();
+Java_org_billthefarmer_mididriver_MidiDriver_J(JNIEnv *env,
+                                               jobject obj) {
+    return getProgramJNI();
 }
 
 
@@ -1235,10 +1307,8 @@ jboolean midi_shutdown() {
     return JNI_TRUE;
 }
 
-JNIEXPORT
-jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_shutdown(JNIEnv *env,
-                                                      jobject obj) {
+// Shut down the library, freeing all resources
+jboolean shutdownJNI(JNIEnv *env) {
     // Delete the synth
     if (midi_shutdown() != JNI_TRUE)
         return JNI_FALSE;
@@ -1247,6 +1317,14 @@ Java_org_billthefarmer_mididriver_MidiDriver_shutdown(JNIEnv *env,
     release_AAssets(env);
 
     return JNI_TRUE;
+}
+
+// Obfuscated JNI wrapper for the former
+JNIEXPORT
+jboolean
+Java_org_billthefarmer_mididriver_MidiDriver_K(JNIEnv *env,
+                                               jobject obj) {
+    return shutdownJNI(env);
 }
 
 #ifdef __cplusplus
