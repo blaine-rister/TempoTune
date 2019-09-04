@@ -29,6 +29,7 @@ import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.LayoutInflater;
+import android.view.inputmethod.InputMethodManager;
 
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -87,17 +88,20 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            throw new RuntimeException("Lost connection to the server.");
+            throw BuildConfig.DEBUG ? new DebugException("Lost connection to the server.") :
+                    new DefaultException();
         }
 
         @Override
         public void onNullBinding(ComponentName name) {
-            throw new RuntimeException("The server returned null on binding.");
+            throw BuildConfig.DEBUG  ? new DebugException("The server returned null on binding.") :
+                    new DefaultException();
         }
 
         @Override
         public void onBindingDied(ComponentName name) {
-            throw new RuntimeException("The server binding died.");
+            throw BuildConfig.DEBUG ? new DebugException("The server binding died.") :
+                    new DefaultException();
         }
     };
 
@@ -119,10 +123,12 @@ public class MainActivity extends AppCompatActivity {
         // Start the drone service and bind to it. When bound, we will set up the UI.
         Intent intent = new Intent(this, DroneService.class);
         if (startService(intent) == null) {
-            throw new RuntimeException("Failed to start the service.");
+            throw BuildConfig.DEBUG ? new DebugException("Failed to start the service.") :
+                    new DefaultException();
         }
         if (!bindService(intent, droneConnection, Context.BIND_AUTO_CREATE)) {
-            throw new RuntimeException("Binding to the server returned false.");
+            throw BuildConfig.DEBUG ? new DebugException("Binding to the server returned false.") :
+                    new DefaultException();
         }
 
         // Start drawing the layout in the meantime, but don't initialize the behavior
@@ -181,10 +187,12 @@ public class MainActivity extends AppCompatActivity {
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 switch (id) {
                     case EditorInfo.IME_ACTION_DONE:
-                        // Read the text and update BPM
+                        // Read the text and update BPM, closing the keyboard
                         sendDisplayedBpm(textView);
 
-                        // Return false to continue processing the action, close keyboard
+                        /* Return false to close the keyboard, in case "done" is actually working.
+                         * Returning true does not seem to prevent "enter" from jittering the
+                         * screen. */
                         return false;
                     default:
                         return false;
@@ -330,7 +338,7 @@ public class MainActivity extends AppCompatActivity {
                         droneBinder.getProgramName(programNum),
                         programNum + 1
                 ));
-            } else {
+            } else if (BuildConfig.DEBUG) {
                 Log.w(logTag, String.format("setupUI: skipping invalid program code %d",
                         programNum));
             }
@@ -338,7 +346,8 @@ public class MainActivity extends AppCompatActivity {
 
         // We need to have at least one instrument
         if (instruments.isEmpty())
-            throw new RuntimeException("No valid instruments found!");
+            throw BuildConfig.DEBUG ? new DebugException("No valid instruments found!") :
+                    new DefaultException();
 
         // Sort the lists by their codes
         Collections.sort(instruments);
@@ -483,8 +492,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        throw new RuntimeException(
-                String.format("Failed to set spinners to the program number %d", currentProgram));
+        throw BuildConfig.DEBUG ? new DebugException(
+                String.format("Failed to set spinners to the program number %d", currentProgram)) :
+                new DefaultException();
 
     }
 
@@ -517,7 +527,8 @@ public class MainActivity extends AppCompatActivity {
             return readCsvHelper(resourceId);
         } catch (IOException ie) {
             ie.printStackTrace();
-            throw new RuntimeException("Failed to read the CSV file!");
+            throw BuildConfig.DEBUG ? new DebugException("Failed to read the CSV file!") :
+                    new DefaultException();
         }
     }
 
@@ -533,8 +544,8 @@ public class MainActivity extends AppCompatActivity {
         String line = bufferedReader.readLine(); // CSV header
         while ((line = bufferedReader.readLine()) != null) {
             String[] items = line.split(",");
-            if (items.length != itemsPerLine) throw new RuntimeException(
-                    "Invalid CSV line: " + line);
+            if (items.length != itemsPerLine) throw BuildConfig.DEBUG ? new DebugException(
+                    "Invalid CSV line: " + line) : new DefaultException();
             String name = items[1].trim();
             int code = Integer.parseInt(items[0].trim());
             list.add(new NameValPair(name, code));
@@ -574,9 +585,21 @@ public class MainActivity extends AppCompatActivity {
         droneBinder.setBpm(readBpm(textView));
         updateUI(); // In case the BPM is out of bounds
 
-        // Remove the focus from BPM text, but enable it to regain focus after touch
-        textView.setFocusable(false);
-        textView.setFocusableInTouchMode(true);
+        // Close the keyboard
+        try {
+            InputMethodManager imm = (InputMethodManager) textView.getContext()
+                    .getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);
+        } catch (Exception e) {
+            if (BuildConfig.DEBUG) {
+                throw e; // Rethrow this for examination in debug mode
+            }
+        }
+
+        /* Remove the focus from the textView. Note: something else must be focusable or else it the
+         * focus will bounce back here. The easiest way is to set the containing layout as
+         * focusable. */
+        textView.clearFocus();
     }
 
     // Reads the BPM from the given textView

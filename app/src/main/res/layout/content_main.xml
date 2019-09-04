@@ -6,6 +6,8 @@
     android:id="@+id/context_main_layout"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context=".MainActivity"
     tools:showIn="@layout/activity_main">
@@ -47,6 +49,7 @@
             android:layout_centerVertical="true"
             android:gravity="center"
             android:ems="10"
+            android:focusableInTouchMode="true"
             android:fadeScrollbars="false"
             android:freezesText="true"
             android:hapticFeedbackEnabled="true"
@@ -58,7 +61,7 @@
             android:saveEnabled="true"
             android:scrollbarAlwaysDrawHorizontalTrack="false"
             android:scrollbarAlwaysDrawVerticalTrack="false"
-            android:scrollHorizontally="true"
+            android:scrollHorizontally="false"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:textAppearance="@style/TextAppearance.AppCompat.Display1" />
