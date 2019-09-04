@@ -64,7 +64,7 @@ public class DroneService extends Service {
             // Query the device buffer size
             bufferSize = Integer.parseInt(am.getProperty(
                     AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER));
-        } else {
+        } else if (BuildConfig.DEBUG) {
             Log.w(MainActivity.logTag, String.format("Cannot query device audio parameters since " +
                     "current SDK version %d < %d", Build.VERSION.SDK_INT,
                     audioParamsSdkVersion));
@@ -73,13 +73,17 @@ public class DroneService extends Service {
         // Substitute default parameters if querying failed
         if (sampleRate < 1) {
             sampleRate = 44100;
-            Log.w(MainActivity.logTag, String.format("Failed to query the device sample rate. " +
-                    "Defaulting to %d", sampleRate));
+            if (BuildConfig.DEBUG) {
+                Log.w(MainActivity.logTag, String.format("Failed to query the device sample " +
+                                "rate. Defaulting to %d", sampleRate));
+            }
         }
         if (bufferSize < 1) {
             bufferSize = 256;
-            Log.w(MainActivity.logTag, String.format("Failed to query the device buffer size. " +
-                    "Defaulting to %d", bufferSize));
+            if (BuildConfig.DEBUG) {
+                Log.w(MainActivity.logTag, String.format("Failed to query the device buffer " +
+                        "size. Defaulting to %d", bufferSize));
+            }
         }
 
         // Start the midi
