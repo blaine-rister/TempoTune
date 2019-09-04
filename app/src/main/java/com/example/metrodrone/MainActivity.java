@@ -56,7 +56,7 @@ import com.google.android.gms.ads.InterstitialAd;
 public class MainActivity extends AppCompatActivity {
 
     // Constants
-    final static boolean testAds = true;
+    final static boolean testAds = BuildConfig.DEBUG;
     final static String logTag = "metrodrone";
     final static String displaySharpsKey = "DISPLAY_SHARPS";
 
@@ -138,7 +138,6 @@ public class MainActivity extends AppCompatActivity {
         MobileAds.initialize(this);
 
         // Get the ad unit IDs
-        final boolean testAds = true;
         final int bannerAdUnitIdRes = testAds ? R.string.test_banner_ad_unit_id :
                 R.string.real_banner_ad_unit_id;
         final int interstitialAdUnitRes = testAds ? R.string.test_interstitial_ad_unit_id :
