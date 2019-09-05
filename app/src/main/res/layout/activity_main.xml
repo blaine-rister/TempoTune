@@ -10,11 +10,11 @@
     <include layout="@layout/app_bar" />
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/mainContentScroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
-        <include layout="@layout/content_main" />
     </androidx.core.widget.NestedScrollView>
 
     <com.google.android.gms.ads.AdView

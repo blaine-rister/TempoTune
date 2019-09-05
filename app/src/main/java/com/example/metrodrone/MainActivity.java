@@ -12,14 +12,7 @@ import java.util.Iterator;
 
 import android.os.Bundle;
 
-import android.content.Intent;
-import android.content.ComponentName;
-import android.content.ServiceConnection;
-
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 
 import android.util.Log;
 import android.view.KeyEvent;
@@ -44,19 +37,11 @@ import android.widget.SeekBar;
 import android.widget.Button;
 
 import android.content.Context;
+import android.content.Intent;
 
-import android.os.IBinder;
-import com.example.metrodrone.DroneService.DroneBinder;
-
-import com.google.android.gms.ads.MobileAds;
-import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.AdView;
-import com.google.android.gms.ads.InterstitialAd;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends DroneActivity {
 
     // Constants
-    final static boolean testAds = BuildConfig.DEBUG;
     final static String logTag = "metrodrone";
     final static String displaySharpsKey = "DISPLAY_SHARPS";
 
@@ -71,39 +56,12 @@ public class MainActivity extends AppCompatActivity {
     // Persistent UI items
     TextView bpmTextView;
 
-    // Ads
-    InterstitialAd interstitialAd;
-
-    // Service interface
-    DroneBinder droneBinder;
-    private ServiceConnection droneConnection = new ServiceConnection()
-    {
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            droneBinder = (DroneBinder) service;
-            setupUI();
-            updateUI();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            throw BuildConfig.DEBUG ? new DebugException("Lost connection to the server.") :
-                    new DefaultException();
-        }
-
-        @Override
-        public void onNullBinding(ComponentName name) {
-            throw BuildConfig.DEBUG  ? new DebugException("The server returned null on binding.") :
-                    new DefaultException();
-        }
-
-        @Override
-        public void onBindingDied(ComponentName name) {
-            throw BuildConfig.DEBUG ? new DebugException("The server binding died.") :
-                    new DefaultException();
-        }
-    };
+    // Initialize the UI when the drone is connected
+    @Override
+    protected void onDroneConnected() {
+        setupUI();
+        updateUI();
+    }
 
     // Save the UI state
     @Override
@@ -120,63 +78,13 @@ public class MainActivity extends AppCompatActivity {
         final boolean restoreState = savedInstanceState != null;
         displaySharps = restoreState ? savedInstanceState.getBoolean(displaySharpsKey) : false;
 
-        // Start the drone service and bind to it. When bound, we will set up the UI.
-        Intent intent = new Intent(this, DroneService.class);
-        if (startService(intent) == null) {
-            throw BuildConfig.DEBUG ? new DebugException("Failed to start the service.") :
-                    new DefaultException();
-        }
-        if (!bindService(intent, droneConnection, Context.BIND_AUTO_CREATE)) {
-            throw BuildConfig.DEBUG ? new DebugException("Binding to the server returned false.") :
-                    new DefaultException();
-        }
-
         // Start drawing the layout in the meantime, but don't initialize the behavior
-        setContentView(R.layout.activity_main);
-
-        // Initialize ads
-        MobileAds.initialize(this);
-
-        // Get the ad unit IDs
-        final int bannerAdUnitIdRes = testAds ? R.string.test_banner_ad_unit_id :
-                R.string.real_banner_ad_unit_id;
-        final int interstitialAdUnitRes = testAds ? R.string.test_interstitial_ad_unit_id :
-                R.string.real_interstitial_ad_unit_id;
-
-        // Initialize the banner ad
-        AdView banner = findViewById(R.id.adView);
-        banner.loadAd(new AdRequest.Builder().build());
-
-        // Initialize the interstitial ad
-        interstitialAd = new InterstitialAd(this);
-        interstitialAd.setAdUnitId(getResources().getString(R.string.interstitial_ad_unit_id));
+        setContentLayout(R.layout.content_main);
     }
 
 
     // Set the behavior of the UI components. Called after the service is bound.
     protected void setupUI() {
-
-        // Set up the toolbar
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-
-        // Play button
-        ImageButton playButton = findViewById(R.id.playButton);
-        playButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                play();
-            }
-        });
-
-        // Pause button
-        ImageButton pauseButton = findViewById(R.id.pauseButton);
-        pauseButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                pause();
-            }
-        });
 
         // BPM text
         EditText editBpm = findViewById(R.id.editBpm);
@@ -556,12 +464,7 @@ public class MainActivity extends AppCompatActivity {
     // Tell the service to start playing sound
     protected void play() {
         sendDisplayedBpm(bpmTextView); // In case the user never pressed "done" on the keyboard
-        droneBinder.play();
-    }
-
-    // Tell the service to stop playing sound
-    protected void pause() {
-        droneBinder.pause();
+        super.play();
     }
 
     // Retrieves the settings and updates the UI
@@ -611,15 +514,6 @@ public class MainActivity extends AppCompatActivity {
     protected void displayBpm(final int bpm) {
 
         bpmTextView.setText(Integer.toString(bpm));
-    }
-
-    // On restart, load an ad
-    @Override
-    protected void onRestart()
-    {
-        super.onRestart();
-        interstitialAd.loadAd(new AdRequest.Builder().build());
-        interstitialAd.show();
     }
 
     // Clean up

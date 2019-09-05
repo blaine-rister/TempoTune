@@ -4,17 +4,13 @@ import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
-public class CreditsActivity extends AppCompatActivity {
+public class CreditsActivity extends DroneActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         // Set the content
-        setContentView(R.layout.credits);
-        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
+        setContentLayout(R.layout.content_credits);
 
         // Enable links in the textView
         TextView textView = findViewById(R.id.creditsTextView);
