@@ -10,8 +10,6 @@ import android.os.IBinder;
 import android.os.Binder;
 import android.util.Log;
 
-import java.util.Set;
-import java.util.HashSet;
 import java.util.List;
 
 // Responsible for playing sound through the MIDI driver //
@@ -112,6 +110,7 @@ public class DroneService extends Service {
         int getPitch(int handle) { return settings.getPitch(handle); }
         int getOctave(int handle) { return settings.getOctave(handle); }
         List<Integer> getOctaveChoices(int handle) { return settings.getOctaveChoices(handle); }
+        boolean getVolumeBoost() { return settings.getVolumeBoost(); }
         int setBpm(int bpm) {
             return settings.setBpm(bpm);
         }
@@ -129,6 +128,7 @@ public class DroneService extends Service {
         void setOctave(int handle, int octave) {
             settings.setOctave(handle, octave);
         }
+        void setVolumeBoost(boolean boostVolume) { settings.setVolumeBoost(boostVolume); }
         void updateSound() { DroneService.this.updateSound(); }
     }
 
@@ -163,23 +163,8 @@ public class DroneService extends Service {
         if (numNotes < 1)
             return;
 
-        // Calculate the note and beat durations
-        final double msPerBeat = MidiDriverHelper.getMsPerBeat(settings.getBpm());
-        final long beatDurationMs = Math.round(msPerBeat);
-        final long noteDurationMs = Math.round(msPerBeat * settings.getDuration());
-
-        // Encode the pitches to be played in a set
-        final List<Integer> handles = settings.getNoteHandles();
-        Set<Byte> keys = new HashSet<>();
-        for (int i = 0; i < numNotes; i++) {
-            final int handle = handles.get(i);
-            keys.add(MidiDriverHelper.encodePitch(settings.getPitch(handle),
-                    settings.getOctave(handle)));
-        };
-
         // Play the sound
-        final byte velocity = MidiDriverHelper.encodeVelocity(settings.getVelocity());
-        midi.renderNotes(keys, velocity, noteDurationMs, beatDurationMs);
+        midi.renderNotes(settings.getRenderSettings());
         isPlaying = true;
     }
 

@@ -1,10 +1,13 @@
 package com.example.metrodrone;
 
-import android.widget.ArrayAdapter;
+import org.billthefarmer.mididriver.RenderSettings;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 // Class to hold all data for the sound that is generated.
 public class SoundSettings {
@@ -16,6 +19,7 @@ public class SoundSettings {
     final static int bpmMin = 20;
 
     // Data
+    private boolean boostVolume = true;
     private int bpm = 80;
     private int keyLimitLo = 0;
     private int keyLimitHi = 127;
@@ -100,6 +104,8 @@ public class SoundSettings {
         return getNote(handle).octave;
     }
 
+    public boolean getVolumeBoost() { return boostVolume; }
+
     // Get the possible octave choices for a given note
     public List<Integer> getOctaveChoices(final int handle) {
 
@@ -117,6 +123,39 @@ public class SoundSettings {
         }
 
         return possibleOctaves;
+    }
+
+    // Condense the settings into a class for rendering
+    public RenderSettings getRenderSettings() {
+
+        // Calculate the note and beat durations
+        final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm);
+        final long beatDurationMs = Math.round(msPerBeat);
+        final long noteDurationMs = Math.round(msPerBeat * duration);
+
+        // Encode the pitches to be played in a set, to remove duplicates
+        Set<Byte> keys = new HashSet<>();
+        for (int i = 0; i < getNumNotes(); i++) {
+            final int handle = occupiedHandles.get(i);
+            keys.add(MidiDriverHelper.encodePitch(getPitch(handle), getOctave(handle)));
+        }
+
+        // Convert the set to an array, for easy access in C
+        byte[] pitchArray = new byte[keys.size()];
+        Iterator<Byte> it = keys.iterator();
+        for (int i = 0; it.hasNext(); i++) {
+            pitchArray[i] = it.next();
+        }
+
+        // Create the settings object
+        RenderSettings settings = new RenderSettings();
+        settings.pitchArray = pitchArray;
+        settings.velocity = MidiDriverHelper.encodeVelocity(velocity);
+        settings.noteDurationMs = noteDurationMs;
+        settings.recordDurationMs = beatDurationMs;
+        settings.volumeBoost = boostVolume;
+
+        return settings;
     }
 
     // Setters
@@ -182,6 +221,11 @@ public class SoundSettings {
         for (int i = 0; i < occupiedHandles.size(); i++) {
             roundOctave(occupiedHandles.get(i));
         }
+    }
+
+    // Choose whether or not to boost the volume with DNR compression
+    public void setVolumeBoost(final boolean boostVolume) {
+        this.boostVolume = boostVolume;
     }
 
     // Given the pitch limits, round the octave choice to the nearest possible one

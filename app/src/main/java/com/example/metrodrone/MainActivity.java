@@ -536,6 +536,9 @@ public class MainActivity extends DroneActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
+            case R.id.action_settings:
+                startActivity(new Intent(this, SettingsActivity.class));
+                return true;
             case R.id.action_about:
                 // Start the credits activity to display the credits
                 startActivity(new Intent(this, CreditsActivity.class));

@@ -90,6 +90,16 @@ int delete_recording(void);
 // Output audio datatype
 typedef int16_t output_t;
 
+// Struct to hold sound synthesis parameters
+struct sound_settings {
+    jbyte *pitches;
+    long noteDurationMs;
+    long recordingDurationMs;
+    int numPitches;
+    int volumeBoost;
+    uint8_t velocity;
+};
+
 // MIDI info
 const uint8_t velocityMax = 127; // Maximum allowed velocity in MIDI
 
@@ -583,13 +593,17 @@ static float *renderSamples(const int numSamples, float *buffer) {
 }
 
 // Render the data offline, then start looping it
-int render(const uint8_t *const pitchBytes, const jint numPitches,
-                const uint8_t velocity,
-                const jlong noteDurationMs,
-                const jlong recordingDurationMs) {
+int render(const struct sound_settings settings) {
 
     float *noteEndPosition, *decayEndPosition, *floatBuffer = NULL;
     int i;
+
+    // Shortcuts
+    const jbyte *const pitches = settings.pitches;
+    const long noteDurationMs = settings.noteDurationMs;
+    const long recordingDurationMs = settings.recordingDurationMs;
+    const int numPitches = settings.numPitches;
+    const uint8_t velocity = settings.velocity;
 
     // Internal parameters
     const long rampDownMs = 15; // Time for the ramp-down of a note
@@ -597,20 +611,20 @@ int render(const uint8_t *const pitchBytes, const jint numPitches,
     const double minLevel = rampDb; // The sound level corresponding to zero velocity
 
     // Verify parameters
-    if (recordingDurationMs < noteDurationMs) {
+    if (settings.recordingDurationMs < settings.noteDurationMs) {
         LOG_E(LOG_TAG, "Recording duration less than note duration.");
         goto render_quit;
     }
-    if (numPitches < 1) {
-        LOG_E(LOG_TAG, "Invalid number of pitches: %d", numPitches);
+    if (settings.numPitches < 1) {
+        LOG_E(LOG_TAG, "Invalid number of pitches: %d", settings.numPitches);
         goto render_quit;
     }
-    if (numPitches > maxVoices) {
-        LOG_E(LOG_TAG, "Too many pitches: %d (max: %d)", numPitches, maxVoices);
+    if (settings.numPitches > maxVoices) {
+        LOG_E(LOG_TAG, "Too many pitches: %d (max: %d)", settings.numPitches, maxVoices);
         goto render_quit;
     }
-    if (velocity > velocityMax) {
-        LOG_E(LOG_TAG, "Velocity %d exceeds maximum value of %d", velocity, velocityMax);
+    if (settings.velocity > velocityMax) {
+        LOG_E(LOG_TAG, "Velocity %d exceeds maximum value of %d", settings.velocity, velocityMax);
         goto render_quit;
     }
 
@@ -628,7 +642,7 @@ int render(const uint8_t *const pitchBytes, const jint numPitches,
 
     // Verify the provided pitches work for the current program
     for (i = 0; i < numPitches; i++) {
-        const uint8_t pitch = pitchBytes[i];
+        const uint8_t pitch = (uint8_t) pitches[i];
 
         if (pitch < keyMin || pitch > keyMax) {
             LOG_E(LOG_TAG, "Key %u is outside the range [%d, %d] of the current program.", pitch,
@@ -659,7 +673,7 @@ int render(const uint8_t *const pitchBytes, const jint numPitches,
 
     // Send the note start messages
     for (i = 0; i < numPitches; i++) {
-        const uint8_t pitch = pitchBytes[i];
+        const uint8_t pitch = (uint8_t) pitches[i];
         if (startNote(pitch, velocity)) {
             LOG_E(LOG_TAG, "Failed to start note (key %d velocity %d)", pitch, velocity);
             goto render_quit;
@@ -674,7 +688,7 @@ int render(const uint8_t *const pitchBytes, const jint numPitches,
 
     // Send the note end messages
     for (i = 0; i < numPitches; i++) {
-        switch (endNote(pitchBytes[i])) {
+        switch (endNote(pitches[i])) {
             case 0:
                 break;
             case 1:
@@ -696,14 +710,16 @@ int render(const uint8_t *const pitchBytes, const jint numPitches,
     // Get the minimum pitch which is used
     uint8_t minPitch = UCHAR_MAX;
     for (i = 0; i < numPitches; i++) {
-        minPitch = MIN(pitchBytes[i], minPitch);
+        minPitch = MIN(pitches[i], minPitch);
     }
 
-    // Apply velocity-dependent DNR compression
-    const double minFrequency = pitch2frequency(minPitch);
-    if (compressDNR(floatBuffer, recordingLength, noteSamples, velocity, minFrequency)) {
-        LOG_E(LOG_TAG, "Failed to apply DNR compression.");
-        goto render_quit;
+    // Optionally apply velocity-dependent DNR compression
+    if (settings.volumeBoost) {
+        const double minFrequency = pitch2frequency(minPitch);
+        if (compressDNR(floatBuffer, recordingLength, noteSamples, velocity, minFrequency)) {
+            LOG_E(LOG_TAG, "Failed to apply DNR compression.");
+            goto render_quit;
+        }
     }
 
     // Ramp down the audio at the end of the recording
@@ -1189,18 +1205,30 @@ jboolean
 renderJNI(JNIEnv *env,
           jobject obj,
           jbyteArray pitches,
-          jbyte velocity,
           jlong noteDurationMs,
-          jlong recordingDurationMs) {
+          jlong recordingDurationMs,
+          jbyte velocity,
+          jboolean volumeBoost) {
+
+    struct sound_settings settings;
     int result;
     jboolean isCopy;
 
-    const uint8_t *const pitchBytes = (uint8_t *) (*env)->GetByteArrayElements(env, pitches, &isCopy);
-    const jint numPitches = (*env)->GetArrayLength(env, pitches);
+    // Get the primitive data
+    settings.noteDurationMs = (long) noteDurationMs;
+    settings.recordingDurationMs = (long) recordingDurationMs;
+    settings.velocity = (uint8_t) velocity;
+    settings.volumeBoost = (volumeBoost == JNI_TRUE);
 
-    result = render(pitchBytes, numPitches, velocity, noteDurationMs, recordingDurationMs);
+    // Get the pitch array data
+    settings.pitches = (*env)->GetByteArrayElements(env, pitches, &isCopy);
+    settings.numPitches = (int) (*env)->GetArrayLength(env, pitches);
 
-    (*env)->ReleaseByteArrayElements(env, pitches, (jbyte *) pitchBytes, 0);
+    // Render
+    result = render(settings);
+
+    // Release arrays
+    (*env)->ReleaseByteArrayElements(env, pitches, settings.pitches, 0);
 
     return (jboolean) (result == 0);
 }
@@ -1211,10 +1239,18 @@ jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_F(JNIEnv *env,
                                                jobject obj,
                                                jbyteArray pitches,
-                                               jbyte velocity,
                                                jlong noteDurationMs,
-                                               jlong recordingDurationMs) {
-    return renderJNI(env, obj, pitches, velocity, noteDurationMs, recordingDurationMs);
+                                               jlong recordingDurationMs,
+                                               jbyte velocity,
+                                               jboolean volumeBoost) {
+    return renderJNI(
+            env,
+            obj,
+            pitches,
+            noteDurationMs,
+            recordingDurationMs,
+            velocity,
+            volumeBoost);
 }
 
 // Query if a program number is valid in the given soundfont. Returns 1 if valid, 0 if invalid, -1
@@ -1325,6 +1361,21 @@ jboolean
 Java_org_billthefarmer_mididriver_MidiDriver_K(JNIEnv *env,
                                                jobject obj) {
     return shutdownJNI(env);
+}
+
+// Set the reverb room size
+jboolean setReverbRoomSizeJNI(const jdouble roomSize) {
+//    return setReverbRoomSize((double) roomSize); //TODO implement this
+return JNI_FALSE; //XXX
+}
+
+// Obfuscated JNI wrapper for the former
+JNIEXPORT
+jboolean
+Java_org_billthefarmer_mididriver_MidiDriver_L(JNIEnv *env,
+                                               jobject obj,
+                                               jdouble roomSize) {
+    return setReverbRoomSizeJNI(roomSize);
 }
 
 #ifdef __cplusplus

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/volumeTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Volume" />
+
+    <CheckBox
+        android:id="@+id/volumeBoostBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/volumeTextView"
+        android:text="Volume Boost" />
+
+    <TextView
+        android:id="@+id/reverbTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/volumeBoostBox"
+        android:text="Reverberation" />
+
+    <SeekBar
+        android:id="@+id/reverbSeekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/reverbTextView"
+        android:padding="@dimen/seekbar_padding" />
+</RelativeLayout>

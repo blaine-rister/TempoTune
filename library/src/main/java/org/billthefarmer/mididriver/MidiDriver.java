@@ -37,9 +37,6 @@ package org.billthefarmer.mididriver;
 
 import android.content.res.AssetManager;
 
-import java.util.Set;
-import java.util.Iterator;
-
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -165,17 +162,8 @@ public class MidiDriver
     /**
      * Render and check for errors.
      */
-    public void renderNotes(Set<Byte> pitches, byte velocity, long noteDurationMs,
-                       long recordDurationMs) {
-
-        // Convert the pitch set to an array
-        byte pitchArray[] = new byte[pitches.size()];
-        Iterator<Byte> it = pitches.iterator();
-        for (int i = 0; it.hasNext(); i++) {
-            pitchArray[i] = it.next();
-        }
-
-        if (!renderJNI(pitchArray, velocity, noteDurationMs, recordDurationMs))
+    public void renderNotes(RenderSettings settings) {
+        if (!renderJNI(settings))
             throw new RuntimeException(BuildConfig.DEBUG ? "Failed to render pitches" : "");
     }
 
@@ -248,18 +236,25 @@ public class MidiDriver
     /**
      * Renders an audio signal, then loops it.
      *
-     * @param pitches The pitches to play. Duplicates will cause an error.
-     * @param velocity The velocity at which to play them.
-     * @param noteDurationMs - The delay before end is sent, in ms.
-     * @param recordDurationMs - The total duration of the recording, in ms.
+     * @param settings holds all the information to play the notes
      *
      */
-    private boolean renderJNI(byte pitches[], byte velocity, long noteDurationMs,
-                              long recordDurationMs) {
-        return F(pitches, velocity, noteDurationMs, recordDurationMs);
+    private boolean renderJNI(final RenderSettings settings) {
+        return F(
+                settings.pitchArray,
+                settings.noteDurationMs,
+                settings.recordDurationMs,
+                settings.velocity,
+                settings.volumeBoost
+        );
     }
-    private native boolean F(byte pitches[], byte velocity, long noteDurationMs,
-                                 long recordDurationMs);
+    private native boolean F(
+            byte[] pitches,
+            long noteDurationMs,
+            long recordingDurationMs,
+            byte velocity,
+            boolean volumeBoost
+    );
 
     /*
      * Query if the given MIDI program number is valid.
