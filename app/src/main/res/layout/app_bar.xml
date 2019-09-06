@@ -29,6 +29,14 @@
             android:tint="@color/colorWhite"
             android:backgroundTint="@color/colorPrimary"
             app:srcCompat="@drawable/ic_pause_button" />
+
+        <ImageButton
+            android:id="@+id/tempoButton"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:tint="@color/colorWhite"
+            android:backgroundTint="@color/colorPrimary"
+            app:srcCompat="@drawable/ic_hourglass_simple" />
     </androidx.appcompat.widget.Toolbar>
 
 </com.google.android.material.appbar.AppBarLayout>

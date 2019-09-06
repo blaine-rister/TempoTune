@@ -78,6 +78,7 @@
             android:background="@android:color/transparent"
             app:srcCompat="@drawable/ic_minus_with_circle"
             android:tint="@color/colorPrimary" />
+
     </RelativeLayout>
 
     <TextView
@@ -195,18 +196,4 @@
         android:paddingTop="@dimen/seekbar_padding"
         android:paddingBottom="@dimen/seekbar_padding"
         android:layout_below="@id/velocityTextView" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/tempoTapperFab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/velocitySeekBar"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentRight="true"
-        android:layout_marginLeft="@dimen/fab_margin"
-        android:layout_marginTop="@dimen/fab_margin"
-        android:layout_marginRight="@dimen/fab_margin"
-        android:layout_marginBottom="@dimen/fab_margin"
-        android:tint="@color/colorWhite"
-        app:srcCompat="@drawable/ic_hourglass_simple" />
 </RelativeLayout>

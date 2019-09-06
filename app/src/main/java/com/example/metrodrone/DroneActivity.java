@@ -29,12 +29,20 @@ public abstract class DroneActivity extends AppCompatActivity {
     // Constants
     final static boolean testAds = BuildConfig.DEBUG;
 
+    // State
+    boolean isTapping = false;
+    TempoTapper tempoTapper;
+
     // Ads
     static InterstitialAd interstitialAd;
 
     // This is called when the drone service connects. Subclasses should override it to perform
     // actions such as UI initialization, which depend on the service being bound.
     protected void onDroneConnected() {}
+
+    // This is called when the service is somehow updated. Subclasses should override it to update
+    // their UI.
+    protected void onDroneChanged() {}
 
     // Service interface
     protected DroneService.DroneBinder droneBinder;
@@ -158,6 +166,34 @@ public abstract class DroneActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 pause();
+            }
+        });
+
+        // Tempo button
+        ImageButton tempoButton = findViewById(R.id.tempoButton);
+        tempoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (isTapping) {
+                    tempoTapper.tap();
+                } else {
+                    //TODO could animate the button to indicate tapping mode
+                    tempoTapper = new TempoTapper(view) {
+                        @Override
+                        public void onComplete(int bpm) {
+                            isTapping = false;
+                            droneBinder.setBpm(bpm);
+                            onDroneChanged();
+                        }
+
+                        @Override
+                        public void onCancel() {
+                            // TODO animate button
+                            isTapping = false;
+                        }
+                    };
+                    isTapping = true;
+                }
             }
         });
     }

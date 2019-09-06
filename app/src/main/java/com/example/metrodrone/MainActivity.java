@@ -49,9 +49,8 @@ public class MainActivity extends DroneActivity {
     List<NoteSelector> noteSelectors = new ArrayList<>(); // Stores the pitches to be played
 
     // State
-    boolean isTapping = false;
+    boolean uiReady;
     boolean displaySharps;
-    TempoTapper tempoTapper;
 
     // Persistent UI items
     TextView bpmTextView;
@@ -59,7 +58,14 @@ public class MainActivity extends DroneActivity {
     // Initialize the UI when the drone is connected
     @Override
     protected void onDroneConnected() {
+        super.onDroneConnected();
         setupUI();
+    }
+
+    // Update the UI when drone parameters are changed by the parent class
+    @Override
+    protected void onDroneChanged() {
+        super.onDroneChanged();
         updateUI();
     }
 
@@ -74,11 +80,13 @@ public class MainActivity extends DroneActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+
         // If the activity is being re-created, restore the previous UI state
         final boolean restoreState = savedInstanceState != null;
         displaySharps = restoreState ? savedInstanceState.getBoolean(displaySharpsKey) : false;
 
         // Start drawing the layout in the meantime, but don't initialize the behavior
+        uiReady = false;
         setContentLayout(R.layout.content_main);
     }
 
@@ -89,6 +97,7 @@ public class MainActivity extends DroneActivity {
         // BPM text
         EditText editBpm = findViewById(R.id.editBpm);
         bpmTextView = editBpm;
+        receiveBpm(); // Requires bpmTextView is initialized
         editBpm.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -345,33 +354,9 @@ public class MainActivity extends DroneActivity {
             }
         });
 
-        // Tempo tapper
-        FloatingActionButton tempoTapperFab = findViewById(R.id.tempoTapperFab);
-        tempoTapperFab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isTapping) {
-                    tempoTapper.tap();
-                } else {
-                    //TODO could animate the button to indicate tapping mode
-                    tempoTapper = new TempoTapper(view) {
-                        @Override
-                        public void onComplete(int bpm) {
-                            isTapping = false;
-                            droneBinder.setBpm(bpm);
-                            updateUI();
-                        }
-
-                        @Override
-                        public void onCancel() {
-                            // TODO animate button
-                            isTapping = false;
-                        }
-                    };
-                    isTapping = true;
-                }
-            }
-        });
+        // Update all the UI elements, to retrieve values set by other activities
+        uiReady = true;
+        updateUI();
     }
 
     // Set the instrument choices to the given list
@@ -467,9 +452,14 @@ public class MainActivity extends DroneActivity {
         super.play();
     }
 
+    // Receives the BPM from the service and updates the UI
+    protected void receiveBpm() {
+        displayBpm(droneBinder.getBpm());
+    }
+
     // Retrieves the settings and updates the UI
     protected void updateUI() {
-        displayBpm(droneBinder.getBpm());
+        receiveBpm();
         for (int i = 0; i < noteSelectors.size(); i++) {
             noteSelectors.get(i).update();
         }
@@ -514,6 +504,13 @@ public class MainActivity extends DroneActivity {
     protected void displayBpm(final int bpm) {
 
         bpmTextView.setText(Integer.toString(bpm));
+    }
+
+    // Update the UI in case another activity has changed the drone service
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (uiReady) updateUI();
     }
 
     // Clean up
