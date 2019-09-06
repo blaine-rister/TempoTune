@@ -6,6 +6,8 @@ import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.Bundle;
 
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 
 import android.widget.ImageButton;
@@ -23,11 +25,18 @@ import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.InterstitialAd;
 
+import java.util.Iterator;
+import java.util.Set;
+import java.util.HashSet;
+
 /* Abstract class to automate the task of connecting to the drone, other basic app stuff. */
 public abstract class DroneActivity extends AppCompatActivity {
 
     // Constants
     final static boolean testAds = BuildConfig.DEBUG;
+
+    // Customization
+    Set<Integer> hiddenActions;
 
     // State
     boolean isTapping = false;
@@ -79,6 +88,9 @@ public abstract class DroneActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Set customizations to default
+        hiddenActions = new HashSet<>();
+
         // Set the main layout, but don't define the button functionality
         setContentView(R.layout.activity_main);
 
@@ -122,6 +134,46 @@ public abstract class DroneActivity extends AppCompatActivity {
         interstitialAd.show();
     }
 
+    // Clean up
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unbindService(droneConnection);
+    }
+
+    // Create the menu
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+
+        // Process the hidden actions
+        for (Integer i : hiddenActions) {
+            menu.findItem(i).setVisible(false);
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        switch (item.getItemId()) {
+            case R.id.action_settings:
+                startActivity(new Intent(this, SettingsActivity.class));
+                return true;
+            case R.id.action_about:
+                // Start the credits activity to display the credits
+                startActivity(new Intent(this, CreditsActivity.class));
+                return true;
+            default:
+                // For default buttons such as home/up
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
     // Set the main content, which is shown in a scrolling window in the middle of the screen
     protected void setContentLayout(final int contentLayoutId) {
 
@@ -132,6 +184,12 @@ public abstract class DroneActivity extends AppCompatActivity {
         // Add this to the parent scrollView
         NestedScrollView scrollView = findViewById(R.id.mainContentScroll);
         scrollView.addView(contentView);
+    }
+
+    // Hide a specific menu action
+    protected void hideMenuAction(final int actionId) {
+        hiddenActions.add(actionId);
+        invalidateOptionsMenu();
     }
 
     // Tell the service to start playing sound

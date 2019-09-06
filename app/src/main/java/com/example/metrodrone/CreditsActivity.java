@@ -9,6 +9,9 @@ public class CreditsActivity extends DroneActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Customize the menu to remove the option for this class
+        hideMenuAction(R.id.action_about);
+
         // Set the content
         setContentLayout(R.layout.content_credits);
 

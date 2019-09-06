@@ -17,8 +17,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.LayoutInflater;
@@ -511,39 +509,6 @@ public class MainActivity extends DroneActivity {
     protected void onResume() {
         super.onResume();
         if (uiReady) updateUI();
-    }
-
-    // Clean up
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unbindService(droneConnection);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        switch (item.getItemId()) {
-            case R.id.action_settings:
-                startActivity(new Intent(this, SettingsActivity.class));
-                return true;
-            case R.id.action_about:
-                // Start the credits activity to display the credits
-                startActivity(new Intent(this, CreditsActivity.class));
-                return true;
-            default:
-                // For default buttons such as home/up
-                return super.onOptionsItemSelected(item);
-        }
     }
 
     // Get a string list of pitch choices

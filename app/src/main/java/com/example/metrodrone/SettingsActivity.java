@@ -10,6 +10,9 @@ public class SettingsActivity extends DroneActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Customize the menu to remove the option for this class
+        hideMenuAction(R.id.action_settings);
+
         // Set the content
         setContentLayout(R.layout.content_settings);
     }
