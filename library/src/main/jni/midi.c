@@ -500,7 +500,7 @@ static int compressDNR(float *const buffer, const size_t bufferLength, const siz
     }
 
     // Internal parameters
-    const double minCompressionRatio = 2.0; // This is reached at maximum velocity
+    const double minCompressionRatio = 1.1; // This is reached at maximum velocity
     const double maxCompressionRatio = 5.0; // This is reached at minimum velocity
     const double periodDecay = 0.8; // Decay this much in one note period
 
