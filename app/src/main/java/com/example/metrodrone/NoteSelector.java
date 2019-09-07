@@ -78,7 +78,7 @@ public class NoteSelector {
         // Create an adapter for the octave spinner
         ArrayAdapter<Integer> octaveAdapter = new ArrayAdapter<>(context,
                 R.layout.pitch_spinner_item, getOctaveChoices());
-        octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
+        octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         // Set up octave spinner
         this.octaveSpinner = octaveSpinner;
