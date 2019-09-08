@@ -1,4 +1,4 @@
-package com.example.metrodrone;
+package com.bbrister.metrodrone;
 
 // Basic class for storing <instrument name, instrument code> pairs
 public class NameValPair implements Comparable<NameValPair> {

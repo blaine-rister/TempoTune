@@ -1,4 +1,4 @@
-package com.example.metrodrone;
+package com.bbrister.metrodrone;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,8 +11,6 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import android.os.Bundle;
-
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import android.util.Log;
 import android.view.KeyEvent;
@@ -35,7 +33,6 @@ import android.widget.SeekBar;
 import android.widget.Button;
 
 import android.content.Context;
-import android.content.Intent;
 
 public class MainActivity extends DroneActivity {
 

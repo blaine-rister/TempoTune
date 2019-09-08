@@ -1,4 +1,4 @@
-package com.example.metrodrone;
+package com.bbrister.metrodrone;
 
 import android.content.ComponentName;
 import android.content.ServiceConnection;

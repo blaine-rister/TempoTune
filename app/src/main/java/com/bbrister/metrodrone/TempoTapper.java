@@ -1,4 +1,4 @@
-package com.example.metrodrone;
+package com.bbrister.metrodrone;
 
 import com.google.android.material.snackbar.Snackbar;
 

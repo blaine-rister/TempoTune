@@ -1,4 +1,4 @@
-package com.example.metrodrone;
+package com.bbrister.metrodrone;
 
 // An exception that will throw the given message in debug mode. In runtime mode, throws a generic
 // message.

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.metrodrone">
+    package="com.bbrister.metrodrone">
 
     <application
         android:allowBackup="true"
@@ -13,12 +13,12 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-5040365596623384~5072587493"/>
         <service
-            android:name="com.example.metrodrone.DroneService"
+            android:name="com.bbrister.metrodrone.DroneService"
             android:enabled="true"
             android:exported="true"></service>
 
         <activity
-            android:name="com.example.metrodrone.MainActivity"
+            android:name="com.bbrister.metrodrone.MainActivity"
             android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
@@ -29,15 +29,17 @@
         </activity>
 
         <activity
-            android:name="com.example.metrodrone.SettingsActivity"
+            android:name="com.bbrister.metrodrone.SettingsActivity"
             android:theme="@style/AppTheme.NoActionBar">
         </activity>
 
         <activity
-            android:name="com.example.metrodrone.CreditsActivity"
+            android:name="com.bbrister.metrodrone.CreditsActivity"
             android:theme="@style/AppTheme.NoActionBar">
         </activity>
 
     </application>
+    
+    <uses-permission android:name="com.android.vending.BILLING"/>
 
 </manifest>

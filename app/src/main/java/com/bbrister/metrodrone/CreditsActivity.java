@@ -1,4 +1,4 @@
-package com.example.metrodrone;
+package com.bbrister.metrodrone;
 
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;

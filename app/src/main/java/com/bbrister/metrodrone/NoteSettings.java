@@ -1,4 +1,4 @@
-package com.example.metrodrone;
+package com.bbrister.metrodrone;
 
 // Class to hold data for an individual note
 public class NoteSettings {

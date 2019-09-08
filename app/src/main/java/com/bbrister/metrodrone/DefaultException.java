@@ -1,4 +1,4 @@
-package com.example.metrodrone;
+package com.bbrister.metrodrone;
 
 // Throws a runtime exception with a default message
 public class DefaultException extends RuntimeException {
