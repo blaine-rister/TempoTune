@@ -1137,7 +1137,7 @@ initJNI(JNIEnv *env,
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_A(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_A(JNIEnv *env,
                                                jobject obj,
                                                jobject AAssetAdapter,
                                                jstring soundfontAAssetName,
@@ -1156,7 +1156,7 @@ getMaxVoicesJNI(void) {
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jint
-Java_org_billthefarmer_mididriver_MidiDriver_B(JNIEnv *env, jobject jobj) {
+Java_com_bbrister_mididriver_MidiDriver_B(JNIEnv *env, jobject jobj) {
     return getMaxVoicesJNI();
 }
 
@@ -1169,7 +1169,7 @@ pauseJNI(void) {
 // Formerly: pauseJNI();
 JNIEXPORT
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_C(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_C(JNIEnv *env,
                                                jobject jobj) {
    return pauseJNI();
 }
@@ -1182,7 +1182,7 @@ getProgramKeyMinJNI(void) {
 
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
-jint Java_org_billthefarmer_mididriver_MidiDriver_D(JNIEnv *env,
+jint Java_com_bbrister_mididriver_MidiDriver_D(JNIEnv *env,
                                                             jobject jobj) {
     return getProgramKeyMinJNI();
 }
@@ -1195,7 +1195,7 @@ getProgramKeyMaxJNI(void) {
 
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
-jint Java_org_billthefarmer_mididriver_MidiDriver_E(JNIEnv *env,
+jint Java_com_bbrister_mididriver_MidiDriver_E(JNIEnv *env,
                                                             jobject jobj) {
     return getProgramKeyMaxJNI();
 }
@@ -1236,7 +1236,7 @@ renderJNI(JNIEnv *env,
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_F(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_F(JNIEnv *env,
                                                jobject obj,
                                                jbyteArray pitches,
                                                jlong noteDurationMs,
@@ -1264,7 +1264,7 @@ queryProgramJNI(jbyte programNum) {
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jint
-Java_org_billthefarmer_mididriver_MidiDriver_G(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_G(JNIEnv *env,
                                                jobject obj,
                                                jbyte programNum) {
     return queryProgramJNI(programNum);
@@ -1282,7 +1282,7 @@ getProgramNameJNI(JNIEnv *env,
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jstring
-Java_org_billthefarmer_mididriver_MidiDriver_H(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_H(JNIEnv *env,
                                                jobject obj,
                                                jbyte programNum) {
     return getProgramNameJNI(env, obj, programNum);
@@ -1296,7 +1296,7 @@ changeProgramJNI(jbyte programNum) {
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_I(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_I(JNIEnv *env,
                                                jobject obj,
                                                jbyte programNum) {
     return changeProgramJNI(programNum);
@@ -1323,7 +1323,7 @@ getProgramJNI(void) {
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jint
-Java_org_billthefarmer_mididriver_MidiDriver_J(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_J(JNIEnv *env,
                                                jobject obj) {
     return getProgramJNI();
 }
@@ -1358,7 +1358,7 @@ jboolean shutdownJNI(JNIEnv *env) {
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_K(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_K(JNIEnv *env,
                                                jobject obj) {
     return shutdownJNI(env);
 }
@@ -1372,7 +1372,7 @@ return JNI_FALSE; //XXX
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
 jboolean
-Java_org_billthefarmer_mididriver_MidiDriver_L(JNIEnv *env,
+Java_com_bbrister_mididriver_MidiDriver_L(JNIEnv *env,
                                                jobject obj,
                                                jdouble roomSize) {
     return setReverbRoomSizeJNI(roomSize);

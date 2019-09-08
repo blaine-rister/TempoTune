@@ -1,6 +1,6 @@
 package com.bbrister.metrodrone;
 
-import org.billthefarmer.mididriver.RenderSettings;
+import com.bbrister.mididriver.RenderSettings;
 
 import java.util.ArrayList;
 import java.util.HashSet;

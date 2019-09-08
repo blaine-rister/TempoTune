@@ -1,4 +1,4 @@
-package org.billthefarmer.mididriver;
+package com.bbrister.mididriver;
 
 /* Class to hold the settings passed to the render() function. */
 public class RenderSettings {

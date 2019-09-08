@@ -33,7 +33,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-package org.billthefarmer.mididriver;
+package com.bbrister.mididriver;
 
 import android.content.res.AssetManager;
 

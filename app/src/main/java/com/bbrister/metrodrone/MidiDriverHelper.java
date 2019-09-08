@@ -1,6 +1,6 @@
 package com.bbrister.metrodrone;
 
-import org.billthefarmer.mididriver.MidiDriver;
+import com.bbrister.mididriver.MidiDriver;
 
 public class MidiDriverHelper extends MidiDriver {
 
