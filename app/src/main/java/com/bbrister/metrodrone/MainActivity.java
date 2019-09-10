@@ -1,9 +1,6 @@
 package com.bbrister.metrodrone;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -26,6 +23,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.SpinnerAdapter;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Spinner;
@@ -44,6 +42,7 @@ public class MainActivity extends DroneActivity {
     List<NoteSelector> noteSelectors = new ArrayList<>(); // Stores the pitches to be played
 
     // State
+    String curSoundfontPath;
     boolean uiReady;
     boolean displaySharps;
 
@@ -74,7 +73,6 @@ public class MainActivity extends DroneActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
 
         // If the activity is being re-created, restore the previous UI state
         final boolean restoreState = savedInstanceState != null;
@@ -238,83 +236,65 @@ public class MainActivity extends DroneActivity {
             }
         });
 
-        // Load the families from the CSV file
-        List<NameValPair> families = readCsv(R.raw.families);
-
-        // Initialize the instruments by querying the soundfont
-        List<NameValPair> instruments = new ArrayList<>();
-        for (int programNum = 0; programNum < DroneService.programMax; programNum++) {
-            if (droneBinder.queryProgram(programNum)) {
-                instruments.add(new NameValPair(
-                        droneBinder.getProgramName(programNum),
-                        programNum + 1
-                ));
-            } else if (BuildConfig.DEBUG) {
-                Log.w(logTag, String.format("setupUI: skipping invalid program code %d",
-                        programNum));
-            }
+        // Query the available soundfonts
+        String[] assetPaths;
+        try {
+             assetPaths = getAssets().list("");
+        } catch (IOException e) {
+            String errMsg = e.getMessage();
+            throw BuildConfig.DEBUG ? new DebugException("Error listing assets: " + errMsg) :
+                    new RuntimeException(errMsg);
         }
-
-        // We need to have at least one instrument
-        if (instruments.isEmpty())
-            throw BuildConfig.DEBUG ? new DebugException("No valid instruments found!") :
+        if (assetPaths.length < 1)
+            throw BuildConfig.DEBUG ? new DebugException("Failed to find any assets!") :
                     new DefaultException();
 
-        // Sort the lists by their codes
-        Collections.sort(instruments);
-        Collections.sort(families);
+        // Get the display names of the soundfont files
+        List<NameValPair<String>> soundfonts = new ArrayList<>();
+        for (String path : assetPaths) {
 
-        // Pad the families array with a 'null' bookend which is greater than all the instruments
-        families.add(new NameValPair(null, instruments.get(instruments.size() - 1).i + 1));
+            // Skip all else but .sf2 files
+            String fileExt = ".sf2";
+            if (!path.endsWith(fileExt))
+                continue;
 
-        // Group the instruments into families
-        final List<List<NameValPair>> groupedInstruments = new ArrayList<>();
-        List<String> familyNames = new ArrayList<>();
-        int familyIdx = -1;
-        for (Iterator<NameValPair> it = instruments.iterator(); it.hasNext();) {
-            // Get the current item
-            final NameValPair instrument = it.next();
+            // Strip the file extension
+            String baseName = path.substring(0, path.length() - fileExt.length());
 
-            // Seek forward to the family containing this item
-            boolean newFamily = false;
-            for (NameValPair nextFamily = families.get(familyIdx + 1);
-                 instrument.i >= nextFamily.i;
-                 nextFamily = families.get(familyIdx + 1)) {
-                familyIdx++;
-                newFamily = true;
+            // Format the name for display
+            char[] displayNameChars = baseName.toCharArray();
+            // TODO strip white space?
+            displayNameChars[0] = Character.toTitleCase(displayNameChars[0]);
+            for (int i = 1; i < displayNameChars.length; i++) {
+                switch (displayNameChars[i - 1]) {
+                    case '_':
+                        displayNameChars[i - 1] = ' '; // Convert to spaces
+                    case ' ':
+                        displayNameChars[i] = Character.toTitleCase(displayNameChars[i]);
+                }
             }
 
-            // Check if we need to add space for a new family
-            if (newFamily) {
-                groupedInstruments.add(new ArrayList<NameValPair>());
-                familyNames.add(families.get(familyIdx).s);
-            }
-
-            // Add this item to the current sub-list, which is the most recent one
-            List<NameValPair> familyGroup = groupedInstruments.get(groupedInstruments.size() - 1);
-            familyGroup.add(instrument);
+            // Add to a (displayName, path) pair
+            soundfonts.add(new NameValPair<>(new String(displayNameChars), path));
         }
-
-        // Remove the family padding, to avoid trouble
-        families.remove(families.size() - 1);
 
         // Instrument name spinner
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
-        final ArrayAdapter<NameValPair> instAdapter = new ArrayAdapter<>(this,
+        final ArrayAdapter<NameValPair<Integer>> instAdapter = new ArrayAdapter<>(this,
                 R.layout.instrument_spinner_item);
         instAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
         instrumentSpinner.setAdapter(instAdapter);
 
         // Instrument family spinner
         Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
-        ArrayAdapter<String> familyAdapter = new ArrayAdapter<>(this,
-                R.layout.instrument_spinner_item, familyNames);
+        ArrayAdapter<NameValPair<String>> familyAdapter = new ArrayAdapter<>(this,
+                R.layout.instrument_spinner_item, soundfonts);
         familyAdapter.setDropDownViewResource(R.layout.instrument_spinner_item);
         familySpinner.setAdapter(familyAdapter);
 
         // Set the spinners to reflect the current program
-        // Note: must do this before installing listeners, to avoid triggering them
-        updateInstrumentSpinners(groupedInstruments, familySpinner, instrumentSpinner);
+        updateFamilySelection(familySpinner, familyAdapter);
+        updateInstrumentSelection(instrumentSpinner, instAdapter);
 
         // Install the instrument spinner listener
         instrumentSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -335,8 +315,10 @@ public class MainActivity extends DroneActivity {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
 
-                // Change the instrument choices
-                setInstrumentChoices(instAdapter, groupedInstruments.get(pos));
+                // Load a new soundfont
+                NameValPair<String> selection = (NameValPair<String>) adapterView.getSelectedItem();
+                droneBinder.loadSounds(selection.val);
+                updateInstrumentChoices(instAdapter);
 
                 // Update the instrument. Don't rely on the spinner to do it, this is unreliable
                 instrumentSpinner.setSelection(0, true);
@@ -354,31 +336,78 @@ public class MainActivity extends DroneActivity {
         updateUI();
     }
 
-    // Set the instrument choices to the given list
-    private void setInstrumentChoices(ArrayAdapter<NameValPair> adapter,
-                                      List<NameValPair> instruments) {
+    // Update the list of instrument choices
+    private void updateInstrumentChoices(ArrayAdapter<NameValPair<Integer>> adapter) {
+
+        // List the instruments in the currently loaded soundfont
+        List<NameValPair<Integer>> instruments = new ArrayList<>();
+        for (int programNum = 0; programNum < DroneService.programMax; programNum++) {
+            if (!droneBinder.queryProgram(programNum))
+                continue;
+
+            instruments.add(new NameValPair(
+                    droneBinder.getProgramName(programNum),
+                    programNum
+            ));
+        }
+
+        // We need to have at least one instrument
+        if (instruments.isEmpty())
+            throw BuildConfig.DEBUG ? new DebugException("No valid instruments found!") :
+                    new DefaultException();
+
+        // Set the choices in the adapter
         adapter.clear();
         adapter.addAll(instruments);
     }
 
-    // Set the instrument spinners to the current program
-    private void updateInstrumentSpinners(List<List<NameValPair>> groups, Spinner familySpinner,
-                                       Spinner instrumentSpinner){
+    // Set the family spinner to the given soundfont path
+    private void updateFamilySelection(Spinner familySpinner,
+                                       ArrayAdapter<NameValPair<String>> adapter) {
 
-        // Look for the current program in the instrument groups. If found, set the spinners
-        final int currentProgram = droneBinder.getProgram();
-        for (int familyIdx = 0; familyIdx < groups.size(); familyIdx++) {
-            List<NameValPair> group = groups.get(familyIdx);
-            for (int groupInstIdx = 0; groupInstIdx < group.size(); groupInstIdx++) {
-                if (group.get(groupInstIdx).i - 1 == currentProgram) {
-                    familySpinner.setSelection(familyIdx, true);
-                    setInstrumentChoices((ArrayAdapter) instrumentSpinner.getAdapter(), group);
-                    instrumentSpinner.setSelection(groupInstIdx, true);
-                    return;
-                }
+        // Get the index of the current soundfont
+        int sfIdx = -1;
+        final String currentSoundfontPath = droneBinder.getSoundfont();
+        for (int i = 0; i < adapter.getCount(); i++) {
+
+            NameValPair<String> sfChoice = adapter.getItem(i);
+            if (sfChoice == null)
+                continue;
+
+            // Check for the index of the current soundfont
+            if (sfChoice.val.equalsIgnoreCase(currentSoundfontPath)) {
+                sfIdx = i;
+                break;
             }
         }
 
+        // Check if we found anything
+        if (sfIdx < 0) {
+            throw BuildConfig.DEBUG ? new DebugException("Failed to find soundFont " +
+                    currentSoundfontPath) : new DefaultException();
+        }
+
+        // Update the spinner
+        familySpinner.setSelection(sfIdx);
+    }
+
+    // Set the instrument spinners to the current program number
+    private void updateInstrumentSelection(Spinner instrumentSpinner,
+                                           ArrayAdapter<NameValPair<Integer>> adapter){
+
+        // Update the spinner choices
+        updateInstrumentChoices(adapter);
+
+        // Look for the current program in the instruments. If found, set the spinners
+        final int currentProgram = droneBinder.getProgram();
+        for (int i = 0; i < adapter.getCount(); i++) {
+            if (adapter.getItem(i).val != currentProgram) {
+                instrumentSpinner.setSelection(i, true);
+                return;
+            }
+        }
+
+        // Check if we failed to find the program
         throw BuildConfig.DEBUG ? new DebugException(
                 String.format("Failed to set spinners to the program number %d", currentProgram)) :
                 new DefaultException();
@@ -408,39 +437,6 @@ public class MainActivity extends DroneActivity {
         layout.addView(noteSelector.octaveSpinner, params);
     }
 
-    // Method to handle reading the instrument CSV file. Returns the results in these lists.
-    protected List<NameValPair> readCsv(int resourceId) {
-        try {
-            return readCsvHelper(resourceId);
-        } catch (IOException ie) {
-            ie.printStackTrace();
-            throw BuildConfig.DEBUG ? new DebugException("Failed to read the CSV file!") :
-                    new DefaultException();
-        }
-    }
-
-    // Does the work of readCsv, wrapped to catch exceptions
-    protected List<NameValPair> readCsvHelper(int resourceId) throws IOException  {
-
-        List<NameValPair> list = new ArrayList<>();
-
-        final int itemsPerLine = 2;
-        InputStream inputStream = getResources().openRawResource(resourceId);
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-
-        String line = bufferedReader.readLine(); // CSV header
-        while ((line = bufferedReader.readLine()) != null) {
-            String[] items = line.split(",");
-            if (items.length != itemsPerLine) throw BuildConfig.DEBUG ? new DebugException(
-                    "Invalid CSV line: " + line) : new DefaultException();
-            String name = items[1].trim();
-            int code = Integer.parseInt(items[0].trim());
-            list.add(new NameValPair(name, code));
-        }
-
-        return list;
-    }
-
     // Tell the service to start playing sound
     protected void play() {
         sendDisplayedBpm(bpmTextView); // In case the user never pressed "done" on the keyboard
@@ -461,8 +457,8 @@ public class MainActivity extends DroneActivity {
     }
 
     // Sets the instrument to be played
-    public void setInstrument(NameValPair instrument){
-        droneBinder.changeProgram(instrument.i - 1);
+    public void setInstrument(NameValPair<Integer> instrument){
+        droneBinder.changeProgram(instrument.val);
         updateUI();
     }
 

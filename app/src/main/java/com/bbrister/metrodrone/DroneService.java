@@ -23,6 +23,7 @@ public class DroneService extends Service {
 
     // Sound parameters
     SoundSettings settings;
+    String soundfontName;
 
     // Create midi driver
     protected MidiDriverHelper midi;
@@ -46,8 +47,6 @@ public class DroneService extends Service {
         // Initialize the asset retrieval data
         AssetManager assetManager = getAssets();
         final boolean testMode = true;
-        final String soundfontFilename = testMode ? "fluidr3_gm_with_holes_small.sf2" :
-                "fluidr3_gm_with_holes.sf2";
 
         // Query the device audio parameters, on supported devices
         int sampleRate = -1;
@@ -85,11 +84,22 @@ public class DroneService extends Service {
         }
 
         // Start the midi
-        midi.start(assetManager, soundfontFilename, sampleRate, bufferSize);
+        midi.start(assetManager, sampleRate, bufferSize);
+
+        // Load the default soundfont
+        soundfontName = "basic.sf2";
+        midi.loadSounds(soundfontName);
     }
 
     // Interface for the main activity
     public class DroneBinder extends Binder {
+        void loadSounds(final String filename) {
+            midi.loadSounds(filename);
+            soundfontName = filename;
+        }
+        String getSoundfont() {
+            return soundfontName;
+        }
         void play() { DroneService.this.play(); }
         void pause() {
             DroneService.this.pause();

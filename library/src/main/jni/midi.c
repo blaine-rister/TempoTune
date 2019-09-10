@@ -52,7 +52,6 @@
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
 
-#include "midi.h"
 #include "../../../../../../AppData/Local/Android/Sdk/ndk-bundle/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/jni.h"
 
 #ifdef __cplusplus
@@ -85,7 +84,7 @@ int fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan);
 // Internal functions
 static int get_program(void);
 static size_t ms2Samples(const size_t ms);
-int delete_recording(void);
+static int delete_recording(void);
 
 // Output audio datatype
 typedef int16_t output_t;
@@ -132,6 +131,7 @@ static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 // Fluid data
 static fluid_synth_t *fluidSynth = NULL;
 static fluid_settings_t *fluidSettings = NULL;
+static int soundfontId = -1;
 
 // Recording buffer
 static enum State {
@@ -149,12 +149,22 @@ static float pause_factor; // Ramp slope
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
 
 // Check if the library is initialized. If not, return JNI_FALSE and print a message.
-jboolean isInitialized(const char *functionName) {
-    if (fluidSynth == NULL) {
+#ifdef NDEBUG
+#define isInitialized(...) isInitializedHelper()
+#else
+// Checks for initialization, prints an error message if not initialized.
+static jboolean isInitialized(const char *functionName) {
+    const jboolean result = isInitializedHelper();
+    if (result == JNI_FALSE) {
         LOG_E(LOG_TAG, "Must initialize fluid before calling %s", functionName);
-        return JNI_FALSE;
     }
-    return JNI_TRUE;
+    return result;
+}
+#endif
+
+// Checks for initialization, doesn't print any messages.
+static jboolean isInitializedHelper() {
+    return fluidSynth == NULL ? JNI_FALSE : JNI_TRUE;
 }
 
 // Computes the number of output_t elements needed to store a given number of samples. This depends
@@ -164,7 +174,7 @@ static size_t getNumPcm(const size_t numSamples) {
 }
 
 // Set the player's state to playing
-SLresult play(void) {
+static SLresult play(void) {
 
     SLresult result;
 
@@ -189,7 +199,7 @@ SLresult play(void) {
 }
 
 // Set the player's state to paused. If currently playing, waits for the buffer to empty.
-int idle(void) {
+static int idle(void) {
 
     // Do nothing if we're already idle
     if (state == IDLE)
@@ -216,7 +226,7 @@ int idle(void) {
 }
 
 
-void enqueueBuffer(const output_t *const data) {
+static void enqueueBuffer(const output_t *const data) {
 
     SLresult result;
 
@@ -293,7 +303,7 @@ static size_t ms2Samples(const size_t ms) {
 }
 
 // Deletes the existing recording and cancels playback
-int delete_recording(void) {
+static int delete_recording(void) {
 
     // Transition to idle state, wait until playback has ended
     if (idle())
@@ -593,7 +603,7 @@ static float *renderSamples(const int numSamples, float *buffer) {
 }
 
 // Render the data offline, then start looping it
-int render(const struct sound_settings settings) {
+static int render(const struct sound_settings settings) {
 
     float *noteEndPosition, *decayEndPosition, *floatBuffer = NULL;
     int i;
@@ -792,7 +802,7 @@ int render(const struct sound_settings settings) {
 }
 
 // create the engine and output mix objects
-SLresult createEngine() {
+static SLresult createEngine() {
     SLresult result;
 
     // create engine
@@ -837,7 +847,7 @@ SLresult createEngine() {
 }
 
 // create buffer queue audio player
-SLresult createBufferQueueAudioPlayer(void) {
+static SLresult createBufferQueueAudioPlayer(void) {
 
     SLAndroidConfigurationItf configItf;
     SLVolumeItf volumeItf;
@@ -985,7 +995,7 @@ SLresult createBufferQueueAudioPlayer(void) {
 }
 
 // shut down the native audio system
-void shutdownAudio(void) {
+static void shutdownAudio(void) {
     // destroy buffer queue audio player object, and invalidate all
     // associated interfaces
     if (bqPlayerObject != NULL) {
@@ -1010,7 +1020,7 @@ void shutdownAudio(void) {
 }
 
 // Shut down fluid synth
-void shutdownFluid(void) {
+static void shutdownFluid(void) {
     if (fluidSynth != NULL) {
         delete_fluid_synth(fluidSynth);
         fluidSynth = NULL;
@@ -1020,8 +1030,8 @@ void shutdownFluid(void) {
     }
 }
 
-// Initialize the fluid synthesizer, using the given soundfont.
-int initFluid(const char *soundfontFilename) {
+// Initialize the fluid synthesizer
+static int initFluid(void) {
 
     // Destroy existing instances
     shutdownFluid();
@@ -1045,8 +1055,29 @@ int initFluid(const char *soundfontFilename) {
         return -1;
     }
 
+    return 0;
+}
+
+// Load a soundfont. Unloads whichever is currently loaded.
+static int load_soundfont(const char *soundfontFilename) {
+
+    if (!isInitialized("load_soundfont")) {
+        return -1;
+    }
+
+    // Unload the current soundfont, if any
+    if (soundfontId >= 0) {
+        const int reset_presets = 1;
+        if (fluid_synth_sfunload(fluidSynth, soundfontId, reset_presets)) {
+            LOG_E(LOG_TAG, "Failed to unload soundfont ID %d", soundfontId);
+            return -1;
+        }
+        soundfontId = -1;
+    }
+
     // Load the soundfont
-    if (fluid_synth_sfload(fluidSynth, soundfontFilename, 1) < 0) {
+    soundfontId = fluid_synth_sfload(fluidSynth, soundfontFilename, 1);
+    if (soundfontId < 0) {
         LOG_E(LOG_TAG, "Failed to load soundfont %s", soundfontFilename);
         return -1;
     }
@@ -1055,8 +1086,7 @@ int initFluid(const char *soundfontFilename) {
 }
 
 // init midi driver
-jboolean midi_init(const char *soundfontFilename, const int deviceSampleRate,
-        const int deviceBufferSizeMono) {
+static jboolean midi_init(const int deviceSampleRate, const int deviceBufferSizeMono) {
     int result;
 
     // Save the sound parameters
@@ -1064,7 +1094,7 @@ jboolean midi_init(const char *soundfontFilename, const int deviceSampleRate,
     bufferSizeMono = deviceBufferSizeMono;
 
     // Initialize the synth
-    if ((result = initFluid(soundfontFilename))) {
+    if ((result = initFluid())) {
         shutdownFluid();
 
         LOG_E(LOG_TAG, "Init fluid failed: %d", result);
@@ -1107,11 +1137,11 @@ jboolean midi_init(const char *soundfontFilename, const int deviceSampleRate,
 }
 
 // Main initialization function
+static
 jboolean
 initJNI(JNIEnv *env,
          jobject obj,
          jobject AAssetAdapter,
-         jstring soundfontAAssetName,
          jint deviceSampleRate,
          jint deviceBufferSize) {
 
@@ -1122,14 +1152,8 @@ initJNI(JNIEnv *env,
         return JNI_FALSE;
     }
 
-    // Convert Java arguments
-    const char *const soundfontName = (*env)->GetStringUTFChars(env, soundfontAAssetName, NULL);
-
     // Initialize the synth
-    result = midi_init(soundfontName, deviceSampleRate, deviceBufferSize);
-
-    // Release Java arguments
-    (*env)->ReleaseStringUTFChars(env, soundfontAAssetName, soundfontName);
+    result = midi_init(deviceSampleRate, deviceBufferSize);
 
     return result;
 }
@@ -1140,14 +1164,13 @@ jboolean
 Java_com_bbrister_mididriver_MidiDriver_A(JNIEnv *env,
                                                jobject obj,
                                                jobject AAssetAdapter,
-                                               jstring soundfontAAssetName,
                                                jint deviceSampleRate,
                                                jint deviceBufferSize) {
-    return initJNI(env, obj, AAssetAdapter, soundfontAAssetName, deviceSampleRate,
-            deviceBufferSize);
+    return initJNI(env, obj, AAssetAdapter, deviceSampleRate, deviceBufferSize);
 }
 
 // Get the maximum number of concurrent voices
+static
 jint
 getMaxVoicesJNI(void) {
     return maxVoices;
@@ -1160,6 +1183,7 @@ Java_com_bbrister_mididriver_MidiDriver_B(JNIEnv *env, jobject jobj) {
     return getMaxVoicesJNI();
 }
 
+static
 jboolean
 pauseJNI(void) {
     return (jboolean) (delete_recording() == SL_RESULT_SUCCESS ? JNI_TRUE : JNI_FALSE);
@@ -1175,6 +1199,7 @@ Java_com_bbrister_mididriver_MidiDriver_C(JNIEnv *env,
 }
 
 // Get the minimum allowed key for the currently selected program
+static
 jint
 getProgramKeyMinJNI(void) {
     return getProgramKeyMin();
@@ -1188,6 +1213,7 @@ jint Java_com_bbrister_mididriver_MidiDriver_D(JNIEnv *env,
 }
 
 // Get the maximum allowed key for the currently selected program
+static
 jint
 getProgramKeyMaxJNI(void) {
     return getProgramKeyMax();
@@ -1201,6 +1227,7 @@ jint Java_com_bbrister_mididriver_MidiDriver_E(JNIEnv *env,
 }
 
 // Render and then start looping
+static
 jboolean
 renderJNI(JNIEnv *env,
           jobject obj,
@@ -1255,6 +1282,7 @@ Java_com_bbrister_mididriver_MidiDriver_F(JNIEnv *env,
 
 // Query if a program number is valid in the given soundfont. Returns 1 if valid, 0 if invalid, -1
 // on error.
+static
 jint
 queryProgramJNI(jbyte programNum) {
     int isAvailable;
@@ -1271,6 +1299,7 @@ Java_com_bbrister_mididriver_MidiDriver_G(JNIEnv *env,
 }
 
 // Get the name of a program, given the program number. Returns an empty string on error.
+static
 jstring
 getProgramNameJNI(JNIEnv *env,
                   jobject obj,
@@ -1288,6 +1317,7 @@ Java_com_bbrister_mididriver_MidiDriver_H(JNIEnv *env,
     return getProgramNameJNI(env, obj, programNum);
 }
 // Change the MIDI program
+static
 jboolean
 changeProgramJNI(jbyte programNum) {
     return (changeProgram(programNum) == 0) ? JNI_TRUE : JNI_FALSE;
@@ -1315,6 +1345,7 @@ static int get_program(void) {
 }
 
 // Get the current MIDI program, JNI wrapper
+static
 jint
 getProgramJNI(void) {
     return get_program();
@@ -1344,6 +1375,7 @@ jboolean midi_shutdown() {
 }
 
 // Shut down the library, freeing all resources
+static
 jboolean shutdownJNI(JNIEnv *env) {
     // Delete the synth
     if (midi_shutdown() != JNI_TRUE)
@@ -1364,6 +1396,7 @@ Java_com_bbrister_mididriver_MidiDriver_K(JNIEnv *env,
 }
 
 // Set the reverb room size
+static
 jboolean setReverbRoomSizeJNI(const jdouble roomSize) {
 //    return setReverbRoomSize((double) roomSize); //TODO implement this
 return JNI_FALSE; //XXX
@@ -1376,6 +1409,33 @@ Java_com_bbrister_mididriver_MidiDriver_L(JNIEnv *env,
                                                jobject obj,
                                                jdouble roomSize) {
     return setReverbRoomSizeJNI(roomSize);
+}
+
+// Load a soundfont
+static
+jboolean
+loadSoundfontJNI(JNIEnv *env,
+                 jobject obj,
+                 jstring soundfontAAssetName) {
+    // Convert Java arguments
+    const char *const soundfontName = (*env)->GetStringUTFChars(env, soundfontAAssetName, NULL);
+
+    // Initialize the synth
+    int result = load_soundfont(soundfontName);
+
+    // Release Java arguments
+    (*env)->ReleaseStringUTFChars(env, soundfontAAssetName, soundfontName);
+
+    return result == 0 ? JNI_TRUE : JNI_FALSE;
+}
+
+// Obfuscated JNI wrapper for the former
+JNIEXPORT
+jboolean
+Java_com_bbrister_mididriver_MidiDriver_M(JNIEnv *env,
+                                          jobject obj,
+                                          jstring soundfontAAssetName) {
+    return loadSoundfontJNI(env, obj, soundfontAAssetName);
 }
 
 #ifdef __cplusplus

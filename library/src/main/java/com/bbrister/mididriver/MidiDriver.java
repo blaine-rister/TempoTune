@@ -63,27 +63,25 @@ public class MidiDriver
     }
 
     /**
-     * Start the midi driver, given a soundfont file stored as an Android asset. Must also pass an
-     * AssetManager which is capable of reading the asset.
+     * Start the midi driver, also passing an AssetManager which is capable of reading assets.
      */
-    public void start(AssetManager assetManager, final String soundfontFilename,
-                      final int sampleRate, final int bufferSize)
+    public void start(AssetManager assetManager, final int sampleRate, final int bufferSize)
     {
-        // Test that the asset can be opened
-        try {
-           InputStream stream = assetManager.open(soundfontFilename, AssetManager.ACCESS_RANDOM);
-           stream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(BuildConfig.DEBUG ?
-                    "Failed to open soundfont " + soundfontFilename : "");
-        }
-
         // Initialize the MIDI, if it hasn't been
-        if (!isStarted && !initJNI(assetManager, soundfontFilename, sampleRate, bufferSize)) {
+        if (!isStarted && !initJNI(assetManager, sampleRate, bufferSize)) {
             throw new RuntimeException(BuildConfig.DEBUG ? "Failed to initialize MIDI" : "");
         }
         isStarted = true;
+    }
+
+    /**
+     * Load a soundfont file.
+     */
+    public void loadSounds(final String filename) {
+        if (!loadSoundfontJNI(filename)) {
+            throw new RuntimeException(BuildConfig.DEBUG ? String.format(
+                    "Failed to load soundfont %s", filename) : "");
+        }
     }
 
     /**
@@ -189,12 +187,10 @@ public class MidiDriver
      *
      * @return true for success
      */
-    private boolean initJNI(Object assetManager, String soundfontFilename, int sampleRate,
-                             int bufferSize) {
-        return A(assetManager, soundfontFilename, sampleRate, bufferSize);
+    private boolean initJNI(Object assetManager, int sampleRate, int bufferSize) {
+        return A(assetManager, sampleRate, bufferSize);
     }
-    private native boolean A(Object assetManager, String soundfontFilename, int sampleRate,
-                                int bufferSize);
+    private native boolean A(Object assetManager, int sampleRate, int bufferSize);
 
 
     /**
@@ -312,4 +308,20 @@ public class MidiDriver
         isStarted = false;
         System.loadLibrary("midi");
     }
+
+    /**
+     * Set the reverb room size.
+     */
+    private boolean setReverbRoomsizeJNI(double roomSize) {
+        return L(roomSize);
+    }
+    private native boolean L(double roomSize);
+
+    /**
+     * Load a new soundfont.
+     */
+    private boolean loadSoundfontJNI(String filename) {
+        return M(filename);
+    }
+    private native boolean M(String filename);
 }

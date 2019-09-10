@@ -92,7 +92,8 @@ public class NoteSelector {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos,
                                        long id) {
-                droneBinder.setPitch(handle, ((NameValPair) adapterView.getItemAtPosition(pos)).i);
+                droneBinder.setPitch(handle,
+                        ((NameValPair<Integer>) adapterView.getItemAtPosition(pos)).val);
                 updateOctave();
             }
 

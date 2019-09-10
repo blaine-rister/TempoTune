@@ -1,24 +1,18 @@
 package com.bbrister.metrodrone;
 
 // Basic class for storing <instrument name, instrument code> pairs
-public class NameValPair implements Comparable<NameValPair> {
-    public String s;
-    public int i;
+public class NameValPair<T> {
+    public String name;
+    public T val;
 
-    public NameValPair(String s, int i) {
-        this.s = s;
-        this.i = i;
-    }
-
-    // Sorts by the integer component
-    @Override
-    public int compareTo(NameValPair pair) {
-        return this.i - pair.i;
+    public NameValPair(String name, T val) {
+        this.name = name;
+        this.val = val;
     }
 
     // For printing
     @Override
     public String toString() {
-        return s;
+        return name;
     }
 }
