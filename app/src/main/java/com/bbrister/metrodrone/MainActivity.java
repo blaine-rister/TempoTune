@@ -4,12 +4,10 @@ import java.io.IOException;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 
 import android.os.Bundle;
 
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,7 +21,6 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.SpinnerAdapter;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Spinner;
@@ -236,46 +233,53 @@ public class MainActivity extends DroneActivity {
             }
         });
 
-        // Query the available soundfonts
-        String[] assetPaths;
-        try {
-             assetPaths = getAssets().list("");
-        } catch (IOException e) {
-            String errMsg = e.getMessage();
-            throw BuildConfig.DEBUG ? new DebugException("Error listing assets: " + errMsg) :
-                    new RuntimeException(errMsg);
-        }
-        if (assetPaths.length < 1)
-            throw BuildConfig.DEBUG ? new DebugException("Failed to find any assets!") :
-                    new DefaultException();
+        // Read the list of all possible soundfonts from the CSV file
+        CsvReader csvReader = new CsvReader(getResources());
+        List<String[]> csvLines = csvReader.read(R.raw.sounds_list);
 
-        // Get the display names of the soundfont files
-        List<NameValPair<String>> soundfonts = new ArrayList<>();
-        for (String path : assetPaths) {
-
-            // Skip all else but .sf2 files
-            String fileExt = ".sf2";
-            if (!path.endsWith(fileExt))
-                continue;
-
-            // Strip the file extension
-            String baseName = path.substring(0, path.length() - fileExt.length());
-
-            // Format the name for display
-            char[] displayNameChars = baseName.toCharArray();
-            // TODO strip white space?
-            displayNameChars[0] = Character.toTitleCase(displayNameChars[0]);
-            for (int i = 1; i < displayNameChars.length; i++) {
-                switch (displayNameChars[i - 1]) {
-                    case '_':
-                        displayNameChars[i - 1] = ' '; // Convert to spaces
-                    case ' ':
-                        displayNameChars[i] = Character.toTitleCase(displayNameChars[i]);
+        // Verify the format of the CSV file
+        final int pathIdx = 0;
+        final int moduleIdx = 1;
+        final int isFreeIdx = 2;
+        String[] csvHeader = csvLines.get(0);
+        if (BuildConfig.DEBUG) {
+            String[] expectedHeader = {"path", "module", "is_free"};
+            for (int i = 0; i < expectedHeader.length; i++) {
+                final String expectedTag = expectedHeader[i];
+                final String actualTag = csvHeader[i];
+                if (!actualTag.equalsIgnoreCase(expectedTag)) {
+                    throw BuildConfig.DEBUG ? new DebugException(String.format(
+                            "Unexpected CSV tag %s (expected %s)", actualTag, expectedTag)) :
+                            new DefaultException();
                 }
             }
+        }
 
-            // Add to a (displayName, path) pair
-            soundfonts.add(new NameValPair<>(new String(displayNameChars), path));
+        // Verify that we have at least one soundfont
+        if (csvLines.size() < 2) {
+            throw BuildConfig.DEBUG ? new DebugException("Need at least one soundfont!") :
+                    new DefaultException();
+        }
+
+        // Parse the CSV to build the list of soundfonts
+        List<Soundfont> soundfonts = new ArrayList<>();
+        for (int i = 1; i < csvLines.size(); i++) {
+            String[] csvLine = csvLines.get(i);
+
+            // Parse the "IS_FREE" entry
+            boolean isFree;
+            final String isFreeStr = csvLine[isFreeIdx];
+            if (isFreeStr.equalsIgnoreCase("yes")) {
+                isFree = true;
+            } else if (isFreeStr.equalsIgnoreCase("no")) {
+                isFree = false;
+            } else {
+                throw BuildConfig.DEBUG ? new DebugException(String.format("Unrecognized IS_FREE " +
+                        "entry: %s (line %d)", isFreeStr, i)) : new DefaultException();
+            }
+
+            // Create the soundfont object
+            soundfonts.add(new Soundfont(csvLine[pathIdx], csvLine[moduleIdx], isFree));
         }
 
         // Instrument name spinner
@@ -286,8 +290,8 @@ public class MainActivity extends DroneActivity {
         instrumentSpinner.setAdapter(instAdapter);
 
         // Instrument family spinner
-        Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
-        ArrayAdapter<NameValPair<String>> familyAdapter = new ArrayAdapter<>(this,
+        final Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
+        ArrayAdapter<Soundfont> familyAdapter = new ArrayAdapter<>(this,
                 R.layout.instrument_spinner_item, soundfonts);
         familyAdapter.setDropDownViewResource(R.layout.instrument_spinner_item);
         familySpinner.setAdapter(familyAdapter);
@@ -301,7 +305,7 @@ public class MainActivity extends DroneActivity {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
                 // Change the instrument program
-                setInstrument((NameValPair) adapterView.getItemAtPosition(pos));
+                setInstrument((NameValPair<Integer>) adapterView.getItemAtPosition(pos));
             }
 
             @Override
@@ -315,9 +319,36 @@ public class MainActivity extends DroneActivity {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
 
+                // Get the selected soundfont
+                Soundfont selection = (Soundfont) adapterView.getSelectedItem();
+
+                // Check if this is installed
+                Context context = adapterView.getContext();
+                DynamicModule module = new DynamicModule(context,
+                        selection.moduleName, selection.displayName, selection.isFree);
+                switch (module.installStatus) {
+                    case INSTALLED:
+                        break;
+                    case PENDING:
+                        // Print a message and change the selection
+                        DynamicModule.updateToast(context,
+                                "This module is currently awaiting installation.");
+                        familySpinner.setSelection(0); // Assumed to be safe
+                        return;
+                    case FAILED:
+                    case NOT_REQUESTED:
+                        DynamicModule.updateToast(context,
+                                "Attempting installation...");
+                        try {
+                            module.install(context);
+                        } catch (ApiLevelException e) {
+                            // TODO make an alert message--this is important
+                            DynamicModule.updateToast(context, e.getMessage());
+                        }
+                }
+
                 // Load a new soundfont
-                NameValPair<String> selection = (NameValPair<String>) adapterView.getSelectedItem();
-                droneBinder.loadSounds(selection.val);
+                droneBinder.loadSounds(selection.path);
                 updateInstrumentChoices(instAdapter);
 
                 // Update the instrument. Don't rely on the spinner to do it, this is unreliable
@@ -363,19 +394,19 @@ public class MainActivity extends DroneActivity {
 
     // Set the family spinner to the given soundfont path
     private void updateFamilySelection(Spinner familySpinner,
-                                       ArrayAdapter<NameValPair<String>> adapter) {
+                                       ArrayAdapter<Soundfont> adapter) {
 
         // Get the index of the current soundfont
         int sfIdx = -1;
         final String currentSoundfontPath = droneBinder.getSoundfont();
         for (int i = 0; i < adapter.getCount(); i++) {
 
-            NameValPair<String> sfChoice = adapter.getItem(i);
+            Soundfont sfChoice = adapter.getItem(i);
             if (sfChoice == null)
                 continue;
 
             // Check for the index of the current soundfont
-            if (sfChoice.val.equalsIgnoreCase(currentSoundfontPath)) {
+            if (sfChoice.path.equalsIgnoreCase(currentSoundfontPath)) {
                 sfIdx = i;
                 break;
             }

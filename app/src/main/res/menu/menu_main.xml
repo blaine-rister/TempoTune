@@ -4,6 +4,12 @@
     tools:context="com.example.metrodrone.MainActivity">
 
   <item
+    android:id="@+id/action_downloads"
+    android:orderInCategory="98"
+    android:title="@string/action_downloads"
+    app:showAsAction="never" />
+
+  <item
     android:id="@+id/action_settings"
     android:orderInCategory="99"
     android:title="@string/action_settings"

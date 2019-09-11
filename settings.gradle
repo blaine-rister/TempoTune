@@ -1,1 +1,1 @@
-include ':app', ':library'
+include ':app', ':library', ':coresounds', ':instantsounds', ':stringsounds', ':brasssounds', ':exoticsounds', ':synthsounds', ':guitarsounds', ':keyboardsounds', ':metronomesounds', ':basssounds', ':organsounds', ':percussionsounds', ':woodwindsounds'

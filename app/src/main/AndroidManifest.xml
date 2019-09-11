@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:dist="http://schemas.android.com/apk/distribution"
     package="com.bbrister.metrodrone">
 
     <application
@@ -9,16 +10,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-5040365596623384~5072587493"/>
-        <service
-            android:name="com.bbrister.metrodrone.DroneService"
-            android:enabled="true"
-            android:exported="true"></service>
-
         <activity
-            android:name="com.bbrister.metrodrone.MainActivity"
+            android:name=".MainActivity"
             android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
@@ -29,17 +22,23 @@
         </activity>
 
         <activity
-            android:name="com.bbrister.metrodrone.SettingsActivity"
-            android:theme="@style/AppTheme.NoActionBar">
-        </activity>
+            android:name=".SettingsActivity"
+            android:theme="@style/AppTheme.NoActionBar"></activity>
 
         <activity
-            android:name="com.bbrister.metrodrone.CreditsActivity"
-            android:theme="@style/AppTheme.NoActionBar">
-        </activity>
-
+            android:name=".CreditsActivity"
+            android:theme="@style/AppTheme.NoActionBar"></activity>
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-5040365596623384~5072587493" />
+        <service
+            android:name=".DroneService"
+            android:enabled="true"
+            android:exported="true" />
     </application>
-    
-    <uses-permission android:name="com.android.vending.BILLING"/>
+
+    <uses-permission android:name="com.android.vending.BILLING" />
+
+    <dist:module dist:instant="true" />
 
 </manifest>

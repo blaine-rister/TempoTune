@@ -31,6 +31,7 @@ public class DroneService extends Service {
     // Create binder to return on binding
     final IBinder droneBinder = new DroneBinder();
 
+    @Override
     public void onCreate() {
         super.onCreate();
 
@@ -91,7 +92,7 @@ public class DroneService extends Service {
         midi.loadSounds(soundfontName);
     }
 
-    // Interface for the main activity
+    // Interface for drone activities
     public class DroneBinder extends Binder {
         void loadSounds(final String filename) {
             midi.loadSounds(filename);
