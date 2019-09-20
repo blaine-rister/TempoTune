@@ -35,9 +35,15 @@
             android:name=".DroneService"
             android:enabled="true"
             android:exported="true" />
+
+        <service
+            android:name=".PlaybackService"
+            android:enabled="true"
+            android:exported="true" />
     </application>
 
     <uses-permission android:name="com.android.vending.BILLING" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <dist:module dist:instant="true" />
 

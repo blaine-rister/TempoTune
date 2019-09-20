@@ -1,14 +1,10 @@
 package com.bbrister.metrodrone;
 
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.content.res.AssetManager;
-import android.media.AudioManager;
-import android.os.Build;
+import android.media.session.MediaSession;
 import android.os.IBinder;
 import android.os.Binder;
-import android.util.Log;
 
 import java.util.List;
 
@@ -20,6 +16,9 @@ public class DroneService extends Service {
 
     // State
     boolean isPlaying;
+
+    // Controllers
+    MediaSession mediaSession;
 
     // Sound parameters
     SoundSettings settings;
@@ -45,51 +44,19 @@ public class DroneService extends Service {
         // Start with a single note
         settings.addNote();
 
-        // Initialize the asset retrieval data
-        AssetManager assetManager = getAssets();
-        final boolean testMode = true;
-
-        // Query the device audio parameters, on supported devices
-        int sampleRate = -1;
-        int bufferSize = -1;
-        final int audioParamsSdkVersion = 17;
-        if (android.os.Build.VERSION.SDK_INT >= audioParamsSdkVersion) {
-
-            // Query the device sample rate
-            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-            sampleRate = Integer.parseInt(am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE));
-
-            // Query the device buffer size
-            bufferSize = Integer.parseInt(am.getProperty(
-                    AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER));
-        } else if (BuildConfig.DEBUG) {
-            Log.w(MainActivity.logTag, String.format("Cannot query device audio parameters since " +
-                    "current SDK version %d < %d", Build.VERSION.SDK_INT,
-                    audioParamsSdkVersion));
-        }
-
-        // Substitute default parameters if querying failed
-        if (sampleRate < 1) {
-            sampleRate = 44100;
-            if (BuildConfig.DEBUG) {
-                Log.w(MainActivity.logTag, String.format("Failed to query the device sample " +
-                                "rate. Defaulting to %d", sampleRate));
-            }
-        }
-        if (bufferSize < 1) {
-            bufferSize = 256;
-            if (BuildConfig.DEBUG) {
-                Log.w(MainActivity.logTag, String.format("Failed to query the device buffer " +
-                        "size. Defaulting to %d", bufferSize));
-            }
-        }
-
         // Start the midi
-        midi.start(assetManager, sampleRate, bufferSize);
+        midi.start(this.getApplicationContext());
 
         // Load the default soundfont
         soundfontName = "basic.sf2";
         midi.loadSounds(soundfontName);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        stop();
     }
 
     // Interface for drone activities
@@ -160,13 +127,13 @@ public class DroneService extends Service {
         midi.stop();
 
         // Shut down the service
-        DroneService.this.stopSelf();
+        stopSelf();
     }
 
     // Start playing the sound, according to the current settings
     public void play() {
 
-        // Reset the state, cancelling old notes
+        // Reset the state, cancelling existing playback
         pause();
 
         // Do nothing in the absence of notes to play
@@ -174,15 +141,22 @@ public class DroneService extends Service {
         if (numNotes < 1)
             return;
 
-        // Play the sound
-        midi.renderNotes(settings.getRenderSettings());
+        // Render the sound
+        float[] sound = midi.renderNotes(settings.getRenderSettings());
+
+        // Create the launching intent, with extra data
+        Intent intent = PlaybackService.getStartIntent(this);
+        intent.putExtra(PlaybackService.soundTag, sound);
+
+        // Launch a new playback service
+        startService(intent);
         isPlaying = true;
     }
 
     // Pause playing
     public void pause() {
-        // Stop midi
-        midi.pause();
+        // Stop playing
+        stopService(new Intent(this, PlaybackService.class));
         isPlaying = false;
     }
 

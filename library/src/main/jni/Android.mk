@@ -50,9 +50,19 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := midi
 LOCAL_SRC_FILES := midi.c
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/host_src ${LOCAL_PATH}/fluidlite_squash
+LOCAL_C_INCLUDES := ${LOCAL_PATH}/fluidlite_squash
 LOCAL_STATIC_LIBRARIES := fluidlite
-LOCAL_LDLIBS := -lOpenSLES -llog -landroid -lm
+LOCAL_LDLIBS := -llog -landroid -lm
+
+LOCAL_CFLAGS += -O3 -DNDEBUG -fvisibility=hidden
+
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := playback
+LOCAL_SRC_FILES := playback.c
+LOCAL_LDLIBS := -lOpenSLES -llog
 
 LOCAL_CFLAGS += -O3 -DNDEBUG -fvisibility=hidden
 

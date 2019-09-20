@@ -35,10 +35,8 @@
 
 package com.bbrister.mididriver;
 
+import android.content.Context;
 import android.content.res.AssetManager;
-
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * MidiDriver class
@@ -65,10 +63,14 @@ public class MidiDriver
     /**
      * Start the midi driver, also passing an AssetManager which is capable of reading assets.
      */
-    public void start(AssetManager assetManager, final int sampleRate, final int bufferSize)
+    public void start(Context context)
     {
+        // Get the assets
+        AssetManager assetManager = context.getAssets();
+        final int sampleRate = PlaybackDriver.getSampleRate(context);
+
         // Initialize the MIDI, if it hasn't been
-        if (!isStarted && !initJNI(assetManager, sampleRate, bufferSize)) {
+        if (!isStarted && !initJNI(assetManager, sampleRate)) {
             throw new RuntimeException(BuildConfig.DEBUG ? "Failed to initialize MIDI" : "");
         }
         isStarted = true;
@@ -160,17 +162,12 @@ public class MidiDriver
     /**
      * Render and check for errors.
      */
-    public void renderNotes(RenderSettings settings) {
-        if (!renderJNI(settings))
+    public float[] renderNotes(RenderSettings settings) {
+        final float[] sound = renderJNI(settings);
+        if (sound == null)
             throw new RuntimeException(BuildConfig.DEBUG ? "Failed to render pitches" : "");
-    }
 
-    /*
-     * Pause playback and check for errors.
-     */
-    public void pause() {
-        if (!pauseJNI())
-            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to pause playback" : "");
+        return sound;
     }
 
     /*
@@ -187,10 +184,10 @@ public class MidiDriver
      *
      * @return true for success
      */
-    private boolean initJNI(Object assetManager, int sampleRate, int bufferSize) {
-        return A(assetManager, sampleRate, bufferSize);
+    private boolean initJNI(Object assetManager, int sampleRate) {
+        return A(assetManager, sampleRate);
     }
-    private native boolean A(Object assetManager, int sampleRate, int bufferSize);
+    private native boolean A(Object assetManager, int sampleRate);
 
 
     /**
@@ -201,15 +198,6 @@ public class MidiDriver
         return B();
     }
     private native int B();
-
-    /**
-     * Pause the program.
-     * @return true on success.
-     */
-    private boolean pauseJNI() {
-        return C();
-    }
-    private native boolean C();
 
     /**
      * Get the minimum key for the current program.
@@ -235,7 +223,7 @@ public class MidiDriver
      * @param settings holds all the information to play the notes
      *
      */
-    private boolean renderJNI(final RenderSettings settings) {
+    private float[] renderJNI(final RenderSettings settings) {
         return F(
                 settings.pitchArray,
                 settings.noteDurationMs,
@@ -244,7 +232,7 @@ public class MidiDriver
                 settings.volumeBoost
         );
     }
-    private native boolean F(
+    private native float[] F(
             byte[] pitches,
             long noteDurationMs,
             long recordingDurationMs,
@@ -302,13 +290,6 @@ public class MidiDriver
     }
     private native boolean K();
 
-    // Load midi library
-    static
-    {
-        isStarted = false;
-        System.loadLibrary("midi");
-    }
-
     /**
      * Set the reverb room size.
      */
@@ -324,4 +305,11 @@ public class MidiDriver
         return M(filename);
     }
     private native boolean M(String filename);
+
+    // Load midi library
+    static
+    {
+        isStarted = false;
+        System.loadLibrary("midi");
+    }
 }

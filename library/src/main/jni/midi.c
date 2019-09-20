@@ -39,39 +39,18 @@
 #include <pthread.h>
 #include <malloc.h>
 #include <math.h>
-#include <semaphore.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <android/log.h>
-
 #include <fluidlite.h>
 
-// for native audio
-#include <SLES/OpenSLES.h>
-#include <SLES/OpenSLES_Android.h>
+// Private headers
+#include "global.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define LOG_TAG "MidiDriver"
-
-// Logging macros
-#ifdef NDEBUG
-#define LOG(...) ;
-#else
-#define LOG __android_log_print
-#endif
-#define LOG_D(tag, ...) LOG(ANDROID_LOG_DEBUG, tag, __VA_ARGS__)
-#define LOG_E(tag, ...) LOG(ANDROID_LOG_ERROR, tag, __VA_ARGS__)
-#define LOG_I(tag, ...) LOG(ANDROID_LOG_INFO, tag, __VA_ARGS__)
-#define LOG_W(tag, ...) LOG(ANDROID_LOG_WARN, tag, __VA_ARGS__)
-
-// Math macros
-#define MAX(x, y) ((x) > (y) ? (x) : (y))
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 // Internal fluid functions which are not in the public header
 fluid_preset_t* fluid_synth_find_preset(fluid_synth_t* synth,
@@ -82,10 +61,6 @@ int fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan);
 // Internal functions
 static int get_program(void);
 static size_t ms2Samples(const size_t ms);
-static int delete_recording(void);
-
-// Output audio datatype
-typedef int16_t output_t;
 
 // Struct to hold sound synthesis parameters
 struct sound_settings {
@@ -104,47 +79,19 @@ const uint8_t velocityMax = 127; // Maximum allowed velocity in MIDI
 static const int midiChannel = 0;
 static const int sfBank = 0;
 static const int maxVoices = 8;
-static const int numChannels = 2; // Stereo
-static const int pauseDurationMs = 10;
 
 // Sound parameters
 int sampleRate;
-int bufferSizeMono;
-
-// semaphores
-static sem_t is_idle;
-
-// engine interfaces
-static SLObjectItf engineObject = NULL;
-static SLEngineItf engineEngine;
-
-// output mix interfaces
-static SLObjectItf outputMixObject = NULL;
-
-// buffer queue player interfaces
-static SLObjectItf bqPlayerObject = NULL;
-static SLPlayItf bqPlayerPlay;
-static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 
 // Fluid data
 static fluid_synth_t *fluidSynth = NULL;
 static fluid_settings_t *fluidSettings = NULL;
 static int soundfontId = -1;
 
-// Recording buffer
-static enum State {
-    PLAYING, STOPPING, IDLE
-} state = IDLE;
-static output_t *record_buffer = NULL; // Storage for the recording
-static output_t *recording_position = NULL; // Current recording position
-static output_t *playback_position = NULL; // Current playback position
-
-// State for pausing the sound
-static size_t pause_count; // Counts down to zero
-static float pause_factor; // Ramp slope
-
-// Function declarations
-void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
+// Checks for initialization, doesn't print any messages.
+static jboolean isInitializedHelper() {
+    return fluidSynth == NULL ? JNI_FALSE : JNI_TRUE;
+}
 
 // Check if the library is initialized. If not, return JNI_FALSE and print a message.
 #ifdef NDEBUG
@@ -160,160 +107,10 @@ static jboolean isInitialized(const char *functionName) {
 }
 #endif
 
-// Checks for initialization, doesn't print any messages.
-static jboolean isInitializedHelper() {
-    return fluidSynth == NULL ? JNI_FALSE : JNI_TRUE;
-}
-
-// Computes the number of output_t elements needed to store a given number of samples. This depends
-// on how many channels we have.
-static size_t getNumPcm(const size_t numSamples) {
-    return numSamples * numChannels;
-}
-
-// Set the player's state to playing
-static SLresult play(void) {
-
-    SLresult result;
-
-    // Set the playback pointer
-    if (record_buffer == NULL) {
-        LOG_E(LOG_TAG, "playback failed: no recording stored");
-        return SL_RESULT_OPERATION_ABORTED;
-    }
-    playback_position = record_buffer;
-
-    // Set the state to playing
-    result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PLAYING);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    state = PLAYING;
-
-    // call the callback to start playing
-    bqPlayerCallback(bqPlayerBufferQueue, NULL);
-
-    return SL_RESULT_SUCCESS;
-}
-
-// Set the player's state to paused. If currently playing, waits for the buffer to empty.
-static int idle(void) {
-
-    // Do nothing if we're already idle
-    if (state == IDLE)
-        return 0;
-
-    // Initialize the pausing parameters
-    pause_count = ms2Samples(pauseDurationMs);
-    pause_factor = 1.F / (float) pause_count;
-
-    // Initiate the pausing phase
-    state = STOPPING;
-
-    // Block until we have confirmation that there are no more callbacks
-    sem_wait(&is_idle);
-    state = IDLE;
-
-    // Tell OpenSL ES to stop playing sound. Note: this is non-blocking
-    if ((*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PAUSED) != SL_RESULT_SUCCESS)
-        return -1;
-
-    // Delete the existing sound. It's corrupted by the pausing phase. Note: this will call idle()
-    // itself so make sure state = IDLE before calling this.
-    return delete_recording();
-}
-
-
-static void enqueueBuffer(const output_t *const data) {
-
-    SLresult result;
-
-    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, data,
-            getNumPcm(bufferSizeMono) * sizeof(output_t));
-    switch (result) {
-        case SL_RESULT_SUCCESS:
-        case SL_RESULT_OPERATION_ABORTED:
-            return;
-        default:
-            /* Could get SL_RESULT_BUFFER_INSUFFICIENT (code 7) if the buffer is full. This
-            * shouldn't happen because we are supposed to wait for the buffer to clear before
-            * starting a new render. */
-            LOG_E(LOG_TAG, "Error code from OpenSL ES enqueue buffer: %d", result);
-            assert(0);
-    }
-    // the most likely other result is SL_RESULT_BUFFER_INSUFFICIENT,
-    // which for this code example would indicate a programming error
-    assert(SL_RESULT_SUCCESS == result);
-
-}
-
-// this callback handler is called every time a buffer finishes
-// playing
-void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
-
-    int i, j;
-
-    const size_t bufferSizePcm = getNumPcm(bufferSizeMono);
-
-    assert(bq == bqPlayerBufferQueue);
-    assert(NULL == context);
-
-    // Update the playback position circularly
-    playback_position += bufferSizePcm;
-    if (playback_position >= recording_position) {
-        playback_position = record_buffer + (playback_position - recording_position);
-    }
-
-    switch (state) {
-        case IDLE:
-            // This shouldn't happen
-            assert(0);
-        case STOPPING:
-            // Quit playing once the ramp is done
-            if (pause_count <= 0) {
-                sem_post(&is_idle);
-                return;
-            }
-
-            // Apply a linear ramp to the audio signal. Assumes interleaved channels
-            for (i = 0; i < bufferSizeMono; i++) {
-                const float rampFactor = pause_count > 0 ? (float) pause_count-- * pause_factor : 0;
-                for (j = 0; j < numChannels; j++) {
-                    const int sampleIdx = getNumPcm(i) + j;
-                    const float sample = playback_position[sampleIdx];
-                    const float ramped = sample * rampFactor;
-                    playback_position[sampleIdx] = (output_t) ramped;
-                }
-            }
-
-            // Falls through to playback
-        case PLAYING:
-            // Enqueue playback of a buffer's portion of the recording
-            enqueueBuffer(playback_position);
-            return;
-    }
-}
-
 // Computes the number of samples needed. Does not take into account the number of channels
 static size_t ms2Samples(const size_t ms) {
     const size_t msPerSecond = 1000;
     return (ms * (size_t) sampleRate) / msPerSecond;
-}
-
-// Deletes the existing recording and cancels playback
-static int delete_recording(void) {
-
-    // Transition to idle state, wait until playback has ended
-    if (idle())
-        return -1;
-
-    // Sweep up unused memory
-    if (record_buffer != NULL) {
-        free(record_buffer);
-        record_buffer = NULL;
-    }
-
-    return 0;
 }
 
 // Check if the given program number is available in the soundfont.
@@ -405,49 +202,30 @@ static int endNote(const uint8_t pitch) {
     return fluid_synth_noteoff(fluidSynth, midiChannel, pitch) == 0 ? 0 : 1;
 }
 
-// Return a uniformly distributed R.V. in the range [0,1]
-static float uniform(void) {
-    return ((float) rand()) / (float) RAND_MAX;
-}
-
-// Return triangularly-distributed dither in the range [-1, 1].
-static float dither(void) {
-    return (uniform() + uniform()) / 2;
-}
-
-// Normalize the audio so the maximum value is given by maxLevel, on a scale of 0-1. This is the
-// final processing stage so it also converts the audio to fixed-point at the end.
-static int normalize(const float *const inBuffer, output_t *const outBuffer,
-                            const size_t bufferLength, const double maxLevel) {
+// Normalize the audio so the maximum value is given by maxLevel, on a scale of 0-1.
+static int normalize(float *const buffer, const size_t bufferLength, const double maxLevel) {
 
     float maxBefore;
     size_t i;
 
-    if (maxLevel < 0. || maxLevel > 1.) {
+    if (maxLevel < 0. || maxLevel > maxFloatLevel) {
         LOG_E(LOG_TAG, "normalize: invalid maxLevel: %f", maxLevel);
         return -1;
     }
 
-    assert(sizeof(short) == sizeof(output_t));
-    const double maxPcm = (double) SHRT_MAX * maxLevel;
-
     // Get the maximum value of the un-normalized stream
     maxBefore = 0;
     for (i = 0; i < bufferLength; i++) {
-        const float sampleLevel = fabsf(inBuffer[i]);
+        const float sampleLevel = fabsf(buffer[i]);
         maxBefore = sampleLevel > maxBefore ? sampleLevel : maxBefore;
     }
 
     // Compute the linear gain
-    const float gain = (float) (maxPcm / (double) maxBefore);
+    const float gain = (float) (maxLevel / (double) maxBefore);
 
-    // Apply the gain and convert to fixed-point
+    // Apply the gain
     for (i = 0; i < bufferLength; i++) {
-        // Apply gain and dither
-        const float dithered = inBuffer[i] * gain + dither();
-
-        // Convert with truncation to avoid overflow
-        outBuffer[i] = (output_t) MIN(MAX(dithered, (float) SHRT_MIN), (float) SHRT_MAX);
+        buffer[i] *= gain;
     }
 
     return 0;
@@ -600,10 +378,16 @@ static float *renderSamples(const int numSamples, float *buffer) {
     return buffer + getNumPcm(numSamples);
 }
 
-// Render the data offline, then start looping it
-static int render(const struct sound_settings settings) {
+// Return the size of the recording in frames that would be rendered from the settings.
+static size_t getRenderFrames(const struct sound_settings settings) {
+    return ms2Samples(settings.recordingDurationMs);
+}
 
-    float *noteEndPosition, *decayEndPosition, *floatBuffer = NULL;
+// Render the data offline, then start looping it. buffer must be large enough to hold
+// the number of frames returned by get_render_frames().
+static int render(const struct sound_settings settings, float *const buffer) {
+
+    float *noteEndPosition, *decayEndPosition;
     int i;
 
     // Shortcuts
@@ -621,31 +405,31 @@ static int render(const struct sound_settings settings) {
     // Verify parameters
     if (settings.recordingDurationMs < settings.noteDurationMs) {
         LOG_E(LOG_TAG, "Recording duration less than note duration.");
-        goto render_quit;
+        return -1;
     }
     if (settings.numPitches < 1) {
         LOG_E(LOG_TAG, "Invalid number of pitches: %d", settings.numPitches);
-        goto render_quit;
+        return -1;
     }
     if (settings.numPitches > maxVoices) {
         LOG_E(LOG_TAG, "Too many pitches: %d (max: %d)", settings.numPitches, maxVoices);
-        goto render_quit;
+        return -1;
     }
     if (settings.velocity > velocityMax) {
         LOG_E(LOG_TAG, "Velocity %d exceeds maximum value of %d", settings.velocity, velocityMax);
-        goto render_quit;
+        return -1;
     }
 
     // Verify initialization
     if (!isInitialized("render"))
-        goto render_quit;
+        return -1;
 
     // Get the range of allowable pitches
     const int keyMin = getProgramKeyMin();
     const int keyMax = getProgramKeyMax();
     if (keyMin < 0 || keyMax < 0 || keyMin > keyMax) {
         LOG_E(LOG_TAG, "Failed to retrieve the pitch range for the current program.");
-        goto render_quit;
+        return -1;
     }
 
     // Verify the provided pitches work for the current program
@@ -655,28 +439,21 @@ static int render(const struct sound_settings settings) {
         if (pitch < keyMin || pitch > keyMax) {
             LOG_E(LOG_TAG, "Key %u is outside the range [%d, %d] of the current program.", pitch,
                   keyMin, keyMax);
-            goto render_quit;
+            return -1;
         }
     }
 
     // Compute the recording lengths
     const int noteSamples = ms2Samples(noteDurationMs);
-    const int recordingSamples = ms2Samples(recordingDurationMs);
+    const int recordingSamples = getRenderFrames(settings);
     const int decaySamples = recordingSamples - noteSamples;
 
     //------------------- RENDERING -------------------//
 
-    // Allocate a buffer for the internal floating-point representation
-    const size_t recordingLength = getNumPcm(recordingSamples);
-    if ((floatBuffer = malloc(recordingLength * sizeof(float))) == NULL) {
-        LOG_E(LOG_TAG, "Insufficient memory for float buffer.");
-        goto render_quit;
-    }
-
     // Mute all previous sounds
     if (muteSounds()) {
         LOG_E(LOG_TAG, "Failed to mute previous sounds.");
-        goto render_quit;
+        return -1;
     }
 
     // Send the note start messages
@@ -684,14 +461,14 @@ static int render(const struct sound_settings settings) {
         const uint8_t pitch = (uint8_t) pitches[i];
         if (startNote(pitch, velocity)) {
             LOG_E(LOG_TAG, "Failed to start note (key %d velocity %d)", pitch, velocity);
-            goto render_quit;
+            return -1;
         }
     }
 
     // Render the note attacks and sustains
-    if ((noteEndPosition = renderSamples(noteSamples, floatBuffer)) == NULL) {
+    if ((noteEndPosition = renderSamples(noteSamples, buffer)) == NULL) {
         LOG_E(LOG_TAG, "Failed primary phase render");
-        goto render_quit;
+        return -1;
     }
 
     // Send the note end messages
@@ -705,14 +482,14 @@ static int render(const struct sound_settings settings) {
                 break;
             default:
                 LOG_E(LOG_TAG, "Critical error ending note %d", i);
-                goto render_quit;
+                return -1;
         }
     }
 
     // Render the note decays
     if ((decayEndPosition = renderSamples(decaySamples, noteEndPosition)) == NULL) {
         LOG_E(LOG_TAG, "Failed release phase render");
-        goto render_quit;
+        return -1;
     }
 
     // Get the minimum pitch which is used
@@ -722,11 +499,12 @@ static int render(const struct sound_settings settings) {
     }
 
     // Optionally apply velocity-dependent DNR compression
+    const size_t recordingLength = getNumPcm(recordingSamples);
     if (settings.volumeBoost) {
         const double minFrequency = pitch2frequency(minPitch);
-        if (compressDNR(floatBuffer, recordingLength, noteSamples, velocity, minFrequency)) {
+        if (compressDNR(buffer, recordingLength, noteSamples, velocity, minFrequency)) {
             LOG_E(LOG_TAG, "Failed to apply DNR compression.");
-            goto render_quit;
+            return -1;
         }
     }
 
@@ -736,285 +514,16 @@ static int render(const struct sound_settings settings) {
     float *const rampStartPosition = decayEndPosition - rampDownNumPcm;
     rampDown(rampStartPosition, rampDownNumPcm, rampDb);
 
-    //------------------- CONVERSION TO FINAL RECORDING -------------------//
-
-    // Free the old recording
-    if (delete_recording() != SL_RESULT_SUCCESS) {
-        LOG_E(LOG_TAG, "Failed to delete previous recording.");
-        goto render_quit;
-    }
-    assert(record_buffer == NULL); // Should be freed by now
-    assert(state == IDLE); // Shouldn't be playing anything
-
-    // Allocate a new recording. Add an extra buffer at the end, to imitate looping behavior
-    const size_t bufferLength = getNumPcm(recordingSamples + bufferSizeMono);
-    if ((record_buffer = (output_t *) malloc(bufferLength * sizeof(output_t))) == NULL) {
-        LOG_E(LOG_TAG, "Insufficient memory for recording buffer.");
-        goto render_quit;
-    }
-
     // Compute the maximum level based on the velocity
     const double maxLevel = (double) velocity / (double) velocityMax;
 
     // Normalize the audio and convert to the final recording representation
-    if (normalize(floatBuffer, record_buffer, recordingLength, maxLevel)) {
+    if (normalize(buffer, recordingLength, maxLevel)) {
         LOG_E(LOG_TAG, "Failed normalization.");
-        goto render_quit;
+        return -1;
     }
 
-    // Clean up intermediates
-    free(floatBuffer);
-    floatBuffer = NULL;
-
-    // Set the end of the recording
-    recording_position = record_buffer + recordingLength;
-
-    // Configure the loop imitation at the end of the recording. Might theoretically need multiple
-    // copies if the buffer size exceeds the recording size
-    output_t *copySrcPosition, *copyDstPosition;
-    const output_t *const bufferEndPosition = record_buffer + bufferLength;
-    for (copySrcPosition = record_buffer, copyDstPosition = recording_position;
-        copyDstPosition < bufferEndPosition;
-        ) {
-        const size_t paddingCopyRemaining = bufferEndPosition - copyDstPosition;
-        const size_t amountToCopy = paddingCopyRemaining > recordingLength ? recordingLength :
-                paddingCopyRemaining;
-        // Copy the recording circularly
-        memcpy(copyDstPosition, copySrcPosition, amountToCopy * sizeof(output_t));
-        copyDstPosition += amountToCopy;
-        copySrcPosition += amountToCopy;
-        if (copySrcPosition >= recording_position) {
-            assert(copySrcPosition == recording_position);
-            copySrcPosition = record_buffer;
-        }
-    }
-
-    // Start playing the recording
-    play();
     return 0;
-
-    render_quit:
-    if (floatBuffer != NULL)
-        free(floatBuffer);
-    return -1;
-}
-
-// create the engine and output mix objects
-static SLresult createEngine() {
-    SLresult result;
-
-    // create engine
-    result = slCreateEngine(&engineObject, 0, NULL, 0, NULL, NULL);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // LOG_D(LOG_TAG, "Engine created");
-
-    // realize the engine
-    result = (*engineObject)->Realize(engineObject, SL_BOOLEAN_FALSE);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // LOG_D(LOG_TAG, "Engine realised");
-
-    // get the engine interface, which is needed in order to create
-    // other objects
-    result = (*engineObject)->GetInterface(engineObject, SL_IID_ENGINE,
-                                           &engineEngine);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // LOG_D(LOG_TAG, "Engine Interface retrieved");
-
-    // create output mix
-    result = (*engineEngine)->CreateOutputMix(engineEngine, &outputMixObject,
-                                              0, NULL, NULL);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // LOG_D(LOG_TAG, "Output mix created");
-
-    // realize the output mix
-    result = (*outputMixObject)->Realize(outputMixObject, SL_BOOLEAN_FALSE);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // LOG_D(LOG_TAG, "Output mix realised");
-
-    return SL_RESULT_SUCCESS;
-}
-
-// create buffer queue audio player
-static SLresult createBufferQueueAudioPlayer(void) {
-
-    SLAndroidConfigurationItf configItf;
-    SLVolumeItf volumeItf;
-    SLresult result;
-
-    // configure audio source
-    SLDataLocator_AndroidSimpleBufferQueue loc_bufq =
-            {
-                    SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2
-            };
-    SLDataFormat_PCM format_pcm =
-            {
-                    SL_DATAFORMAT_PCM, (SLuint32)(numChannels),
-                    (SLuint32)(sampleRate * 1000),
-                    SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
-                    SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
-                    SL_BYTEORDER_LITTLEENDIAN
-            };
-    SLDataSource audioSrc = {&loc_bufq, &format_pcm};
-
-    // configure audio sink
-    SLDataLocator_OutputMix loc_outmix =
-            {SL_DATALOCATOR_OUTPUTMIX, outputMixObject};
-    SLDataSink audioSnk = {&loc_outmix, NULL};
-
-    // create audio player
-    const SLInterfaceID ids[] = {SL_IID_BUFFERQUEUE, SL_IID_VOLUME, SL_IID_ANDROIDCONFIGURATION};
-    const SLboolean req[] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_FALSE, SL_BOOLEAN_FALSE};
-    const size_t numIds = sizeof(ids) / sizeof(SLInterfaceID);
-
-    result = (*engineEngine)->CreateAudioPlayer(engineEngine,
-                                                &bqPlayerObject,
-                                                &audioSrc, &audioSnk,
-                                                numIds, ids, req);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    LOG_I(LOG_TAG, "Initialized audio player with sample rate: %d buffer size: %d", sampleRate,
-          bufferSizeMono);
-
-    // LOG_D(LOG_TAG, "Audio player created");
-
-    // realize the player
-    result = (*bqPlayerObject)->Realize(bqPlayerObject, SL_BOOLEAN_FALSE);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // LOG_D(LOG_TAG, "Audio player realised");
-
-    // get the play interface
-    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_PLAY,
-                                             &bqPlayerPlay);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // Get the volume interface, if it exists. If so, set the volume to max.
-    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_VOLUME, &volumeItf);
-    if (result == SL_RESULT_SUCCESS) {
-
-        SLmillibel maxVolume;
-
-        // Get the maximum volume level
-        result = (*volumeItf)->GetMaxVolumeLevel(volumeItf, &maxVolume);
-        if (result != SL_RESULT_SUCCESS) {
-            LOG_E(LOG_TAG, "failed to get the maximum volume");
-            return result;
-        }
-
-        // Set the volume to max
-        result = (*volumeItf)->SetVolumeLevel(volumeItf, maxVolume);
-        if (result != SL_RESULT_SUCCESS) {
-            LOG_E(LOG_TAG, "failed to set the volume level");
-            return result;
-        }
-
-        LOG_I(LOG_TAG, "Set volume level to the maximum.");
-
-    } else {
-        LOG_W(LOG_TAG, "Failed to get the volume controls (code %d). The app will not control the "
-                       "OpenSL ES player volume.", result);
-    }
-
-#if 0
-    // Get the Android configuration interface, if it exists. If so, enable low power mode. This
-    // will fail on Android versions prior to API level 25
-    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_ANDROIDCONFIGURATION,
-                                             &configItf);
-    if (result == SL_RESULT_SUCCESS) {
-
-        const char *modeStr;
-        SLuint32 defaultMode;
-
-        const SLuint32 desiredMode = SL_ANDROID_PERFORMANCE_POWER_SAVING;
-
-        // Get the current (default) performance mode
-        (*configItf)->GetConfiguration(configItf, SL_ANDROID_KEY_PERFORMANCE_MODE,
-                                       &defaultMode, sizeof(defaultMode));
-        switch (defaultMode) {
-            case SL_ANDROID_PERFORMANCE_NONE:
-                modeStr = "none";
-            case SL_ANDROID_PERFORMANCE_LATENCY:
-                modeStr = "latency";
-            case SL_ANDROID_PERFORMANCE_LATENCY_EFFECTS:
-                modeStr = "latency_effects";
-            case SL_ANDROID_PERFORMANCE_POWER_SAVING:
-                modeStr = "power_saving";
-            default:
-                modeStr = "unrecognized"; // This happens on API level < 25
-        }
-
-        // Set the performance mode.
-        result = (*configItf)->SetConfiguration(configItf, SL_ANDROID_KEY_PERFORMANCE_MODE,
-                                                &desiredMode, sizeof(desiredMode));
-        if (result == SL_RESULT_SUCCESS) {
-            LOG_I(LOG_TAG, "Set audio to low-power mode.");
-        } else {
-            LOG_W(LOG_TAG, "Failed to set audio to low-power mode (code %d).", result);
-            LOG_I(LOG_TAG, "Audio defaulted to performance mode: %s", modeStr);
-        }
-    } else {
-        LOG_W(LOG_TAG, "Failed to get the configuration controls (code %d). Low-power audio mode "
-                       "will not be enabled.", result);
-    }
-#endif
-
-    // get the buffer queue interface
-    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_BUFFERQUEUE,
-                                             &bqPlayerBufferQueue);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // LOG_D(LOG_TAG, "Buffer queue interface retrieved");
-
-    // register callback on the buffer queue
-    result = (*bqPlayerBufferQueue)->RegisterCallback(bqPlayerBufferQueue,
-                                                      bqPlayerCallback, NULL);
-    if (SL_RESULT_SUCCESS != result)
-        return result;
-
-    // LOG_D(LOG_TAG, "Callback registered");
-
-    // Set play state to paused
-    return idle();
-    // LOG_D(LOG_TAG, "Audio player set playing");
-}
-
-// shut down the native audio system
-static void shutdownAudio(void) {
-    // destroy buffer queue audio player object, and invalidate all
-    // associated interfaces
-    if (bqPlayerObject != NULL) {
-        (*bqPlayerObject)->Destroy(bqPlayerObject);
-        bqPlayerObject = NULL;
-        bqPlayerPlay = NULL;
-        bqPlayerBufferQueue = NULL;
-    }
-
-    // destroy output mix object, and invalidate all associated interfaces
-    if (outputMixObject != NULL) {
-        (*outputMixObject)->Destroy(outputMixObject);
-        outputMixObject = NULL;
-    }
-
-    // destroy engine object, and invalidate all associated interfaces
-    if (engineObject != NULL) {
-        (*engineObject)->Destroy(engineObject);
-        engineObject = NULL;
-        engineEngine = NULL;
-    }
 }
 
 // Shut down fluid synth
@@ -1029,7 +538,7 @@ static void shutdownFluid(void) {
 }
 
 // Initialize the fluid synthesizer
-static int initFluid(void) {
+static int initFluid(const int sampleRate) {
 
     // Destroy existing instances
     shutdownFluid();
@@ -1050,6 +559,7 @@ static int initFluid(void) {
     // Initialize the synthesizer
     if ((fluidSynth = new_fluid_synth(fluidSettings)) == NULL) {
         LOG_E(LOG_TAG, "Failed to initialize fluid synthesizer");
+        shutdownFluid();
         return -1;
     }
 
@@ -1084,54 +594,13 @@ static int load_soundfont(const char *soundfontFilename) {
 }
 
 // init midi driver
-static jboolean midi_init(const int deviceSampleRate, const int deviceBufferSizeMono) {
-    int result;
+static int midi_init(const int deviceSampleRate) {
 
     // Save the sound parameters
     sampleRate = deviceSampleRate;
-    bufferSizeMono = deviceBufferSizeMono;
 
     // Initialize the synth
-    if ((result = initFluid())) {
-        shutdownFluid();
-
-        LOG_E(LOG_TAG, "Init fluid failed: %d", result);
-
-        return JNI_FALSE;
-    }
-
-    // create the engine and output mix objects
-    if ((result = createEngine()) != SL_RESULT_SUCCESS) {
-        shutdownFluid();
-        shutdownAudio();
-
-        LOG_E(LOG_TAG, "Create engine failed: %d", result);
-
-        return JNI_FALSE;
-    }
-
-    // create buffer queue audio player
-    if ((result = createBufferQueueAudioPlayer()) != SL_RESULT_SUCCESS) {
-        shutdownFluid();
-        shutdownAudio();
-
-        LOG_E(LOG_TAG, "Create buffer queue audio player failed: %d", result);
-
-        return JNI_FALSE;
-    }
-
-    // Initialize recording state
-    state = IDLE;
-    record_buffer = NULL;
-    recording_position = NULL;
-    playback_position = NULL;
-
-    // Initialize semaphor
-    const int shared_processes = 0;
-    const int sem_initial_value = 0;
-    sem_init(&is_idle, shared_processes, sem_initial_value);
-
-    return JNI_TRUE;
+    return initFluid(sampleRate);
 }
 
 // Main initialization function
@@ -1140,20 +609,18 @@ jboolean
 initJNI(JNIEnv *env,
          jobject obj,
          jobject AAssetAdapter,
-         jint deviceSampleRate,
-         jint deviceBufferSize) {
+         jint deviceSampleRate) {
 
     jboolean result;
 
     // Initialize the AAssets wrapper, so we can do file I/O
-    if (init_AAssets(env, AAssetAdapter)) { LOG_E(LOG_TAG, "Failed to initialize AAssets.");
+    if (init_AAssets(env, AAssetAdapter)) {
+        LOG_E(LOG_TAG, "Failed to initialize AAssets.");
         return JNI_FALSE;
     }
 
     // Initialize the synth
-    result = midi_init(deviceSampleRate, deviceBufferSize);
-
-    return result;
+    return (midi_init(deviceSampleRate) == 0) ? JNI_TRUE : JNI_FALSE;
 }
 
 // Obfuscated JNI wrapper for the former
@@ -1162,9 +629,8 @@ jboolean
 Java_com_bbrister_mididriver_MidiDriver_A(JNIEnv *env,
                                                jobject obj,
                                                jobject AAssetAdapter,
-                                               jint deviceSampleRate,
-                                               jint deviceBufferSize) {
-    return initJNI(env, obj, AAssetAdapter, deviceSampleRate, deviceBufferSize);
+                                               jint deviceSampleRate) {
+    return initJNI(env, obj, AAssetAdapter, deviceSampleRate);
 }
 
 // Get the maximum number of concurrent voices
@@ -1179,21 +645,6 @@ JNIEXPORT
 jint
 Java_com_bbrister_mididriver_MidiDriver_B(JNIEnv *env, jobject jobj) {
     return getMaxVoicesJNI();
-}
-
-static
-jboolean
-pauseJNI(void) {
-    return (jboolean) (delete_recording() == SL_RESULT_SUCCESS ? JNI_TRUE : JNI_FALSE);
-}
-
-// Stop looping, delete the recording
-// Formerly: pauseJNI();
-JNIEXPORT
-jboolean
-Java_com_bbrister_mididriver_MidiDriver_C(JNIEnv *env,
-                                               jobject jobj) {
-   return pauseJNI();
 }
 
 // Get the minimum allowed key for the currently selected program
@@ -1226,7 +677,7 @@ jint Java_com_bbrister_mididriver_MidiDriver_E(JNIEnv *env,
 
 // Render and then start looping
 static
-jboolean
+jfloatArray
 renderJNI(JNIEnv *env,
           jobject obj,
           jbyteArray pitches,
@@ -1236,7 +687,6 @@ renderJNI(JNIEnv *env,
           jboolean volumeBoost) {
 
     struct sound_settings settings;
-    int result;
     jboolean isCopy;
 
     // Get the primitive data
@@ -1249,18 +699,30 @@ renderJNI(JNIEnv *env,
     settings.pitches = (*env)->GetByteArrayElements(env, pitches, &isCopy);
     settings.numPitches = (int) (*env)->GetArrayLength(env, pitches);
 
+    // Get the required recording size
+    const size_t renderFloats = getNumPcm(getRenderFrames(settings));
+
+    // Create a java array to hold the recording
+    jfloatArray jRecording = (*env)->NewFloatArray(env, renderFloats);
+    jfloat *const jData = (*env)->GetFloatArrayElements(env, jRecording, &isCopy);
+
     // Render
-    result = render(settings);
+    assert(sizeof(jfloat) == sizeof(float));
+    const int result = render(settings, jData);
 
-    // Release arrays
-    (*env)->ReleaseByteArrayElements(env, pitches, settings.pitches, 0);
+    // Release the output array (possibly) copy, writing back changes
+    (*env)->ReleaseFloatArrayElements(env, jRecording, jData, 0);
 
-    return (jboolean) (result == 0);
+    // Release the input arrays, without writing back changes
+    (*env)->ReleaseByteArrayElements(env, pitches, settings.pitches, JNI_ABORT);
+
+    // Return the output array, or NULL (will be GC'ed) on failure
+    return result ? NULL : jRecording;
 }
 
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
-jboolean
+jfloatArray
 Java_com_bbrister_mididriver_MidiDriver_F(JNIEnv *env,
                                                jobject obj,
                                                jbyteArray pitches,
@@ -1357,32 +819,11 @@ Java_com_bbrister_mididriver_MidiDriver_J(JNIEnv *env,
     return getProgramJNI();
 }
 
-
-// shutdown midi
-jboolean midi_shutdown() {
-    int result;
-
-    shutdownAudio();
-    shutdownFluid();
-
-    if (delete_recording() != SL_RESULT_SUCCESS)
-        return JNI_FALSE;
-    sem_destroy(&is_idle);
-
-    return JNI_TRUE;
-}
-
 // Shut down the library, freeing all resources
 static
-jboolean shutdownJNI(JNIEnv *env) {
-    // Delete the synth
-    if (midi_shutdown() != JNI_TRUE)
-        return JNI_FALSE;
-
-    // Release AAssets, enabling garbage collection
+void shutdownJNI(JNIEnv *env) {
+    shutdownFluid();
     release_AAssets(env);
-
-    return JNI_TRUE;
 }
 
 // Obfuscated JNI wrapper for the former
@@ -1390,7 +831,8 @@ JNIEXPORT
 jboolean
 Java_com_bbrister_mididriver_MidiDriver_K(JNIEnv *env,
                                                jobject obj) {
-    return shutdownJNI(env);
+    shutdownJNI(env);
+    return JNI_TRUE;
 }
 
 // Set the reverb room size
