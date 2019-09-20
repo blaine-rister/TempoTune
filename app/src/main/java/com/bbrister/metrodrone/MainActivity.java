@@ -347,13 +347,17 @@ public class MainActivity extends DroneActivity {
                         }
                 }
 
-                // Load a new soundfont
-                droneBinder.loadSounds(selection.path);
-                updateInstrumentChoices(instAdapter);
+                // Check if this is the same soundfont as before
+                if (!selection.path.equals(droneBinder.getSoundfont())) {
 
-                // Update the instrument. Don't rely on the spinner to do it, this is unreliable
-                instrumentSpinner.setSelection(0, true);
-                setInstrument((NameValPair) instrumentSpinner.getSelectedItem());
+                    // Load a new soundfont
+                    droneBinder.loadSounds(selection.path);
+                    updateInstrumentChoices(instAdapter);
+
+                    // Update the instrument. Don't rely on the spinner to do it, this is unreliable
+                    instrumentSpinner.setSelection(0, true);
+                    setInstrument((NameValPair) instrumentSpinner.getSelectedItem());
+                }
             }
 
             @Override
@@ -432,7 +436,7 @@ public class MainActivity extends DroneActivity {
         // Look for the current program in the instruments. If found, set the spinners
         final int currentProgram = droneBinder.getProgram();
         for (int i = 0; i < adapter.getCount(); i++) {
-            if (adapter.getItem(i).val != currentProgram) {
+            if (adapter.getItem(i).val == currentProgram) {
                 instrumentSpinner.setSelection(i, true);
                 return;
             }
