@@ -546,10 +546,6 @@ public class MainActivity extends DroneActivity {
         final int resourceId = isSharp ? R.array.pitches_sharp_array : R.array.pitches_flat_array;
         final String[] pitchStrings = getResources().getStringArray(resourceId);
 
-        // Sanity checks
-        assert(pitchStrings.length <= 12);
-        assert(pitchStrings[0].compareTo("A") == 0);
-
         // Convert to a list of (name, value) pairs
         List<NameValPair> pitchNameVals = new ArrayList<>();
         for (int i = 0; i < pitchStrings.length; i++) {
