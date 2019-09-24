@@ -2,7 +2,6 @@ package com.bbrister.metrodrone;
 
 import android.app.Service;
 import android.content.Intent;
-import android.media.session.MediaSession;
 import android.os.IBinder;
 import android.os.Binder;
 
@@ -16,9 +15,6 @@ public class DroneService extends Service {
 
     // State
     boolean isPlaying;
-
-    // Controllers
-    MediaSession mediaSession;
 
     // Sound parameters
     SoundSettings settings;
@@ -149,8 +145,7 @@ public class DroneService extends Service {
         float[] sound = midi.renderNotes(settings.getRenderSettings());
 
         // Create the launching intent, with extra data
-        Intent intent = PlaybackService.getStartIntent(this);
-        intent.putExtra(PlaybackService.soundTag, sound);
+        Intent intent = PlaybackService.getStartIntent(this, sound);
 
         // Launch a new playback service
         startService(intent);

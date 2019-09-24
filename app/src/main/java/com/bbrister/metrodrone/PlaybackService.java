@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
-import android.support.v4.media.session.MediaSessionCompat;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
@@ -25,15 +24,11 @@ public class PlaybackService extends Service {
     public final static String startAction = "startPlayback";
     public final static String stopAction = "stopPlayback";
 
-    // Static check for media session API level
-    public static final boolean hasMediaSession = Build.VERSION.SDK_INT >= 21;
-
     // An ID unique for the playback notification
     private static final int playbackNotificationId = Notifications.getUniqueId();
 
     // Data
     private PlaybackDriver driver;
-    MediaSessionCompat mediaSession;
 
     // Create a bass intent for this service
     private static Intent getBaseIntent(Context context) {
@@ -41,8 +36,10 @@ public class PlaybackService extends Service {
     }
 
     // Create a start action intent
-    public static Intent getStartIntent(Context context) {
-        return getBaseIntent(context).setAction(startAction);
+    public static Intent getStartIntent(Context context, float[] sound) {
+        return getBaseIntent(context)
+                .setAction(startAction)
+                .putExtra(PlaybackService.soundTag, sound);
     }
 
     // Create a stop action intent
@@ -68,6 +65,9 @@ public class PlaybackService extends Service {
     public int onStartCommand(Intent intent, int id, int flags) {
         super.onStartCommand(intent, id, flags);
 
+        // Do not ask the service to be re-created if it's somehow killed. Let the user do that.
+        final int returnCode = START_NOT_STICKY;
+
         // Handle the intent action
         switch (intent.getAction()) {
             case startAction:
@@ -76,15 +76,11 @@ public class PlaybackService extends Service {
             case stopAction:
                 // Stop the service
                 stopSelf();
-                return START_NOT_STICKY;
+                return returnCode;
             default:
                 throw BuildConfig.DEBUG ? new DebugException("Unrecognized intent: " +
                         intent.getAction()) : new DefaultException();
         }
-
-        // Make a MediaSession for sending media controls to other apps
-        final String mediaTag = BuildConfig.DEBUG ? "playbackSession" : "";
-        mediaSession = new MediaSessionCompat(this, mediaTag);
 
         // Retrieve the sound data
         final float[] sound = intent.getFloatArrayExtra(soundTag);
@@ -158,15 +154,17 @@ public class PlaybackService extends Service {
 
         // Take advantage of MediaStyle features
         builder.setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
-                .setMediaSession(mediaSession.getSessionToken()));
+        //TODO: For controlling a mediaSession
+        //        .setMediaSession(mediaSession.getSessionToken()));
         //TODO: This was in the example code, but you need actions to use it
          //       .setShowActionsInCompactView(0)); // TODO refers to the pause button
+        );
 
         // Display the notification and place the service in the foreground
         startForeground(playbackNotificationId, builder.build());
 
         // Return a flag specifying that this should be restarted as-is if it's killed
-        return START_REDELIVER_INTENT;
+        return returnCode;
     }
 
     @Override
