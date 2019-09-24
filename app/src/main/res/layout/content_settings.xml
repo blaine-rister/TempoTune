@@ -13,6 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/volumeTextView"
+        android:minHeight="@dimen/touch_min_height"
         android:text="Volume Boost" />
 
     <TextView
@@ -27,5 +28,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/reverbTextView"
-        android:padding="@dimen/seekbar_padding" />
+        android:padding="@dimen/seekbar_padding"
+        android:contentDescription="@string/reverbContentDescription" />
 </RelativeLayout>

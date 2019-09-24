@@ -39,6 +39,7 @@
             android:layout_toStartOf="@id/editBpm"
             android:background="@android:color/transparent"
             android:tint="@color/colorPrimary"
+            android:contentDescription="@string/plusContentDescription"
             app:srcCompat="@drawable/ic_transparent_plus_circle" />
 
         <EditText
@@ -75,6 +76,7 @@
             android:layout_toRightOf="@id/editBpm"
             android:layout_toEndOf="@id/editBpm"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/minusContentDescription"
             app:srcCompat="@drawable/ic_minus_with_circle"
             android:tint="@color/colorPrimary" />
 
@@ -106,10 +108,12 @@
                 android:id="@+id/sharpSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:minHeight="@dimen/touch_min_height"
                 android:textAllCaps="false"
                 android:textOff="♭"
                 android:textOn="♯"
                 android:showText="true"
+                android:contentDescription="@string/sharpsContentDescription"
             />
 
             <ImageView
@@ -117,6 +121,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
+                android:contentDescription="@null"
                 app:srcCompat="@drawable/ic_treble_clef" />
         </LinearLayout>
 
@@ -178,7 +183,8 @@
         android:layout_height="wrap_content"
         android:paddingTop="@dimen/seekbar_padding"
         android:paddingBottom="@dimen/seekbar_padding"
-        android:layout_below="@id/durationTextView" />
+        android:layout_below="@id/durationTextView"
+        android:contentDescription="@string/durationContentDescription" />
 
     <TextView
         android:id="@+id/velocityTextView"
@@ -194,5 +200,6 @@
         android:layout_height="wrap_content"
         android:paddingTop="@dimen/seekbar_padding"
         android:paddingBottom="@dimen/seekbar_padding"
-        android:layout_below="@id/velocityTextView" />
+        android:layout_below="@id/velocityTextView"
+        android:contentDescription="@string/volumeContentDescription" />
 </RelativeLayout>

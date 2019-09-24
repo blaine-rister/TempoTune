@@ -20,6 +20,7 @@
             android:layout_height="fill_parent"
             android:tint="@color/colorWhite"
             android:backgroundTint="@color/colorPrimary"
+            android:contentDescription="@string/playContentDescription"
             app:srcCompat="@drawable/ic_play_button" />
 
         <ImageButton
@@ -28,6 +29,7 @@
             android:layout_height="fill_parent"
             android:tint="@color/colorWhite"
             android:backgroundTint="@color/colorPrimary"
+            android:contentDescription="@string/pauseContentDescription"
             app:srcCompat="@drawable/ic_pause_button" />
 
         <ImageButton
@@ -36,6 +38,7 @@
             android:layout_height="fill_parent"
             android:tint="@color/colorWhite"
             android:backgroundTint="@color/colorPrimary"
+            android:contentDescription="@string/tapperContentDescription"
             app:srcCompat="@drawable/ic_hourglass_simple" />
     </androidx.appcompat.widget.Toolbar>
 
