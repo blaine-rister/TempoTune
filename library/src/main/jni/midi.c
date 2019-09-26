@@ -61,6 +61,7 @@ int fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan);
 // Internal functions
 static int get_program(void);
 static size_t ms2Samples(const size_t ms);
+static int setReverbPreset(const int preset);
 
 // Struct to hold sound synthesis parameters
 struct sound_settings {
@@ -69,8 +70,27 @@ struct sound_settings {
     long recordingDurationMs;
     int numPitches;
     int volumeBoost;
+    int reverbPreset;
     uint8_t velocity;
 };
+
+// Struct to hold reverb parameters
+struct reverb_settings {
+    double roomSize;
+    double damping;
+    double width;
+    double level;
+};
+
+// List of default reverb settings
+static struct reverb_settings reverb_presets[] = {
+        { 0.2,      0.0,       0.5,       0.9 },
+        { 0.4,      0.2,       0.5,       0.8 },
+        { 0.6,      0.4,       0.5,       0.7 },
+        { 0.8,      0.7,       0.5,       0.6 },
+        { 0.8,      1.0,       0.5,       0.5 }
+};
+static const int numReverbPresets = sizeof(reverb_presets) / sizeof(struct reverb_settings) + 1;
 
 // MIDI info
 const uint8_t velocityMax = 127; // Maximum allowed velocity in MIDI
@@ -456,6 +476,12 @@ static int render(const struct sound_settings settings, float *const buffer) {
         return -1;
     }
 
+    // Change the reverb settings
+   if (setReverbPreset(settings.reverbPreset)) {
+       LOG_E(LOG_TAG, "Error setting reverb preset %d", settings.reverbPreset);
+       return -1;
+   }
+
     // Send the note start messages
     for (i = 0; i < numPitches; i++) {
         const uint8_t pitch = (uint8_t) pitches[i];
@@ -593,6 +619,40 @@ static int load_soundfont(const char *soundfontFilename) {
     return 0;
 }
 
+/*
+ * Choose a reverb preset. Preset 0 disables the reverb.
+ *
+ * Returns 0 on success, 1 if the preset doesn't exist, -1 on error.
+ */
+static int setReverbPreset(const int preset) {
+
+    if (!isInitialized("set_reverb_preset")) {
+        return -1;
+    }
+
+    // Check if the preset exists
+    if (preset < 0 || preset > numReverbPresets) {
+        LOG_W(LOG_TAG, "Preset does not exist: %d", preset);
+        return 1;
+    }
+
+    // Preset zero disables the reverb
+    if (preset == 0) {
+        fluid_synth_set_reverb_on(fluidSynth, 0);
+        return 0;
+    }
+
+    // Get the preset, offset by 1
+    struct reverb_settings reverb = reverb_presets[preset - 1];
+
+    // Enable reverb and change the settings
+    fluid_synth_set_reverb_on(fluidSynth, 1);
+    fluid_synth_set_reverb(fluidSynth, reverb.roomSize, reverb.damping,
+            reverb.width, reverb.level);
+
+    return 0;
+}
+
 // init midi driver
 static int midi_init(const int deviceSampleRate) {
 
@@ -683,6 +743,7 @@ renderJNI(JNIEnv *env,
           jbyteArray pitches,
           jlong noteDurationMs,
           jlong recordingDurationMs,
+          jint reverbPreset,
           jbyte velocity,
           jboolean volumeBoost) {
 
@@ -694,6 +755,7 @@ renderJNI(JNIEnv *env,
     settings.recordingDurationMs = (long) recordingDurationMs;
     settings.velocity = (uint8_t) velocity;
     settings.volumeBoost = (volumeBoost == JNI_TRUE);
+    settings.reverbPreset = (int) reverbPreset;
 
     // Get the pitch array data
     settings.pitches = (*env)->GetByteArrayElements(env, pitches, &isCopy);
@@ -728,6 +790,7 @@ Java_com_bbrister_mididriver_MidiDriver_F(JNIEnv *env,
                                                jbyteArray pitches,
                                                jlong noteDurationMs,
                                                jlong recordingDurationMs,
+                                               jint reverbPreset,
                                                jbyte velocity,
                                                jboolean volumeBoost) {
     return renderJNI(
@@ -736,6 +799,7 @@ Java_com_bbrister_mididriver_MidiDriver_F(JNIEnv *env,
             pitches,
             noteDurationMs,
             recordingDurationMs,
+            reverbPreset,
             velocity,
             volumeBoost);
 }
@@ -835,20 +899,18 @@ Java_com_bbrister_mididriver_MidiDriver_K(JNIEnv *env,
     return JNI_TRUE;
 }
 
-// Set the reverb room size
+// Change the reverb settings
 static
-jboolean setReverbRoomSizeJNI(const jdouble roomSize) {
-//    return setReverbRoomSize((double) roomSize); //TODO implement this
-return JNI_FALSE; //XXX
+jint getNumReverbPresetsJNI(void) {
+    return (jint) numReverbPresets;
 }
 
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
-jboolean
+jint
 Java_com_bbrister_mididriver_MidiDriver_L(JNIEnv *env,
-                                               jobject obj,
-                                               jdouble roomSize) {
-    return setReverbRoomSizeJNI(roomSize);
+                                               jobject obj) {
+    return getNumReverbPresetsJNI();
 }
 
 // Load a soundfont

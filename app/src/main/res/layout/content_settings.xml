@@ -25,9 +25,11 @@
 
     <SeekBar
         android:id="@+id/reverbSeekBar"
+        style="@style/Widget.AppCompat.SeekBar.Discrete"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/reverbTextView"
         android:padding="@dimen/seekbar_padding"
         android:contentDescription="@string/reverbContentDescription" />
+
 </RelativeLayout>

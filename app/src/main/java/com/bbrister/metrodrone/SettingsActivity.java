@@ -3,6 +3,7 @@ package com.bbrister.metrodrone;
 import android.os.Bundle;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.SeekBar;
 
 public class SettingsActivity extends DroneActivity {
 
@@ -34,6 +35,27 @@ public class SettingsActivity extends DroneActivity {
             }
         });
 
-        // Reverb (room size)
+        // Reverb
+        final int numReverbChoices = droneBinder.getNumReverbPresets();
+        SeekBar reverbSeekBar = findViewById(R.id.reverbSeekBar);
+        reverbSeekBar.setMax(numReverbChoices - 1);
+        reverbSeekBar.setProgress(droneBinder.getReverbPreset());
+        reverbSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                // Do nothing
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // Do nothing
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // Update when a selection is made
+                droneBinder.setReverbPreset(seekBar.getProgress());
+            }
+        });
     }
 }

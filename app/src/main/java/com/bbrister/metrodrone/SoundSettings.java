@@ -23,13 +23,19 @@ public class SoundSettings {
     private int bpm = 80;
     private int keyLimitLo = 0;
     private int keyLimitHi = 127;
+    private int reverbPreset = 1;
+    private int maxReverbPreset;
     private double velocity = 1.0; // [0,1]
     private double duration = 0.95; // [0,1]
     private NoteSettings[] notes;
     private List<Integer> freeHandles;
     private List<Integer> occupiedHandles;
 
-    public SoundSettings(final int maxNumNotes) {
+    public SoundSettings(final int maxNumNotes, final int numReverbPresets) {
+        // Initialize the reverb settings, possibly overriding defaults
+        maxReverbPreset = numReverbPresets - 1;
+        reverbPreset = Math.min(reverbPreset, maxReverbPreset);
+
         // Initialize the array, mark all spots as open
         notes = new NoteSettings[maxNumNotes];
         freeHandles = new LinkedList<>();
@@ -106,6 +112,8 @@ public class SoundSettings {
 
     public boolean getVolumeBoost() { return boostVolume; }
 
+    public int getReverbPreset() { return reverbPreset; }
+
     // Get the possible octave choices for a given note
     public List<Integer> getOctaveChoices(final int handle) {
 
@@ -153,6 +161,7 @@ public class SoundSettings {
         settings.velocity = MidiDriverHelper.encodeVelocity(velocity);
         settings.noteDurationMs = noteDurationMs;
         settings.recordDurationMs = beatDurationMs;
+        settings.reverbPreset = reverbPreset;
         settings.volumeBoost = boostVolume;
 
         return settings;
@@ -226,6 +235,17 @@ public class SoundSettings {
     // Choose whether or not to boost the volume with DNR compression
     public void setVolumeBoost(final boolean boostVolume) {
         this.boostVolume = boostVolume;
+    }
+
+    // Choose the reverb preset
+    public void setReverbPreset(final int preset) {
+        if (preset < 0 || preset > maxReverbPreset) {
+            throw BuildConfig.DEBUG ? new DebugException(String.format(
+                    "Invalid reverb preset: %d (max: %d)", preset, maxReverbPreset)) :
+                    new DefaultException();
+        }
+
+        reverbPreset = preset;
     }
 
     // Given the pitch limits, round the octave choice to the nearest possible one

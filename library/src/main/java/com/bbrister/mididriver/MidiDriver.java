@@ -170,12 +170,17 @@ public class MidiDriver
         return sound;
     }
 
-    /*
+    /**
      * Get the synth maximum polyphony count.
      */
     public int getMaxVoices() {
         return getMaxVoicesJNI();
     }
+
+    /**
+     * Get the number of available reverb presets.
+     */
+    public int getNumReverbPresets() { return getNumReverbPresetsJNI(); }
 
     // Native midi methods
 
@@ -228,6 +233,7 @@ public class MidiDriver
                 settings.pitchArray,
                 settings.noteDurationMs,
                 settings.recordDurationMs,
+                settings.reverbPreset,
                 settings.velocity,
                 settings.volumeBoost
         );
@@ -236,6 +242,7 @@ public class MidiDriver
             byte[] pitches,
             long noteDurationMs,
             long recordingDurationMs,
+            int reverbPreset,
             byte velocity,
             boolean volumeBoost
     );
@@ -291,12 +298,12 @@ public class MidiDriver
     private native boolean K();
 
     /**
-     * Set the reverb room size.
+     * Get the number of available reverb presets.
      */
-    private boolean setReverbRoomsizeJNI(double roomSize) {
-        return L(roomSize);
+    private int getNumReverbPresetsJNI() {
+        return L();
     }
-    private native boolean L(double roomSize);
+    private native int L();
 
     /**
      * Load a new soundfont.

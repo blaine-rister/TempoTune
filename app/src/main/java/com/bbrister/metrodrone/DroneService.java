@@ -35,7 +35,7 @@ public class DroneService extends Service {
 
         // Initialize the sound parameters
         isPlaying = false;
-        settings = new SoundSettings(midi.getMaxVoices());
+        settings = new SoundSettings(midi.getMaxVoices(), midi.getNumReverbPresets());
 
         // Start with a single note
         settings.addNote();
@@ -82,6 +82,8 @@ public class DroneService extends Service {
         int getPitch(int handle) { return settings.getPitch(handle); }
         int getOctave(int handle) { return settings.getOctave(handle); }
         List<Integer> getOctaveChoices(int handle) { return settings.getOctaveChoices(handle); }
+        int getNumReverbPresets() { return midi.getNumReverbPresets(); }
+        int getReverbPreset() { return settings.getReverbPreset(); }
         boolean getVolumeBoost() { return settings.getVolumeBoost(); }
         int setBpm(int bpm) {
             return settings.setBpm(bpm);
@@ -92,6 +94,10 @@ public class DroneService extends Service {
         }
         void setDuration(double duration) {
             settings.setDuration(duration);
+            updateSound();
+        }
+        void setReverbPreset(int preset) {
+            settings.setReverbPreset(preset);
             updateSound();
         }
         void setPitch(int handle, int pitch) {

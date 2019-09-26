@@ -6,5 +6,6 @@ public class RenderSettings {
     public byte velocity;
     public long noteDurationMs;
     public long recordDurationMs;
+    public int reverbPreset;
     public boolean volumeBoost;
 }
