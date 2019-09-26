@@ -499,7 +499,8 @@ static int render(const struct sound_settings settings, float *const buffer) {
 
     // Send the note end messages
     for (i = 0; i < numPitches; i++) {
-        switch (endNote(pitches[i])) {
+        const uint8_t pitch = (uint8_t) pitches[i];
+        switch (endNote(pitch)) {
             case 0:
                 break;
             case 1:
@@ -521,11 +522,12 @@ static int render(const struct sound_settings settings, float *const buffer) {
     // Get the minimum pitch which is used
     uint8_t minPitch = UCHAR_MAX;
     for (i = 0; i < numPitches; i++) {
-        minPitch = MIN(pitches[i], minPitch);
+        const uint8_t pitch = (uint8_t) pitches[i];
+        minPitch = MIN(pitch, minPitch);
     }
 
     // Optionally apply velocity-dependent DNR compression
-    const size_t recordingLength = getNumPcm(recordingSamples);
+    const size_t recordingLength = getNumPcm((size_t) recordingSamples);
     if (settings.volumeBoost) {
         const double minFrequency = pitch2frequency(minPitch);
         if (compressDNR(buffer, recordingLength, noteSamples, velocity, minFrequency)) {
