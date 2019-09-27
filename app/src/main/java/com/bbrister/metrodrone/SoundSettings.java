@@ -10,38 +10,72 @@ import java.util.List;
 import java.util.Set;
 
 // Class to hold all data for the sound that is generated.
-public class SoundSettings {
+public abstract class SoundSettings {
 
-    // Constants
+    // Public constants
     final static int pitchMax = 11;
     final static int octaveMax = 7;
     final static int bpmMax = 512;
     final static int bpmMin = 20;
 
-    // Data
-    private boolean boostVolume = true;
-    private int bpm = 80;
+    // Private constants
+    final private static int defaultPitch = 0;
+    final private static int defaultoctave = 3;
+    final private static byte defaultKey = MidiDriverHelper.encodePitch(defaultPitch,
+            defaultoctave);
+
+    // Sound metadata--parameters for acceptable values of the latter
     private int keyLimitLo = 0;
     private int keyLimitHi = 127;
-    private int reverbPreset = 1;
     private int maxReverbPreset;
-    private double velocity = 1.0; // [0,1]
-    private double duration = 0.95; // [0,1]
-    private NoteSettings[] notes;
+
+    // Sound data--updates the sound when it's changed
+    private UpdateValue<Boolean> boostVolume;
+    private UpdateValue<Integer> bpm;
+    private UpdateValue<Integer> reverbPreset;
+    private UpdateValue<Double> velocity; // [0,1]
+    private UpdateValue<Double> duration; // [0,1]
+    private List<UpdateValue<Byte>> notes;
     private List<Integer> freeHandles;
     private List<Integer> occupiedHandles;
 
+    // Callbacks
+    UpdateInterface updateInterface;
+
+    // Callback function for sound updates
+    abstract void onSoundChanged();
+
     public SoundSettings(final int maxNumNotes, final int numReverbPresets) {
-        // Initialize the reverb settings, possibly overriding defaults
+
+        // Set up the callback interface
+        updateInterface = new UpdateInterface() {
+            @Override
+            public void update() {
+                onSoundChanged();
+            }
+        };
+        reverbPreset = new UpdateValue<>(1, updateInterface);
+
+        // Initialize the data to defaults
+        boostVolume = new UpdateValue<>(true, updateInterface);
+        bpm = new UpdateValue<>(80, updateInterface);
+        velocity = new UpdateValue<>(1.0, updateInterface);
+        duration = new UpdateValue<>(0.95, updateInterface);
+
+        // Initialize the reverb limits, possibly overriding defaults
         maxReverbPreset = numReverbPresets - 1;
-        reverbPreset = Math.min(reverbPreset, maxReverbPreset);
+        reverbPreset.set(Math.min(reverbPreset.get(), maxReverbPreset));
 
         // Initialize the array, mark all spots as open
-        notes = new NoteSettings[maxNumNotes];
+        notes = new ArrayList<>(maxNumNotes);
         freeHandles = new LinkedList<>();
         occupiedHandles = new LinkedList<>();
         for (int i = 0; i < maxNumNotes; i++) {
+            // Mark the handle as free
             freeHandles.add(i);
+
+            // Add a dummy note--this will be overwritten later
+            notes.add(new UpdateValue<>((byte) 0, updateInterface));
         }
     }
 
@@ -50,7 +84,7 @@ public class SoundSettings {
         return freeHandles.isEmpty();
     }
 
-    // Create a new note, return its handle
+    // Create a new note, returning its handle
     public int addNote() {
         // Take a free handle
         if (freeHandles.isEmpty())
@@ -58,40 +92,46 @@ public class SoundSettings {
                     new DefaultException();
         final int handle = freeHandles.get(0);
 
-        // Initialize the note
-        notes[handle] = new NoteSettings();
-
         // Mark the note as occupied
         occupiedHandles.add(handle);
         freeHandles.remove(0);
+
+        // Update the note pitch, which also updates the sound
+        setKeyRounded(handle, defaultKey);
+
         return handle;
     }
 
     // Delete a note, given its handle
     public void deleteNote(final int handle) {
+        // Mark the note as free
         occupiedHandles.remove((Integer) handle);
         freeHandles.add(handle);
+
+        // Update the sound
+        updateInterface.update();
     }
 
     // Get a note
-    private NoteSettings getNote(final int handle) {
-        if (occupiedHandles.indexOf(handle) < 0)
+    private UpdateValue<Byte> getNote(final int handle) {
+        if (occupiedHandles.indexOf(handle) < 0) {
             throw BuildConfig.DEBUG ? new DebugException(String.format(
                     "No note exists at handle %d", handle)) : new DefaultException();
-        return notes[handle];
+        }
+        return notes.get(handle);
     }
 
     // Getters
     public int getBpm() {
-        return bpm;
+        return bpm.get();
     }
 
     public double getVelocity() {
-        return velocity;
+        return velocity.get();
     }
 
     public double getDuration() {
-        return duration;
+        return duration.get();
     }
 
     public int getNumNotes() {
@@ -102,28 +142,29 @@ public class SoundSettings {
         return occupiedHandles;
     }
 
+    public byte getKey(final int handle) {
+        return getNote(handle).get();
+    }
+
     public int getPitch(final int handle) {
-        return getNote(handle).pitch;
+        return MidiDriverHelper.decodePitchClass(getKey(handle));
     }
 
     public int getOctave(final int handle) {
-        return getNote(handle).octave;
+        return MidiDriverHelper.decodeOctave(getKey(handle));
     }
 
-    public boolean getVolumeBoost() { return boostVolume; }
+    public boolean getVolumeBoost() { return boostVolume.get(); }
 
-    public int getReverbPreset() { return reverbPreset; }
+    public int getReverbPreset() { return reverbPreset.get(); }
 
-    // Get the possible octave choices for a given note
-    public List<Integer> getOctaveChoices(final int handle) {
-
-        // Get the pitch of that note
-        final int pitch = getPitch(handle);
+    // Get the possible octave choices for a given key
+    public List<Integer> getOctaveChoices(final int pitchClass) {
 
         // Create the list of choices
         List<Integer> possibleOctaves = new ArrayList<>();
         for (int octave = 0; octave < octaveMax; octave++) {
-            final int key = MidiDriverHelper.encodePitch(pitch, octave);
+            final int key = MidiDriverHelper.encodePitch(pitchClass, octave);
             if (key < keyLimitLo || key > keyLimitHi)
                 continue;
 
@@ -137,15 +178,15 @@ public class SoundSettings {
     public RenderSettings getRenderSettings() {
 
         // Calculate the note and beat durations
-        final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm);
+        final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm.get());
         final long beatDurationMs = Math.round(msPerBeat);
-        final long noteDurationMs = Math.round(msPerBeat * duration);
+        final long noteDurationMs = Math.round(msPerBeat * duration.get());
 
-        // Encode the pitches to be played in a set, to remove duplicates
+        // Put the pitches in a set, to remove duplicates
         Set<Byte> keys = new HashSet<>();
         for (int i = 0; i < getNumNotes(); i++) {
             final int handle = occupiedHandles.get(i);
-            keys.add(MidiDriverHelper.encodePitch(getPitch(handle), getOctave(handle)));
+            keys.add(getKey(handle));
         }
 
         // Convert the set to an array, for easy access in C
@@ -158,57 +199,66 @@ public class SoundSettings {
         // Create the settings object
         RenderSettings settings = new RenderSettings();
         settings.pitchArray = pitchArray;
-        settings.velocity = MidiDriverHelper.encodeVelocity(velocity);
+        settings.velocity = MidiDriverHelper.encodeVelocity(velocity.get());
         settings.noteDurationMs = noteDurationMs;
         settings.recordDurationMs = beatDurationMs;
-        settings.reverbPreset = reverbPreset;
-        settings.volumeBoost = boostVolume;
+        settings.reverbPreset = reverbPreset.get();
+        settings.volumeBoost = boostVolume.get();
 
         return settings;
     }
 
     // Setters
     public int setBpm(final int desiredBpm) {
-        bpm = Math.max(Math.min(desiredBpm, bpmMax), bpmMin);
-        return bpm;
+        bpm.set(Math.max(Math.min(desiredBpm, bpmMax), bpmMin));
+        return bpm.get();
     }
 
     public void setVelocity(final double desiredVelocity) {
         if (desiredVelocity < 0. || desiredVelocity > 1.)
             throw BuildConfig.DEBUG ? new DebugException(String.format(
-                    "Invalid velocity: %f", velocity)) : new DefaultException();
-        velocity = desiredVelocity;
+                    "Invalid velocity: %f", velocity.get())) : new DefaultException();
+        velocity.set(desiredVelocity);
     }
 
     public void setDuration(final double desiredDuration) {
         if (desiredDuration < 0. || desiredDuration > 1.)
             throw BuildConfig.DEBUG ? new DebugException(String.format(
-                    "Invalid duration: %f", duration)) : new DefaultException();
-        duration = desiredDuration;
+                    "Invalid duration: %f", duration.get())) : new DefaultException();
+        duration.set(desiredDuration);
+    }
+
+    // Set the key at the given handle
+    private void setKey(final int handle, final byte key) {
+        getNote(handle).set(key);
+    }
+
+    // Like setKey, but pass the key through roundOctave using the current limits
+    private void setKeyRounded(final int handle, final byte desiredKey) {
+        setKey(handle, roundOctave(desiredKey));
     }
 
     public void setPitch(final int handle, final int desiredPitch) {
-        // Get the possible choices, see if there's a conflict
+        // Get the possible pitch classes, see if there's a conflict
         //TODO
 
-        // Set the pitch
-        notes[handle].pitch = desiredPitch;
-
         // Update the octave, in case we are out of range
-        roundOctave(handle);
+        final byte desiredKey = MidiDriverHelper.encodePitch(desiredPitch, getOctave(handle));
+        setKeyRounded(handle, desiredKey);
     }
 
     public void setOctave(final int handle, final int desiredOctave) {
         // Get the key corresponding to this octave
-        final int desiredKey = MidiDriverHelper.encodePitch(getPitch(handle), desiredOctave);
+        final byte desiredKey = MidiDriverHelper.encodePitch(getPitch(handle), desiredOctave);
 
         // Check for conflict
-        if (desiredOctave < keyLimitLo|| desiredOctave > keyLimitHi)
-            throw BuildConfig.DEBUG ? new DebugException(String.format("Invalid key: %d key limits: [%d, %d]",
-                    desiredKey,keyLimitLo, keyLimitHi)) : new DefaultException();
+        if (desiredKey < keyLimitLo || desiredKey > keyLimitHi)
+            throw BuildConfig.DEBUG ? new DebugException(String.format(
+                    "Invalid key: %d key limits: [%d, %d]", desiredKey, keyLimitLo, keyLimitHi)) :
+                    new DefaultException();
 
-        // Update the octave
-        notes[handle].octave = desiredOctave;
+        // Update the key
+        setKey(handle, desiredKey);
     }
 
     public void setKeyLimits(final int lo, final int hi) {
@@ -226,15 +276,15 @@ public class SoundSettings {
                     "Must have at least one full octave of pitches. Received %d", numPitches)) :
                     new DefaultException();
 
-        // Update the pitches, in case we are now out of range
-        for (int i = 0; i < occupiedHandles.size(); i++) {
-            roundOctave(occupiedHandles.get(i));
+        // Update the octaves, in case we are now out of range
+        for (Integer handle : occupiedHandles) {
+            setKeyRounded(handle, getKey(handle));
         }
     }
 
     // Choose whether or not to boost the volume with DNR compression
     public void setVolumeBoost(final boolean boostVolume) {
-        this.boostVolume = boostVolume;
+        this.boostVolume.set(boostVolume);
     }
 
     // Choose the reverb preset
@@ -245,16 +295,19 @@ public class SoundSettings {
                     new DefaultException();
         }
 
-        reverbPreset = preset;
+        reverbPreset.set(preset);
     }
 
-    // Given the pitch limits, round the octave choice to the nearest possible one
-    private void roundOctave(final int handle) {
-        // Get the current choice--keep it if we can
-        final int currentOctave = getOctave(handle);
+    // Given the pitch limits, round the octave choice to the nearest possible one. Input and output
+    // are keys (0-127).
+    private byte roundOctave(byte key) {
+
+        // Convert the key to pitch class & octave
+        final int pitch = MidiDriverHelper.decodePitchClass(key);
+        final int currentOctave = MidiDriverHelper.decodeOctave(key);
 
         // Query the list of choices for our given pitch
-        final List<Integer> possibleOctaves = getOctaveChoices(handle);
+        final List<Integer> possibleOctaves = getOctaveChoices(pitch);
 
         // Set the octave to be the closest possible choice to our current one
         final int minPossibleOctave = possibleOctaves.get(0);
@@ -262,6 +315,6 @@ public class SoundSettings {
         final int newOctave = currentOctave < minPossibleOctave ? minPossibleOctave :
                 (currentOctave > maxPossibleOctave ? maxPossibleOctave : currentOctave);
 
-        setOctave(handle, newOctave);
+        return MidiDriverHelper.encodePitch(pitch, newOctave);
     }
 }

@@ -35,7 +35,12 @@ public class DroneService extends Service {
 
         // Initialize the sound parameters
         isPlaying = false;
-        settings = new SoundSettings(midi.getMaxVoices(), midi.getNumReverbPresets());
+        settings = new SoundSettings(midi.getMaxVoices(), midi.getNumReverbPresets()) {
+            @Override
+            public void onSoundChanged() {
+                updateSound();
+            }
+        };
 
         // Start with a single note
         settings.addNote();
@@ -88,18 +93,9 @@ public class DroneService extends Service {
         int setBpm(int bpm) {
             return settings.setBpm(bpm);
         }
-        void setVelocity(double velocity) {
-            settings.setVelocity(velocity);
-            updateSound();
-        }
-        void setDuration(double duration) {
-            settings.setDuration(duration);
-            updateSound();
-        }
-        void setReverbPreset(int preset) {
-            settings.setReverbPreset(preset);
-            updateSound();
-        }
+        void setVelocity(double velocity) { settings.setVelocity(velocity); }
+        void setDuration(double duration) { settings.setDuration(duration); }
+        void setReverbPreset(int preset) { settings.setReverbPreset(preset); }
         void setPitch(int handle, int pitch) {
             settings.setPitch(handle, pitch);
         }
@@ -107,7 +103,6 @@ public class DroneService extends Service {
             settings.setOctave(handle, octave);
         }
         void setVolumeBoost(boolean boostVolume) { settings.setVolumeBoost(boostVolume); }
-        void updateSound() { DroneService.this.updateSound(); }
     }
 
     @Override
@@ -123,8 +118,17 @@ public class DroneService extends Service {
 
     // Change the MIDI program
     public void changeProgram(final int instrument) {
+        // Get the currently running program
+        final int currentProgram = midi.getProgram();
+
+        // Change the program and set the key limits
         midi.changeProgram((byte) instrument);
         settings.setKeyLimits(midi.getKeyMin(), midi.getKeyMax());
+
+        // Update the sound only if this is a new program
+        if (instrument != currentProgram) {
+            updateSound();
+        }
     }
 
     public void stop() {
