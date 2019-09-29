@@ -40,12 +40,19 @@ public abstract class SoundSettings {
     private List<Integer> occupiedHandles;
 
     // Callbacks
-    UpdateInterface updateInterface;
+    private UpdateInterface updateInterface;
 
     // Callback function for sound updates
     abstract void onSoundChanged();
 
     public SoundSettings(final int maxNumNotes, final int numReverbPresets) {
+
+        // Defaults
+        final int defaultReverbPreset = 1;
+        final boolean defaultBoostVolume = true;
+        final int defaultBpm = 80;
+        final double defaultVelocity = 1.0;
+        final double defaultDuration = 0.95;
 
         // Set up the callback interface
         updateInterface = new UpdateInterface() {
@@ -54,13 +61,13 @@ public abstract class SoundSettings {
                 onSoundChanged();
             }
         };
-        reverbPreset = new UpdateValue<>(1, updateInterface);
+        reverbPreset = new UpdateValue<>(defaultReverbPreset, updateInterface);
 
         // Initialize the data to defaults
-        boostVolume = new UpdateValue<>(true, updateInterface);
-        bpm = new UpdateValue<>(80, updateInterface);
-        velocity = new UpdateValue<>(1.0, updateInterface);
-        duration = new UpdateValue<>(0.95, updateInterface);
+        boostVolume = new UpdateValue<>(defaultBoostVolume, updateInterface);
+        bpm = new UpdateValue<>(defaultBpm, updateInterface);
+        velocity = new UpdateValue<>(defaultVelocity, updateInterface);
+        duration = new UpdateValue<>(defaultDuration, updateInterface);
 
         // Initialize the reverb limits, possibly overriding defaults
         maxReverbPreset = numReverbPresets - 1;
