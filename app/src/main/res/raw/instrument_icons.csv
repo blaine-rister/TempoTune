@@ -1,0 +1,52 @@
+INSTRUMENT, ICON
+cello, ic_cello
+double bass, ic_double_bass
+violin, ic_violin
+viola, ic_violin
+horn, ic_horn
+trombone, ic_trombone
+trumpet, ic_trumpet
+tuba, ic_tuba
+piano, ic_piano
+harpsichord, ic_piano
+clavinet, ic_piano
+organ, ic_organ
+nylon string guitar, ic_acoustic_guitar
+steel string guitar, ic_acoustic_guitar
+jazz guitar, ic_electric_guitar
+distortion guitar, ic_electric_guitar
+woodblock, ic_wood_block
+sine, ic_sine_wave
+flute, ic_flute
+glockenspiel, ic_xylophone
+vibraphone, ic_xylophone
+marimba, ic_marimba
+tubular bells, ic_chimes
+dulcimer, ic_dulcimer
+melodic tom, ic_snare_drum
+steel drums, ic_mallet_drum
+agogo, ic_agogo
+sax, ic_saxophone
+oboe, ic_oboe
+clarinet, ic_clarinet
+bassoon, ic_bassoon
+ocarina, ic_ocarina
+square lead, ic_synthesizer
+saw wave, ic_synthesizer
+chiffer lead, ic_synthesizer
+bass & lead, ic_synthesizer
+crystal, ic_synthesizer
+acoustic bass, ic_double_bass
+fingered bass, ic_bass_guitar
+picked bass, ic_bass_guitar
+slap bass, ic_bass_guitar
+synth bass, ic_synthesizer
+sitar, ic_sitar
+banjo, ic_banjo
+shamisen, ic_shamisen
+bagpipe, ic_bagpipes
+koto, ic_koto
+kalimba, ic_kalimba
+shenai, ic_oboe
+music box, ic_music_box
+castanet, ic_castanet

@@ -24,14 +24,18 @@
     <string name="velocity_header">Volume</string>
     <string name="credits">
         \n &appname; version &version;\n\n
-        Copyright (c) &year; Blaine Rister, all rights reserved. Please direct questions to
+        Copyright © &year; Blaine Rister, all rights reserved. Please direct questions to
         <a href="mailto:blaine@stanford.edu">blaine@stanford.edu</a>.\n\n
         Thanks to the developers of
         <a href="http://www.fluidsynth.org/" tile="FluidSynth">FluidSynth</a>, on which the sound
         synthesis is based.\n\n
-        Thanks to <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a>
-        from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>
-        for some of the icons in this app.
+        Thanks to the following authors from
+        <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a> for some of the
+        icons in this app:\n
+        \t<a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a>
+        \t<a href="https://www.flaticon.com/authors/xnimrodx" title="Xnimrodx">Xnimrodx</a>
+        \t<a href="https://www.flaticon.com/authors/eucalyp" title="Eucalyp">Eucalyp</a>
+        \t<a href="https://www.flaticon.com/authors/smashicons" title="Smashicons">Smashicons</a>
     </string>
     <string name="title_coresounds">Core Sounds</string>
 

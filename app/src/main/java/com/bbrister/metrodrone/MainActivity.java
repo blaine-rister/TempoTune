@@ -282,15 +282,15 @@ public class MainActivity extends DroneActivity {
 
         // Instrument name spinner
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
-        final ArrayAdapter<NameValPair<Integer>> instAdapter = new ArrayAdapter<>(this,
-                R.layout.instrument_spinner_item);
+        final InstrumentIconAdapter instAdapter = new InstrumentIconAdapter(this,
+                R.layout.instrument_spinner_item, R.id.instrumentName);
         instAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         instrumentSpinner.setAdapter(instAdapter);
 
         // Instrument family spinner
         final Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
         ArrayAdapter<Soundfont> familyAdapter = new ArrayAdapter<>(this,
-                R.layout.instrument_spinner_item, soundfonts);
+                R.layout.instrument_name, soundfonts);
         familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         familySpinner.setAdapter(familyAdapter);
 
