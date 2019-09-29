@@ -1,7 +1,5 @@
 package com.bbrister.metrodrone;
 
-import java.io.IOException;
-
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -286,14 +284,14 @@ public class MainActivity extends DroneActivity {
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
         final ArrayAdapter<NameValPair<Integer>> instAdapter = new ArrayAdapter<>(this,
                 R.layout.instrument_spinner_item);
-        instAdapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
+        instAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         instrumentSpinner.setAdapter(instAdapter);
 
         // Instrument family spinner
         final Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
         ArrayAdapter<Soundfont> familyAdapter = new ArrayAdapter<>(this,
                 R.layout.instrument_spinner_item, soundfonts);
-        familyAdapter.setDropDownViewResource(R.layout.instrument_spinner_item);
+        familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         familySpinner.setAdapter(familyAdapter);
 
         // Set the spinners to reflect the current program
@@ -329,12 +327,6 @@ public class MainActivity extends DroneActivity {
                 switch (module.installStatus) {
                     case INSTALLED:
                         break;
-                    case PENDING:
-                        // Print a message and change the selection
-                        DynamicModule.updateToast(context,
-                                "This module is currently awaiting installation.");
-                        familySpinner.setSelection(0); // Assumed to be safe
-                        return;
                     case FAILED:
                     case NOT_REQUESTED:
                         DynamicModule.updateToast(context,
@@ -345,6 +337,12 @@ public class MainActivity extends DroneActivity {
                             // TODO make an alert message--this is important
                             DynamicModule.updateToast(context, e.getMessage());
                         }
+                    case PENDING:
+                        // Print a message and change the selection
+                        DynamicModule.updateToast(context,
+                                "This module is currently awaiting installation.");
+                        familySpinner.setSelection(0); // Assumed to be safe
+                        return;
                 }
 
                 // Check if this is the same soundfont as before
