@@ -20,6 +20,7 @@
     <style name="AppTheme.instrumentSpinnerItemStyle"
         parent="@android:style/Widget.TextView.SpinnerItem">
         <item name="android:textSize">@dimen/instrument_text_size</item>
+        <item name="android:paddingLeft">@dimen/instrument_text_horizontal_padding</item>
     </style>
 
     <style name="AppTheme.pitchSpinnerItemStyle"

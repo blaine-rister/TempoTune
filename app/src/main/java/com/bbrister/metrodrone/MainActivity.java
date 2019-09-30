@@ -284,7 +284,6 @@ public class MainActivity extends DroneActivity {
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
         final InstrumentIconAdapter instAdapter = new InstrumentIconAdapter(this,
                 R.layout.instrument_spinner_item, R.id.instrumentName);
-        instAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         instrumentSpinner.setAdapter(instAdapter);
 
         // Instrument family spinner

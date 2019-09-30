@@ -1,6 +1,7 @@
 package com.bbrister.metrodrone;
 
 import android.content.Context;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,7 +25,16 @@ public class InstrumentIconAdapter extends ArrayAdapter<NameValPair<Integer>> {
 
     @Override
     public View getDropDownView(int position, View convertView, ViewGroup parent) {
-        return getIconView(position, convertView, parent);
+        // Get the base view
+        convertView = getIconView(position, convertView, parent);
+
+        // Set dropdown padding
+        final int paddingPix = (int) parent.getContext().getResources().getDimension(
+                R.dimen.instrument_dropdown_vertical_padding);
+        convertView.setPadding(convertView.getPaddingLeft(), paddingPix,
+                convertView.getPaddingLeft(), paddingPix);
+
+        return convertView;
     }
 
     @Override
