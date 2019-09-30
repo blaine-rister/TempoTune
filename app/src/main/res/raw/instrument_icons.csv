@@ -1,12 +1,16 @@
 INSTRUMENT, ICON
 cello, ic_cello
-double bass, ic_double_bass
+contrabass, ic_double_bass
 violin, ic_violin
 viola, ic_violin
+harp, ic_harp
+pizzicato section, ic_violin
+string orchestra, ic_violin
 horn, ic_horn
 trombone, ic_trombone
 trumpet, ic_trumpet
 tuba, ic_tuba
+synth brass, ic_synthesizer
 piano, ic_piano
 harpsichord, ic_piano
 clavinet, ic_piano
