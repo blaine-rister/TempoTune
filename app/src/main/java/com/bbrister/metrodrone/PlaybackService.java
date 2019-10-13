@@ -89,18 +89,23 @@ public class PlaybackService extends Service {
         driver.play(this.getApplicationContext(), sound);
 
         // Create a notification channel, for android O+ devices
-        final String channelId = "playback";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager mgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            if (mgr.getNotificationChannel(channelId) == null) {
-                mgr.createNotificationChannel(new NotificationChannel(channelId,
-                        "Playback", NotificationManager.IMPORTANCE_DEFAULT));
+            if (mgr.getNotificationChannel(Notifications.playbackChannelId) == null) {
+                // Create a notification channel
+                NotificationChannel channel = new NotificationChannel(
+                        Notifications.playbackChannelId,"Playback",
+                        NotificationManager.IMPORTANCE_LOW); // Low importance disables sound
+                channel.setSound(null, null); // This doesn't seem to work
+
+                // Add it to the notification manager
+                mgr.createNotificationChannel(channel);
             }
         }
 
         // Create a "playing" notification
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this,
-                channelId);
+                Notifications.playbackChannelId);
 
         builder
                 // Add the metadata for the currently playing track
