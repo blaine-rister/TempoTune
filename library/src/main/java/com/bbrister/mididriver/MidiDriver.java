@@ -61,26 +61,29 @@ public class MidiDriver
     }
 
     /**
-     * Start the midi driver, also passing an AssetManager which is capable of reading assets.
+     * Start the midi driver, querying native audio parameters.
      */
     public void start(Context context)
     {
-        // Get the assets
-        AssetManager assetManager = context.getAssets();
+        // Query the device sample rate
         final int sampleRate = PlaybackDriver.getSampleRate(context);
 
         // Initialize the MIDI, if it hasn't been
-        if (!isStarted && !initJNI(assetManager, sampleRate)) {
+        if (!isStarted && !initJNI(sampleRate)) {
             throw new RuntimeException(BuildConfig.DEBUG ? "Failed to initialize MIDI" : "");
         }
         isStarted = true;
     }
 
     /**
-     * Load a soundfont file.
+     * Load a soundfont from an asset file. Uses the context to locate the asset.
      */
-    public void loadSounds(final String filename) {
-        if (!loadSoundfontJNI(filename)) {
+    public void loadSounds(final Context context, final String filename) {
+        // Get the assets
+        AssetManager assetManager = context.getAssets();
+
+        // Load the soundfonts
+        if (!loadSoundfontJNI(assetManager, filename)) {
             throw new RuntimeException(BuildConfig.DEBUG ? String.format(
                     "Failed to load soundfont %s", filename) : "");
         }
@@ -189,10 +192,10 @@ public class MidiDriver
      *
      * @return true for success
      */
-    private boolean initJNI(Object assetManager, int sampleRate) {
-        return A(assetManager, sampleRate);
+    private boolean initJNI(int sampleRate) {
+        return A(sampleRate);
     }
-    private native boolean A(Object assetManager, int sampleRate);
+    private native boolean A(int sampleRate);
 
 
     /**
@@ -308,10 +311,10 @@ public class MidiDriver
     /**
      * Load a new soundfont.
      */
-    private boolean loadSoundfontJNI(String filename) {
-        return M(filename);
+    private boolean loadSoundfontJNI(Object assetManager, String filename) {
+        return M(assetManager, filename);
     }
-    private native boolean M(String filename);
+    private native boolean M(Object assetManager, String filename);
 
     // Load midi library
     static

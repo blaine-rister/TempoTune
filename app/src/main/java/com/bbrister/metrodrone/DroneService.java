@@ -113,7 +113,7 @@ public class DroneService extends Service {
     // Load the sounds and remember the soundfont name
     private void loadSounds(final String soundfontName) {
         this.soundfontName = soundfontName;
-        midi.loadSounds(soundfontName);
+        midi.loadSounds(getApplicationContext(), soundfontName);
     }
 
     // Change the MIDI program

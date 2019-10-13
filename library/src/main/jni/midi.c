@@ -670,16 +670,7 @@ static
 jboolean
 initJNI(JNIEnv *env,
          jobject obj,
-         jobject AAssetAdapter,
          jint deviceSampleRate) {
-
-    jboolean result;
-
-    // Initialize the AAssets wrapper, so we can do file I/O
-    if (init_AAssets(env, AAssetAdapter)) {
-        LOG_E(LOG_TAG, "Failed to initialize AAssets.");
-        return JNI_FALSE;
-    }
 
     // Initialize the synth
     return (midi_init(deviceSampleRate) == 0) ? JNI_TRUE : JNI_FALSE;
@@ -689,10 +680,9 @@ initJNI(JNIEnv *env,
 JNIEXPORT
 jboolean
 Java_com_bbrister_mididriver_MidiDriver_A(JNIEnv *env,
-                                               jobject obj,
-                                               jobject AAssetAdapter,
-                                               jint deviceSampleRate) {
-    return initJNI(env, obj, AAssetAdapter, deviceSampleRate);
+                                          jobject obj,
+                                          jint deviceSampleRate) {
+    return initJNI(env, obj, deviceSampleRate);
 }
 
 // Get the maximum number of concurrent voices
@@ -889,7 +879,6 @@ Java_com_bbrister_mididriver_MidiDriver_J(JNIEnv *env,
 static
 void shutdownJNI(JNIEnv *env) {
     shutdownFluid();
-    release_AAssets(env);
 }
 
 // Obfuscated JNI wrapper for the former
@@ -920,7 +909,15 @@ static
 jboolean
 loadSoundfontJNI(JNIEnv *env,
                  jobject obj,
+                 jobject AAssetAdapter,
                  jstring soundfontAAssetName) {
+
+    // Initialize the AAssets wrapper, so we can do file I/O
+    if (init_AAssets(env, AAssetAdapter)) {
+        LOG_E(LOG_TAG, "Failed to initialize AAssets.");
+        return JNI_FALSE;
+    }
+
     // Convert Java arguments
     const char *const soundfontName = (*env)->GetStringUTFChars(env, soundfontAAssetName, NULL);
 
@@ -930,6 +927,9 @@ loadSoundfontJNI(JNIEnv *env,
     // Release Java arguments
     (*env)->ReleaseStringUTFChars(env, soundfontAAssetName, soundfontName);
 
+    // Release AAssets
+    release_AAssets(env);
+
     return result == 0 ? JNI_TRUE : JNI_FALSE;
 }
 
@@ -938,8 +938,9 @@ JNIEXPORT
 jboolean
 Java_com_bbrister_mididriver_MidiDriver_M(JNIEnv *env,
                                           jobject obj,
+                                          jobject AAssetAdapter,
                                           jstring soundfontAAssetName) {
-    return loadSoundfontJNI(env, obj, soundfontAAssetName);
+    return loadSoundfontJNI(env, obj, AAssetAdapter, soundfontAAssetName);
 }
 
 #ifdef __cplusplus
