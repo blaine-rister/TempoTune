@@ -95,7 +95,7 @@ public abstract class SoundSettings {
     public int addNote() {
         // Take a free handle
         if (freeHandles.isEmpty())
-            throw BuildConfig.DEBUG ? new DebugException("No slots left for new notes!") :
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("No slots left for new notes!") :
                     new DefaultException();
         final int handle = freeHandles.get(0);
 
@@ -122,7 +122,7 @@ public abstract class SoundSettings {
     // Get a note
     private UpdateValue<Byte> getNote(final int handle) {
         if (occupiedHandles.indexOf(handle) < 0) {
-            throw BuildConfig.DEBUG ? new DebugException(String.format(
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
                     "No note exists at handle %d", handle)) : new DefaultException();
         }
         return notes.get(handle);
@@ -223,14 +223,14 @@ public abstract class SoundSettings {
 
     public void setVelocity(final double desiredVelocity) {
         if (desiredVelocity < 0. || desiredVelocity > 1.)
-            throw BuildConfig.DEBUG ? new DebugException(String.format(
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
                     "Invalid velocity: %f", velocity.get())) : new DefaultException();
         velocity.set(desiredVelocity);
     }
 
     public void setDuration(final double desiredDuration) {
         if (desiredDuration < 0. || desiredDuration > 1.)
-            throw BuildConfig.DEBUG ? new DebugException(String.format(
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
                     "Invalid duration: %f", duration.get())) : new DefaultException();
         duration.set(desiredDuration);
     }
@@ -260,7 +260,7 @@ public abstract class SoundSettings {
 
         // Check for conflict
         if (desiredKey < keyLimitLo || desiredKey > keyLimitHi)
-            throw BuildConfig.DEBUG ? new DebugException(String.format(
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
                     "Invalid key: %d key limits: [%d, %d]", desiredKey, keyLimitLo, keyLimitHi)) :
                     new DefaultException();
 
@@ -270,7 +270,7 @@ public abstract class SoundSettings {
 
     public void setKeyLimits(final int lo, final int hi) {
         if (lo > MidiDriverHelper.keyMax || hi < 0 || hi < lo)
-            throw BuildConfig.DEBUG ?  new DebugException(String.format(
+            throw BuildConfig.DEBUG_EXCEPTIONS ?  new DebugException(String.format(
                     "Invalid key limits: [%d, %d]", lo, hi)) : new DefaultException();
 
         keyLimitLo = Math.max(0, lo);
@@ -279,7 +279,7 @@ public abstract class SoundSettings {
         // Assume we have at least a full octave, otherwise the pitch adapter must be changed
         final int numPitches = keyLimitHi - keyLimitLo;
         if (numPitches < pitchMax)
-            throw BuildConfig.DEBUG ? new DebugException(String.format(
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
                     "Must have at least one full octave of pitches. Received %d", numPitches)) :
                     new DefaultException();
 
@@ -297,7 +297,7 @@ public abstract class SoundSettings {
     // Choose the reverb preset
     public void setReverbPreset(final int preset) {
         if (preset < 0 || preset > maxReverbPreset) {
-            throw BuildConfig.DEBUG ? new DebugException(String.format(
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
                     "Invalid reverb preset: %d (max: %d)", preset, maxReverbPreset)) :
                     new DefaultException();
         }

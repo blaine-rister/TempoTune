@@ -33,7 +33,7 @@ import java.util.HashSet;
 public abstract class DroneActivity extends AppCompatActivity {
 
     // Constants
-    final static boolean testAds = BuildConfig.DEBUG;
+    final static boolean testAds = BuildConfig.DEBUG_EXCEPTIONS;
 
     // Customization
     Set<Integer> hiddenActions;
@@ -67,19 +67,19 @@ public abstract class DroneActivity extends AppCompatActivity {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            throw BuildConfig.DEBUG ? new DebugException("Lost connection to the server.") :
-                    new DefaultException();
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
+                    "Lost connection to the server.") : new DefaultException();
         }
 
         @Override
         public void onNullBinding(ComponentName name) {
-            throw BuildConfig.DEBUG  ? new DebugException("The server returned null on binding.") :
-                    new DefaultException();
+            throw BuildConfig.DEBUG_EXCEPTIONS  ? new DebugException(
+                    "The server returned null on binding.") : new DefaultException();
         }
 
         @Override
         public void onBindingDied(ComponentName name) {
-            throw BuildConfig.DEBUG ? new DebugException("The server binding died.") :
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("The server binding died.") :
                     new DefaultException();
         }
     };
@@ -97,12 +97,12 @@ public abstract class DroneActivity extends AppCompatActivity {
         // Start the drone service and bind to it. When bound, we will set up the UI.
         Intent intent = new Intent(this, DroneService.class);
         if (startService(intent) == null) {
-            throw BuildConfig.DEBUG ? new DebugException("Failed to start the service.") :
-                    new DefaultException();
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
+                    "Failed to start the service.") : new DefaultException();
         }
         if (!bindService(intent, droneConnection, Context.BIND_AUTO_CREATE)) {
-            throw BuildConfig.DEBUG ? new DebugException("Binding to the server returned false.") :
-                    new DefaultException();
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
+                    "Binding to the server returned false.") : new DefaultException();
         }
 
         // Get the ad unit IDs

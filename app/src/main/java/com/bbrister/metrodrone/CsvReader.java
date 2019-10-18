@@ -24,7 +24,7 @@ public class CsvReader {
             return readCsvHelper(resourceId);
         } catch (IOException ie) {
             ie.printStackTrace();
-            throw BuildConfig.DEBUG ? new DebugException("Failed to read the CSV file!") :
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("Failed to read the CSV file!") :
                     new DefaultException();
         }
     }
@@ -50,8 +50,8 @@ public class CsvReader {
             };
 
             // Check formatting and add the data
-            if (items.length != itemsPerLine) throw BuildConfig.DEBUG ? new DebugException(
-                    "Invalid CSV line: " + line) : new DefaultException();
+            if (items.length != itemsPerLine) throw BuildConfig.DEBUG_EXCEPTIONS ?
+                    new DebugException("Invalid CSV line: " + line) : new DefaultException();
             for (int i = 0; i < items.length; i++) {
                 items[i] = items[i].trim();
             }

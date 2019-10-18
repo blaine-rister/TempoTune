@@ -19,6 +19,14 @@
     <string name="bpm_header">BPM</string>
     <string name="pitch_header">Pitch</string>
 
+    <string name="download_prompt">Download module "%s"?</string>
+    <string name="download_ongoing">Module "%s" is currently awaiting installation...</string>
+    <string name="download_api_level_fail">Downloading modules is not supported on this version of
+        Android. Please upgrade to at least Android version 21.</string>
+    <string name="yes">YES</string>
+    <string name="no">NO</string>
+    <string name="ok">OK</string>
+
     <string name="instrument_header">Instrument</string>
     <string name="duration_header">Duration</string>
     <string name="velocity_header">Volume</string>

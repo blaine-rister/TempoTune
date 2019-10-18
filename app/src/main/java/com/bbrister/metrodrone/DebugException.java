@@ -4,6 +4,6 @@ package com.bbrister.metrodrone;
 // message.
 public class DebugException extends RuntimeException {
     public DebugException(String str) {
-        super(BuildConfig.DEBUG ? str : DefaultException.msg);
+        super(BuildConfig.DEBUG_EXCEPTIONS ? str : DefaultException.msg);
     }
 }

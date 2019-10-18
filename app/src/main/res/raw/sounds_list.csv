@@ -1,15 +1,15 @@
-PATH, MODULE, IS_FREE
-instant.sf2, instantsounds, yes
-basic.sf2, coresounds, yes
-basses.sf2, basssounds, no
-brass.sf2, brasssounds, no
-exotic.sf2, exoticsounds, no
-guitars.sf2, guitarsounds, no
-keyboards.sf2, keyboardsounds, no
-metronomes.sf2, metronomesounds, no
-organs.sf2, organsounds, no
-pitched_percussion.sf2, percussionsounds, no
-unpitched_percussion.sf2, percussionsounds, no
-strings.sf2, stringsounds, no
-synthesizers.sf2, synthsounds, no
-woodwinds.sf2, woodwindsounds, no
+PATH, MODULE, IS_FREE, UPGRADE_NAME
+instant.sf2, instantsounds, yes, none
+basic.sf2, coresounds, yes, none
+basses.sf2, basssounds, no, Basses
+brass.sf2, brasssounds, no, Brass
+exotic.sf2, exoticsounds, no, Exotic
+guitars.sf2, guitarsounds, no, Guitars
+keyboards.sf2, keyboardsounds, no, Keyboards
+metronomes.sf2, metronomesounds, no, Metronomes
+organs.sf2, organsounds, no, Organs
+pitched_percussion.sf2, percussionsounds, no, Percussion
+unpitched_percussion.sf2, percussionsounds, no, Percussion
+strings.sf2, stringsounds, no, Strings
+synthesizers.sf2, synthsounds, no, Synthesizers
+woodwinds.sf2, woodwindsounds, no, Woodwinds

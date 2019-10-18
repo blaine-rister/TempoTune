@@ -70,7 +70,8 @@ public class MidiDriver
 
         // Initialize the MIDI, if it hasn't been
         if (!isStarted && !initJNI(sampleRate)) {
-            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to initialize MIDI" : "");
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ? "Failed to initialize MIDI" :
+                    "");
         }
         isStarted = true;
     }
@@ -84,7 +85,7 @@ public class MidiDriver
 
         // Load the soundfonts
         if (!loadSoundfontJNI(assetManager, filename)) {
-            throw new RuntimeException(BuildConfig.DEBUG ? String.format(
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ? String.format(
                     "Failed to load soundfont %s", filename) : "");
         }
     }
@@ -104,7 +105,7 @@ public class MidiDriver
     public boolean queryProgram(byte programNumber) {
         int result = queryProgramJNI(programNumber);
         if (result < 0)
-            throw new RuntimeException(BuildConfig.DEBUG ? String.format(
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ? String.format(
                     "Failed to query program number %d", programNumber) : "");
 
         return result > 0;
@@ -116,7 +117,7 @@ public class MidiDriver
     public String getProgramName(byte programNumber) {
         String name = getProgramNameJNI(programNumber);
         if (name.isEmpty())
-            throw new RuntimeException(BuildConfig.DEBUG ? String.format(
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ? String.format(
                     "Failed to get the name of program %d", programNumber) : "");
 
         return name;
@@ -128,8 +129,8 @@ public class MidiDriver
     public void changeProgram(byte programNumber) {
 
         if (!changeProgramJNI(programNumber))
-            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to change the MIDI program" :
-                    "");
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ?
+                    "Failed to change the MIDI program" : "");
     }
 
     /**
@@ -138,7 +139,8 @@ public class MidiDriver
     public int getProgram() {
         final int program = getProgramJNI();
         if (program < 0)
-            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to get the MIDI program" : "");
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ?
+                    "Failed to get the MIDI program" : "");
         return program;
     }
 
@@ -148,7 +150,8 @@ public class MidiDriver
     public byte getKeyMin() {
         final int keyMin = getKeyMinJNI();
         if (keyMin < 0)
-            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to get the minimum key" : "");
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ?
+                    "Failed to get the minimum key" : "");
         return toByte(keyMin);
     }
 
@@ -158,7 +161,8 @@ public class MidiDriver
     public byte getKeyMax() {
         final int keyMax = getKeyMaxJNI();
         if (keyMax < 0)
-            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to get the maximum key" : "");
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ?
+                    "Failed to get the maximum key" : "");
         return toByte(keyMax);
     }
 
@@ -168,7 +172,8 @@ public class MidiDriver
     public float[] renderNotes(RenderSettings settings) {
         final float[] sound = renderJNI(settings);
         if (sound == null)
-            throw new RuntimeException(BuildConfig.DEBUG ? "Failed to render pitches" : "");
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ?
+                    "Failed to render pitches" : "");
 
         return sound;
     }

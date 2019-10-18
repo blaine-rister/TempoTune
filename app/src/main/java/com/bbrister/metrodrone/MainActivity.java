@@ -43,6 +43,7 @@ public class MainActivity extends DroneActivity {
 
     // Persistent UI items
     TextView bpmTextView;
+    ArrayAdapter<Soundfont> familyAdapter;
 
     // Initialize the UI when the drone is connected
     @Override
@@ -240,13 +241,13 @@ public class MainActivity extends DroneActivity {
         final int moduleIdx = 1;
         final int isFreeIdx = 2;
         String[] csvHeader = csvLines.get(0);
-        if (BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG_EXCEPTIONS) {
             String[] expectedHeader = {"path", "module", "is_free"};
             for (int i = 0; i < expectedHeader.length; i++) {
                 final String expectedTag = expectedHeader[i];
                 final String actualTag = csvHeader[i];
                 if (!actualTag.equalsIgnoreCase(expectedTag)) {
-                    throw BuildConfig.DEBUG ? new DebugException(String.format(
+                    throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
                             "Unexpected CSV tag %s (expected %s)", actualTag, expectedTag)) :
                             new DefaultException();
                 }
@@ -255,8 +256,8 @@ public class MainActivity extends DroneActivity {
 
         // Verify that we have at least one soundfont
         if (csvLines.size() < 2) {
-            throw BuildConfig.DEBUG ? new DebugException("Need at least one soundfont!") :
-                    new DefaultException();
+            throw BuildConfig.DEBUG_EXCEPTIONS ?
+                    new DebugException("Need at least one soundfont!") : new DefaultException();
         }
 
         // Parse the CSV to build the list of soundfonts
@@ -272,8 +273,9 @@ public class MainActivity extends DroneActivity {
             } else if (isFreeStr.equalsIgnoreCase("no")) {
                 isFree = false;
             } else {
-                throw BuildConfig.DEBUG ? new DebugException(String.format("Unrecognized IS_FREE " +
-                        "entry: %s (line %d)", isFreeStr, i)) : new DefaultException();
+                throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
+                        "Unrecognized IS_FREE entry: %s (line %d)", isFreeStr, i)) :
+                        new DefaultException();
             }
 
             // Create the soundfont object
@@ -288,7 +290,7 @@ public class MainActivity extends DroneActivity {
 
         // Instrument family spinner
         final Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
-        ArrayAdapter<Soundfont> familyAdapter = new ArrayAdapter<>(this,
+        final ArrayAdapter<Soundfont> familyAdapter = new ArrayAdapter<>(this,
                 R.layout.instrument_name, soundfonts);
         familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         familySpinner.setAdapter(familyAdapter);
@@ -315,45 +317,9 @@ public class MainActivity extends DroneActivity {
         familySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
-
-                // Get the selected soundfont
-                Soundfont selection = (Soundfont) adapterView.getSelectedItem();
-
-                // Check if this is installed
-                Context context = adapterView.getContext();
-                DynamicModule module = new DynamicModule(context,
-                        selection.moduleName, selection.displayName, selection.isFree);
-                switch (module.installStatus) {
-                    case INSTALLED:
-                        break;
-                    case FAILED:
-                    case NOT_REQUESTED:
-                        DynamicModule.updateToast(context,
-                                "Attempting installation...");
-                        try {
-                            module.install(context);
-                        } catch (ApiLevelException e) {
-                            // TODO make an alert message--this is important
-                            DynamicModule.updateToast(context, e.getMessage());
-                        }
-                    case PENDING:
-                        // Print a message and change the selection
-                        DynamicModule.updateToast(context,
-                                "This module is currently awaiting installation.");
-                        familySpinner.setSelection(0); // Assumed to be safe
-                        return;
-                }
-
-                // Check if this is the same soundfont as before
-                if (!selection.path.equals(droneBinder.getSoundfont())) {
-
-                    // Load a new soundfont
-                    droneBinder.loadSounds(selection.path);
-                    updateInstrumentChoices(instAdapter);
-
-                    // Update the instrument. Don't rely on the spinner to do it, this is unreliable
-                    instrumentSpinner.setSelection(0, true);
-                    setInstrument((NameValPair) instrumentSpinner.getSelectedItem());
+                // Try to set this soundfont. If not installed, return to the previous
+                if (!setSoundfont((Soundfont) adapterView.getSelectedItem(), instrumentSpinner)) {
+                    updateFamilySelection(familySpinner, familyAdapter);
                 }
             }
 
@@ -366,6 +332,74 @@ public class MainActivity extends DroneActivity {
         // Update all the UI elements, to retrieve values set by other activities
         uiReady = true;
         updateUI();
+    }
+
+    /**
+     * Update the soundfont, prompting the user to install missing ones. Returns true if the
+     * soundfont is installed, false otherwise.
+     */
+    public boolean setSoundfont(final Soundfont soundfont, final Spinner instrumentSpinner) {
+
+        // Check if this is installed
+        final DynamicModule module = new SoundfontModule(this, soundfont);
+        switch (module.installStatus) {
+            case INSTALLED:
+                // Continue on to processing the soundfont
+                break;
+            case FAILED:
+            case NOT_REQUESTED:
+                // Allow the user to start installation. Do not change the selection.
+                module.promptInstallation(this, getSupportFragmentManager());
+                return false;
+            case PENDING:
+                // Print a message
+                //TODO make this an alert dialog
+                DynamicModule.updateToast(this,
+                        String.format(
+                                getString(R.string.download_ongoing),
+                                soundfont.displayName
+                        )
+                );
+                return false;
+        }
+
+        // Check if this is the same soundfont as before
+        if (!soundfont.path.equals(droneBinder.getSoundfont())) {
+
+            // Create the installation listener
+            module.setInstallListener(new DynamicModule.InstallListener() {
+                @Override
+                public void onInstallFinished(final boolean success) {
+                    // Check for successful installation
+                    if (!success) {
+                        throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
+                                "Failed to request module " + module.displayName) :
+                                new DefaultException();
+                    }
+
+                    // Installation succeeded. Begin loading the soundfont
+                    loadSoundfont(soundfont, instrumentSpinner);
+                }
+            });
+
+            // Begin installation. We need to request the module even it's previously installed
+            module.installQuiet(this);
+        }
+
+        return true;
+    }
+
+    /**
+     * Load the given soundfont in the synth and update instrument choices.
+     */
+    private void loadSoundfont(Soundfont soundfont, Spinner instrumentSpinner) {
+        // Load the sounds in the synth
+        droneBinder.loadSounds(soundfont.path);
+
+        // Update the instruments. Don't rely on the spinner to do it, this is unreliable
+        updateInstrumentChoices((InstrumentIconAdapter) instrumentSpinner.getAdapter());
+        instrumentSpinner.setSelection(0, true);
+        setInstrument((NameValPair<Integer>) instrumentSpinner.getSelectedItem());
     }
 
     // Update the list of instrument choices
@@ -385,7 +419,7 @@ public class MainActivity extends DroneActivity {
 
         // We need to have at least one instrument
         if (instruments.isEmpty())
-            throw BuildConfig.DEBUG ? new DebugException("No valid instruments found!") :
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("No valid instruments found!") :
                     new DefaultException();
 
         // Set the choices in the adapter
@@ -415,7 +449,7 @@ public class MainActivity extends DroneActivity {
 
         // Check if we found anything
         if (sfIdx < 0) {
-            throw BuildConfig.DEBUG ? new DebugException("Failed to find soundFont " +
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("Failed to find soundFont " +
                     currentSoundfontPath) : new DefaultException();
         }
 
@@ -440,7 +474,7 @@ public class MainActivity extends DroneActivity {
         }
 
         // Check if we failed to find the program
-        throw BuildConfig.DEBUG ? new DebugException(
+        throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
                 String.format("Failed to set spinners to the program number %d", currentProgram)) :
                 new DefaultException();
 
@@ -506,7 +540,7 @@ public class MainActivity extends DroneActivity {
                     .getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);
         } catch (Exception e) {
-            if (BuildConfig.DEBUG) {
+            if (BuildConfig.DEBUG_EXCEPTIONS) {
                 throw e; // Rethrow this for examination in debug mode
             }
         }

@@ -78,7 +78,7 @@ public class PlaybackService extends Service {
                 stopSelf();
                 return returnCode;
             default:
-                throw BuildConfig.DEBUG ? new DebugException("Unrecognized intent: " +
+                throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("Unrecognized intent: " +
                         intent.getAction()) : new DefaultException();
         }
 
