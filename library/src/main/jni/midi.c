@@ -556,13 +556,17 @@ static int render(const struct sound_settings settings, float *const buffer) {
 
 // Shut down fluid synth
 static void shutdownFluid(void) {
+
     if (fluidSynth != NULL) {
         delete_fluid_synth(fluidSynth);
         fluidSynth = NULL;
+        soundfontId = -1;
     }
     if (fluidSettings != NULL) {
         delete_fluid_settings(fluidSettings);
+        fluidSettings = NULL;
     }
+
 }
 
 // Initialize the fluid synthesizer
