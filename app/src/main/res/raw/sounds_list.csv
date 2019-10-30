@@ -1,15 +1,15 @@
-PATH, MODULE, IS_FREE, UPGRADE_NAME
-instant.sf2, instantsounds, yes, none
-basic.sf2, coresounds, yes, none
-basses.sf2, basssounds, no, Basses
-brass.sf2, brasssounds, no, Brass
-exotic.sf2, exoticsounds, no, Exotic
-guitars.sf2, guitarsounds, no, Guitars
-keyboards.sf2, keyboardsounds, no, Keyboards
-metronomes.sf2, metronomesounds, no, Metronomes
-organs.sf2, organsounds, no, Organs
-pitched_percussion.sf2, percussionsounds, no, Percussion
-unpitched_percussion.sf2, percussionsounds, no, Percussion
-strings.sf2, stringsounds, no, Strings
-synthesizers.sf2, synthsounds, no, Synthesizers
-woodwinds.sf2, woodwindsounds, no, Woodwinds
+PATH, MODULE, IS_FREE, IS_INSTANT, UPGRADE_NAME
+instant.sf2, instantsounds, yes, yes, none
+basic.sf2, coresounds, yes, no, none
+basses.sf2, basssounds, no, no, Basses
+brass.sf2, brasssounds, no, no, Brass
+exotic.sf2, exoticsounds, no, no, Exotic
+guitars.sf2, guitarsounds, no, no, Guitars
+keyboards.sf2, keyboardsounds, no, no, Keyboards
+metronomes.sf2, metronomesounds, no, no, Metronomes
+organs.sf2, organsounds, no, no, Organs
+pitched_percussion.sf2, percussionsounds, no, no, Percussion
+unpitched_percussion.sf2, percussionsounds, no, no, Percussion
+strings.sf2, stringsounds, no, no, Strings
+synthesizers.sf2, synthsounds, no, no, Synthesizers
+woodwinds.sf2, woodwindsounds, no, no, Woodwinds

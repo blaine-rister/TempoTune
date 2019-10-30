@@ -34,20 +34,21 @@ public class PremiumManager implements PurchasesUpdatedListener {
      * The main use case. Returns true the product is purchased, otherwise prompts the user to
      * purchase it.
      */
-    public void promptPremium() {
+    public void promptPremium(final String message) {
+
         // Check if we have already purchased the product
         isPurchased(new PurchaseListener() {
             @Override
             public void onIsPurchased(boolean isPurchased) {
                 if (!isPurchased) {
                     // Complete the purchase flow
-                    completePromptPremium();
+                    completePromptPremium(message);
                 }
             }
         });
     }
 
-    private void completePromptPremium() {
+    private void completePromptPremium(final String message) {
 
         // Create the callback interface
         YesNoDialogListener listener = new YesNoDialogListener() {
@@ -60,6 +61,7 @@ public class PremiumManager implements PurchasesUpdatedListener {
         // Create the argument bundle
         Bundle arguments = new Bundle();
         arguments.putSerializable(DownloadDialogFragment.yesNoListenerKey, listener);
+        arguments.putString(PremiumDialogFragment.messageKey, message);
 
         // Create the dialog and add its arguments
         PremiumDialogFragment dialog = new PremiumDialogFragment();

@@ -25,10 +25,13 @@
     <string name="no">NO</string>
     <string name="ok">OK</string>
 
-    <string name="premium_prompt">Upgrade to premium mode? This will allow you to\n
+    <string name="premium_prompt_full">Please consider upgrading to premium mode. This will allow
+        you to\n
     \t-Download new sounds.\n
     \t-Play chords.\n
     \t-Support development of the app.</string>
+    <string name="premium_prompt_download">Downloading new sounds is a premium feature. Upgrade to
+    premium mode?</string>
     <string name="upgrade">UPGRADE</string>
     <string name="not_now">NOT NOW</string>
 

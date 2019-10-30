@@ -30,8 +30,7 @@ import android.content.Context;
 public class MainActivity extends DroneActivity {
 
     // Constants
-    final static String logTag = "metrodrone";
-    final static String displaySharpsKey = "DISPLAY_SHARPS";
+    final private static String displaySharpsKey = "DISPLAY_SHARPS";
 
     // Dynamic UI items
     List<NoteSelector> noteSelectors = new ArrayList<>(); // Stores the pitches to be played
@@ -91,7 +90,9 @@ public class MainActivity extends DroneActivity {
             //TODO display a toast thanking the user for supporting the app
         } else {
             // Prompt the user to upgrade to premium
-            (new PremiumManager(this)).promptPremium();
+            (new PremiumManager(this)).promptPremium(
+                    getString(R.string.premium_prompt_full)
+            );
         }
     }
 
@@ -255,9 +256,10 @@ public class MainActivity extends DroneActivity {
         final int pathIdx = 0;
         final int moduleIdx = 1;
         final int isFreeIdx = 2;
+        final int isInstantIdx = 3;
         String[] csvHeader = csvLines.get(0);
         if (BuildConfig.DEBUG_EXCEPTIONS) {
-            String[] expectedHeader = {"path", "module", "is_free"};
+            String[] expectedHeader = {"path", "module", "is_free", "is_instant"};
             for (int i = 0; i < expectedHeader.length; i++) {
                 final String expectedTag = expectedHeader[i];
                 final String actualTag = csvHeader[i];
@@ -280,18 +282,14 @@ public class MainActivity extends DroneActivity {
         for (int i = 1; i < csvLines.size(); i++) {
             String[] csvLine = csvLines.get(i);
 
-            // Parse the "IS_FREE" entry
-            boolean isFree;
-            final String isFreeStr = csvLine[isFreeIdx];
-            if (isFreeStr.equalsIgnoreCase("yes")) {
-                isFree = true;
-            } else if (isFreeStr.equalsIgnoreCase("no")) {
-                isFree = false;
-            } else {
-                throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
-                        "Unrecognized IS_FREE entry: %s (line %d)", isFreeStr, i)) :
-                        new DefaultException();
+            // Ignore instant soundfonts
+            final boolean isInstant = str2bool(csvLine[isInstantIdx]);
+            if (isInstant) {
+                continue;
             }
+
+            // Parse the "IS_FREE" entry
+            final boolean isFree = str2bool(csvLine[isFreeIdx]);
 
             // Create the soundfont object
             soundfonts.add(new Soundfont(csvLine[pathIdx], csvLine[moduleIdx], isFree));
@@ -357,7 +355,9 @@ public class MainActivity extends DroneActivity {
 
         // Check if premium mode is required. If so, prompt premium purchase
         if (!havePremium() && !soundfont.isFree) {
-            (new PremiumManager(this)).promptPremium();
+            (new PremiumManager(this)).promptPremium(
+                    getString(R.string.premium_prompt_download)
+            );
             return false;
         }
 
@@ -606,5 +606,20 @@ public class MainActivity extends DroneActivity {
         }
 
         return pitchNameVals;
+    }
+
+    /**
+     * Parse "yes" and "no" in CSV files
+     */
+    private boolean str2bool(final String str) {
+        if (str.equalsIgnoreCase("yes")) {
+            return true;
+        } else if (str.equalsIgnoreCase("no")) {
+            return false;
+        } else {
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
+                    "Unable to convert to bool: %s", str)) :
+                    new DefaultException();
+        }
     }
 }
