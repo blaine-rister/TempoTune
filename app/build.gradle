@@ -7,8 +7,8 @@ android {
         applicationId "com.bbrister.metrodrone"
         minSdkVersion 14
         targetSdkVersion 29
-        versionCode 12
-        versionName "0.1.2"
+        versionCode 14
+        versionName "0.1.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -17,9 +17,14 @@ android {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             buildConfigField "boolean", "DEBUG_EXCEPTIONS", 'false'
+            resValue('string', 'banner_ad_unit_id', '@string/real_banner_ad_unit_id')
+            resValue('string', 'interstitial_ad_unit_id', '@string/real_interstitial_ad_unit_id')
         }
         debug {
             buildConfigField "boolean", "DEBUG_EXCEPTIONS", 'true'
+            //resValue('string', 'banner_ad_unit_id', '@string/test_banner_ad_unit_id')
+            resValue('string', 'banner_ad_unit_id', '@string/real_banner_ad_unit_id')
+            resValue('string', 'interstitial_ad_unit_id', '@string/test_interstitial_ad_unit_id')
         }
     }
 
@@ -39,5 +44,5 @@ dependencies {
     implementation project(':library')
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'com.google.android.play:core:1.6.3'
-
+    implementation 'com.android.billingclient:billing:2.0.3'
 }

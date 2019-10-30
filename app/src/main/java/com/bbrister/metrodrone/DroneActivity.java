@@ -32,14 +32,14 @@ import java.util.HashSet;
 /* Abstract class to automate the task of connecting to the drone, other basic app stuff. */
 public abstract class DroneActivity extends AppCompatActivity {
 
-    // Constants
-    final static boolean testAds = BuildConfig.DEBUG_EXCEPTIONS;
+    // Read-only configuration settings
+    private boolean premiumMode;
 
     // Customization
     Set<Integer> hiddenActions;
 
     // State
-    boolean isTapping = false;
+    boolean isTapping;
     TempoTapper tempoTapper;
 
     // Ads
@@ -88,11 +88,39 @@ public abstract class DroneActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Initialize configuration/premium settings
+        premiumMode = false;
+        interstitialAd = null;
+
+        // Initialize state
+        isTapping = false;
+
         // Set customizations to default
         hiddenActions = new HashSet<>();
 
         // Set the main layout, but don't define the button functionality
         setContentView(R.layout.activity_main);
+
+        // Query premium mode. Continue setting up the app afterwards
+        PremiumManager premiumManager = new PremiumManager(this);
+        premiumManager.isPurchased(new PremiumManager.PurchaseListener() {
+            @Override
+            public void onIsPurchased(boolean isPurchased) {
+                onReceivePremiumMode(isPurchased);
+            }
+        });
+    }
+
+    /**
+     * Finish setting up the app, after querying whether we are in premium mode.
+     */
+    protected void onReceivePremiumMode(boolean isPurchased) {
+
+        // Record the premium mode setting, for later usage
+        premiumMode = isPurchased;
+
+        // Optionally initialize the ads
+        if (!isPurchased) initAds();
 
         // Start the drone service and bind to it. When bound, we will set up the UI.
         Intent intent = new Intent(this, DroneService.class);
@@ -104,24 +132,41 @@ public abstract class DroneActivity extends AppCompatActivity {
             throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
                     "Binding to the server returned false.") : new DefaultException();
         }
+    }
 
-        // Get the ad unit IDs
-        final int bannerAdUnitIdRes = testAds ? R.string.test_banner_ad_unit_id :
-                R.string.real_banner_ad_unit_id;
-        final int interstitialAdUnitRes = testAds ? R.string.test_interstitial_ad_unit_id :
-                R.string.real_interstitial_ad_unit_id;
+    /**
+     * Initialize and display the ads.
+     */
+    private void initAds() {
 
-        // Initialize ads
+        // Initialize ad API
         MobileAds.initialize(this);
 
-        // Initialize the banner ad, if present
-        AdView banner = findViewById(R.id.adView);
-        if (banner != null)
-            banner.loadAd(new AdRequest.Builder().build());
+        // Get the root layout
+        CoordinatorLayout rootLayout = findViewById(R.id.activity_main_layout);
+
+        // Inflate and initialize the banner
+        AdView banner = (AdView) getLayoutInflater().inflate(R.layout.banner_ad, rootLayout,
+                false);
+        banner.loadAd(new AdRequest.Builder().build());
+
+        // Attach the banner to the root layout
+        rootLayout.addView(banner);
 
         // Initialize the interstitial ad
         interstitialAd = new InterstitialAd(this);
-        interstitialAd.setAdUnitId(getResources().getString(R.string.interstitial_ad_unit_id));
+        interstitialAd.setAdUnitId(getString(R.string.interstitial_ad_unit_id));
+    }
+
+    /**
+     * Basic maintenance tasks, including purchase acknowledgment.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Acknowledge any un-acknowledged purchases
+        (new PremiumManager(this)).acknowledgeAll();
     }
 
     // On restart, load an ad
@@ -129,9 +174,13 @@ public abstract class DroneActivity extends AppCompatActivity {
     protected void onRestart()
     {
         super.onRestart();
-        //TODO: Keep track of a static variable, time since last ad. Don't show ads on every restart since this happens when we switch screens. Enforce the time limit
-        interstitialAd.loadAd(new AdRequest.Builder().build());
-        interstitialAd.show();
+
+        // Display an interstitial ad for the free version
+        if (!havePremium() && interstitialAd != null) {
+            //TODO: Keep track of a static variable, time since last ad. Don't show ads on every restart since this happens when we switch screens. Enforce the time limit
+            interstitialAd.loadAd(new AdRequest.Builder().build());
+            interstitialAd.show();
+        }
     }
 
     // Clean up
@@ -254,5 +303,12 @@ public abstract class DroneActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    /**
+     * Query whether this activity is in premium mode.
+     */
+    protected boolean havePremium() {
+        return premiumMode;
     }
 }

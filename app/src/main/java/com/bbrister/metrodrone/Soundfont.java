@@ -15,6 +15,7 @@ public class Soundfont {
     public Soundfont(String path, String packageName, boolean isFree) {
         this.path = path;
         this.moduleName = packageName;
+        this.isFree = isFree;
         displayName = getDisplayName(path);
     }
 

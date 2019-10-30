@@ -6,4 +6,5 @@ package com.bbrister.metrodrone;
 public class FragmentTags {
     final public static String alertDialogTag = "alertDialog";
     final public static String downloadDialogTag = "downloadDialog";
+    final public static String premiumDialogTag = "premiumDialog";
 }

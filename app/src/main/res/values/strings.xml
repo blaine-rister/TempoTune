@@ -13,8 +13,6 @@
 
     <string name="real_interstitial_ad_unit_id">ca-app-pub-5040365596623384/8327831440</string>
     <string name="test_interstitial_ad_unit_id">ca-app-pub-3940256099942544/1033173712</string>
-    <string name="banner_ad_unit_id">@string/test_banner_ad_unit_id</string>
-    <string name="interstitial_ad_unit_id">@string/test_interstitial_ad_unit_id</string>
 
     <string name="bpm_header">BPM</string>
     <string name="pitch_header">Pitch</string>
@@ -26,6 +24,32 @@
     <string name="yes">YES</string>
     <string name="no">NO</string>
     <string name="ok">OK</string>
+
+    <string name="premium_prompt">Upgrade to premium mode? This will allow you to\n
+    \t-Download new sounds.\n
+    \t-Play chords.\n
+    \t-Support development of the app.</string>
+    <string name="upgrade">UPGRADE</string>
+    <string name="not_now">NOT NOW</string>
+
+    <string name="google_play_failure">Failed to connect to the Google Play service.</string>
+    <string name="network_failure">Failed to connect to the network service.</string>
+    <string name="unexpected_error">Unexpected error.</string>
+    <string name="failed_to_find_product">Failed to find the product: %s</string>
+
+    <string name="install_fatal_error">We\'re sorry, but there was an unanticipated error installing
+        the module %s. Please contact the app developers to troubleshoot this issue.\n\nDetails:\n%s
+    </string>
+
+    <string name="query_purchases_fail">Failed to query existing purchases.\n\nReason:\n%s\n
+        \nPremium features are unavailable. We apologize for the inconvenience.</string>
+    <string name="acknowledge_fail">Failed to acknowledge product %s\n\nReason:\n%s\n\nYour
+        purchase will be refunded if acknowledgment does not succeed within three days.</string>
+    <string name="sku_fail">Failed to retrieve details for product %s\n\nReason:\n%s</string>
+    <string name="purchase_pending">Purchase %s is still pending. Please complete the purchase to
+        unlock the new content.</string>
+    <string name="purchase_fail">Failed to purchase product %s\n\nReason:\n%s</string>
+    <string name="billing_flow_fail">Failed to start the billing flow. Reason:\n%s</string>
 
     <string name="instrument_header">Instrument</string>
     <string name="duration_header">Duration</string>

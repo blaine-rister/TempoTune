@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.FragmentManager;
 
 import com.google.android.play.core.splitinstall.SplitInstallException;
@@ -249,22 +248,12 @@ public class DynamicModule {
             case SplitInstallErrorCode.MODULE_UNAVAILABLE:
             case SplitInstallErrorCode.SESSION_NOT_FOUND:
             case SplitInstallErrorCode.INVALID_REQUEST:
-                if (BuildConfig.DEBUG_EXCEPTIONS) {
-                    /* Only throw an exception in debug mode. This is not
-                     * fatal for the app overall. */
-                    throw new DebugException("Fatal programming error " +
-                            "downloading soundfont module");
-                }
             default:
-                if (BuildConfig.DEBUG_EXCEPTIONS) {
-                    /* Only throw an exception in debug mode. This is not
-                     * fatal for the app overall. */
-                    throw new DebugException("Unrecognized error " +
-                            "downloading soundfont module");
-                }
-                installFailureMsg("We're sorry, but there " +
-                                "was an unanticipated error. Please contact the " +
-                                "app developers to troubleshoot this issue.",
+                installFailureMsg(String.format(
+                        context.getString(R.string.install_fatal_error),
+                        moduleName,
+                        e.getLocalizedMessage()
+                        ),
                         context, fragmentManager);
                 break;
         }
@@ -333,9 +322,9 @@ public class DynamicModule {
     public void promptInstallation(final Context context, final FragmentManager fragmentManager) {
 
         // Create the callback interface
-        DownloadDialogListener listener = new DownloadDialogListener() {
+        YesNoDialogListener listener = new YesNoDialogListener() {
             @Override
-            public void onStartDownload() {
+            public void onYes() {
                 install(context, fragmentManager);
             }
         };
@@ -343,7 +332,7 @@ public class DynamicModule {
         // Create the argument bundle
         Bundle arguments = new Bundle();
         arguments.putString(DownloadDialogFragment.moduleNameKey, displayName);
-        arguments.putSerializable(DownloadDialogFragment.downloadListenerKey, listener);
+        arguments.putSerializable(DownloadDialogFragment.yesNoListenerKey, listener);
 
         // Create the dialog and add its arguments
         DownloadDialogFragment dialog = new DownloadDialogFragment();

@@ -79,6 +79,21 @@ public class MainActivity extends DroneActivity {
         setContentLayout(R.layout.content_main);
     }
 
+    /**
+     * Override this function to thank the user for purchasing premium mode.
+     */
+    @Override
+    protected void onReceivePremiumMode(boolean isPurchased) {
+        super.onReceivePremiumMode(isPurchased);
+
+        // Handle premium mode
+        if (havePremium()) {
+            //TODO display a toast thanking the user for supporting the app
+        } else {
+            // Prompt the user to upgrade to premium
+            (new PremiumManager(this)).promptPremium();
+        }
+    }
 
     // Set the behavior of the UI components. Called after the service is bound.
     protected void setupUI() {
@@ -340,6 +355,12 @@ public class MainActivity extends DroneActivity {
      */
     public boolean setSoundfont(final Soundfont soundfont, final Spinner instrumentSpinner) {
 
+        // Check if premium mode is required. If so, prompt premium purchase
+        if (!havePremium() && !soundfont.isFree) {
+            (new PremiumManager(this)).promptPremium();
+            return false;
+        }
+
         // Check if this is installed
         final DynamicModule module = new SoundfontModule(this, soundfont);
         switch (module.installStatus) {
@@ -348,7 +369,7 @@ public class MainActivity extends DroneActivity {
                 break;
             case FAILED:
             case NOT_REQUESTED:
-                // Allow the user to start installation. Do not change the selection.
+                // Allow the user to start installation. Do not set the new soundfont.
                 module.promptInstallation(this, getSupportFragmentManager());
                 return false;
             case PENDING:
@@ -371,6 +392,7 @@ public class MainActivity extends DroneActivity {
                 @Override
                 public void onInstallFinished(final boolean success) {
                     // Check for successful installation
+                    //TODO change this to an alert--the user can use another soundfont
                     if (!success) {
                         throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
                                 "Failed to request module " + module.displayName) :
