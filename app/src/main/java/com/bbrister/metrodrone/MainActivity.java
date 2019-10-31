@@ -257,19 +257,7 @@ public class MainActivity extends DroneActivity {
         final int moduleIdx = 1;
         final int isFreeIdx = 2;
         final int isInstantIdx = 3;
-        String[] csvHeader = csvLines.get(0);
-        if (BuildConfig.DEBUG_EXCEPTIONS) {
-            String[] expectedHeader = {"path", "module", "is_free", "is_instant"};
-            for (int i = 0; i < expectedHeader.length; i++) {
-                final String expectedTag = expectedHeader[i];
-                final String actualTag = csvHeader[i];
-                if (!actualTag.equalsIgnoreCase(expectedTag)) {
-                    throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
-                            "Unexpected CSV tag %s (expected %s)", actualTag, expectedTag)) :
-                            new DefaultException();
-                }
-            }
-        }
+        CsvReader.verifyHeader(csvLines, new String[] {"path", "module", "is_free", "is_instant"});
 
         // Verify that we have at least one soundfont
         if (csvLines.size() < 2) {

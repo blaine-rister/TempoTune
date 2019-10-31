@@ -18,6 +18,25 @@ public class CsvReader {
         this.resources = resources;
     }
 
+    // Verify that the CSV header matches the expected. If not, throw an exception
+    public static void verifyHeader(final List<String[]> csvData, final String[] expectedHeader) {
+        final String[] header = csvData.get(0);
+        if (header.length < expectedHeader.length) {
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
+                    "Invalid CSV header length: %d (expected %d)", header.length,
+                    expectedHeader.length)) : new DefaultException();
+        }
+        for (int i = 0; i < expectedHeader.length; i++) {
+            final String actualTag = header[i];
+            final String expectedTag = expectedHeader[i];
+            if (!actualTag.equalsIgnoreCase(expectedTag)) {
+                throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
+                        "Unexpected CSV field name: %s (expected %s)", actualTag, expectedTag)) :
+                        new DefaultException();
+            }
+        }
+    }
+
     // Method to handle reading the instrument CSV file. Returns the results in a list.
     protected List<String[]> read(int resourceId) {
         try {

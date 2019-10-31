@@ -35,25 +35,9 @@ public class InstrumentIcon {
     public int lookupDrawable(String instrumentName) {
 
         // Check the correctness of the CSV header
-        //TODO refactor this into the CSV reader
         final int iconInstrumentNameIdx = 0;
         final int iconDrawableNameIdx = 1;
-        final String[] header = iconTable.get(0);
-        final String[] expectedHeader = {"INSTRUMENT", "ICON"};
-        if (header.length < expectedHeader.length) {
-            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
-                    "Invalid CSV header length: %d (expected %d)", header.length,
-                    expectedHeader.length)) : new DefaultException();
-        }
-        for (int i = 0; i < expectedHeader.length; i++) {
-            final String actualTag = header[i];
-            final String expectedTag = expectedHeader[i];
-            if (!actualTag.equalsIgnoreCase(expectedTag)) {
-                throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
-                        "Unexpected CSV field name: %s (expected %s)", actualTag, expectedTag)) :
-                        new DefaultException();
-            }
-        }
+        CsvReader.verifyHeader(iconTable, new String[] {"INSTRUMENT", "ICON"});
 
         // First, pass through the rows looking for an exact match
         String drawableName = null;
