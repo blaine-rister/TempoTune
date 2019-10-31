@@ -159,21 +159,13 @@
         android:paddingTop="@dimen/spinner_padding"
         android:paddingBottom="@dimen/spinner_padding" />
 
-    <Spinner
-        android:id="@+id/instrumentNameSpinner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingTop="@dimen/spinner_padding"
-        android:paddingBottom="@dimen/spinner_padding"
-        android:layout_below="@id/instrumentTextView"
-        android:layout_toRightOf="@id/instrumentFamilySpinner"
-        android:layout_toEndOf="@id/instrumentFamilySpinner" />
+    <include layout="@layout/instrument_spinner" />
 
     <TextView
         android:id="@+id/durationTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/instrumentFamilySpinner"
+        android:layout_below="@id/instrumentNameSpinner"
         android:gravity="left"
         android:text="@string/duration_header" />
 
