@@ -22,8 +22,7 @@ android {
         }
         debug {
             buildConfigField "boolean", "DEBUG_EXCEPTIONS", 'true'
-            //resValue('string', 'banner_ad_unit_id', '@string/test_banner_ad_unit_id')
-            resValue('string', 'banner_ad_unit_id', '@string/real_banner_ad_unit_id')
+            resValue('string', 'banner_ad_unit_id', '@string/test_banner_ad_unit_id')
             resValue('string', 'interstitial_ad_unit_id', '@string/test_interstitial_ad_unit_id')
         }
     }
