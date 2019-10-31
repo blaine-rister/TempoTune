@@ -150,33 +150,47 @@ public class PremiumManager implements PurchasesUpdatedListener {
      * Acknowledge a purchase.
      */
     private void acknowledgePurchase(Purchase purchase) {
-        // Do nothing if it's already acknowledged
-        if (purchase.isAcknowledged())
+        // Do nothing if it's already acknowledged or not yet purchased
+        if (purchase.isAcknowledged() ||
+                purchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) {
             return;
+        }
 
         // Else start the acknowledgment request
         new AcknowledgePurchaseRequest(activity, this, purchase);
     }
 
     /**
-     * Query all purchases and acknowlege any which have yet to be.
+     * Query all purchases and acknowlege any which have yet to be. Sends no alerts if purchases
+     * cannot be queried. Only sends an alert if acknowledgment fails.
      */
     public void acknowledgeAll() {
-        isPurchased(new PurchaseListener() {
+        new QueryPurchasesRequest(activity, this, true) {
             @Override
-            public void onIsPurchased(boolean isPurchased) {
-                // Do nothing
+            public void finished(Purchase.PurchasesResult purchasesResult) {
+                // Do nothing if querying fails
+                if (purchasesResult == null)
+                    return;
+
+                // Else check for the desired purchase
+                Purchase purchase = completeQueryPurchases(purchasesResult);
+                if (purchase == null)
+                    return;
+
+                // Finally proceed to acknowledgment
+                acknowledgePurchase(purchase);
             }
-        });
+        };
     }
 
     /**
      * Queries whether the product has previously been purchased. If so, acknowledges the purchase.
+     * Informs the user of purchase status through alerts.
      */
     public void isPurchased(final PurchaseListener listener) {
 
         // Query for a purchase history
-        new QueryPurchasesRequest(activity, this) {
+        new QueryPurchasesRequest(activity, this, false) {
             @Override
             public void finished(Purchase.PurchasesResult purchasesResult) {
                 // Handle errors
@@ -191,7 +205,7 @@ public class PremiumManager implements PurchasesUpdatedListener {
         };
     }
 
-    public void completeIsPurchased(Purchase.PurchasesResult purchasesResult,
+    private void completeIsPurchased(Purchase.PurchasesResult purchasesResult,
                                     final PurchaseListener listener) {
 
         // Finish querying for the purchase

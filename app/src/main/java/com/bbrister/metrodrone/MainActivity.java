@@ -85,13 +85,8 @@ public class MainActivity extends DroneActivity {
     protected void onReceivePremiumMode(final boolean isPurchased, final boolean firstTime) {
         super.onReceivePremiumMode(isPurchased, firstTime);
 
-        // Do nothing more if the activity has been re-created
-        if (!firstTime) return;
-
         // Handle premium mode
-        if (havePremium()) {
-            //TODO display a toast thanking the user for supporting the app
-        } else {
+        if (!isPurchased && firstTime) {
             // Prompt the user to upgrade to premium
             (new PremiumManager(this)).promptPremium(
                     getString(R.string.premium_prompt_full)

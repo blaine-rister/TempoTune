@@ -8,12 +8,17 @@ import com.android.billingclient.api.PurchasesUpdatedListener;
 
 public abstract class QueryPurchasesRequest extends BillingServiceRequest {
 
+    // Configuration
+    boolean quiet;
+
     // Context
     AppCompatActivity activity;
 
-    public QueryPurchasesRequest(AppCompatActivity activity, PurchasesUpdatedListener listener) {
+    public QueryPurchasesRequest(AppCompatActivity activity, PurchasesUpdatedListener listener,
+                                 boolean quiet) {
         super(activity, listener);
         this.activity = activity;
+        this.quiet = quiet;
         attemptTask();
     }
 
@@ -33,12 +38,14 @@ public abstract class QueryPurchasesRequest extends BillingServiceRequest {
      * Implements the superclass's failure() calls.
      */
     public void failure(String reason) {
-        AlertDialogFragment.showDialog(activity.getSupportFragmentManager(),
-                String.format(
-                        activity.getString(R.string.query_purchases_fail),
-                        reason
-                )
-        );
+        if (!quiet) {
+            AlertDialogFragment.showDialog(activity.getSupportFragmentManager(),
+                    String.format(
+                            activity.getString(R.string.query_purchases_fail),
+                            reason
+                    )
+            );
+        }
         finished(null);
     }
 }
