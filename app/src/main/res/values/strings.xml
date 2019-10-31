@@ -3,7 +3,6 @@
 <resources>
     <string name="app_name">&appname;</string>
 
-    <string name="action_downloads">Downloads</string>
     <string name="action_settings">Settings</string>
     <string name="action_about">About</string>
 
@@ -27,9 +26,9 @@
 
     <string name="premium_prompt_full">Please consider upgrading to premium mode. This will allow
         you to\n
-    \t-Download new sounds.\n
-    \t-Play chords.\n
-    \t-Support development of the app.</string>
+    \t&#8226; Download new sounds.\n
+    \t&#8226; Play chords.\n
+    \t&#8226; Support development of the app.</string>
     <string name="premium_prompt_download">Downloading new sounds is a premium feature. Upgrade to
     premium mode?</string>
     <string name="upgrade">UPGRADE</string>
