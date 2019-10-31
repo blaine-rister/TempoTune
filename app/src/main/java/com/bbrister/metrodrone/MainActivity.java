@@ -82,8 +82,11 @@ public class MainActivity extends DroneActivity {
      * Override this function to thank the user for purchasing premium mode.
      */
     @Override
-    protected void onReceivePremiumMode(boolean isPurchased) {
-        super.onReceivePremiumMode(isPurchased);
+    protected void onReceivePremiumMode(final boolean isPurchased, final boolean firstTime) {
+        super.onReceivePremiumMode(isPurchased, firstTime);
+
+        // Do nothing more if the activity has been re-created
+        if (!firstTime) return;
 
         // Handle premium mode
         if (havePremium()) {

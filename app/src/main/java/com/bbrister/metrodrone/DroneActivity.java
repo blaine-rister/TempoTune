@@ -85,7 +85,7 @@ public abstract class DroneActivity extends AppCompatActivity {
     };
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         // Initialize configuration/premium settings
@@ -102,11 +102,11 @@ public abstract class DroneActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // Query premium mode. Continue setting up the app afterwards
-        PremiumManager premiumManager = new PremiumManager(this);
-        premiumManager.isPurchased(new PremiumManager.PurchaseListener() {
+        new PremiumManager(this).isPurchased(new PremiumManager.PurchaseListener() {
             @Override
             public void onIsPurchased(boolean isPurchased) {
-                onReceivePremiumMode(isPurchased);
+                final boolean firstCreation = savedInstanceState == null;
+                onReceivePremiumMode(isPurchased, firstCreation);
             }
         });
     }
@@ -114,7 +114,7 @@ public abstract class DroneActivity extends AppCompatActivity {
     /**
      * Finish setting up the app, after querying whether we are in premium mode.
      */
-    protected void onReceivePremiumMode(boolean isPurchased) {
+    protected void onReceivePremiumMode(final boolean isPurchased, final boolean firstTime) {
 
         // Record the premium mode setting, for later usage
         premiumMode = isPurchased;
