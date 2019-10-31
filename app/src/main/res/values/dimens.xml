@@ -12,4 +12,5 @@
     <dimen name="pitch_vertical_padding">1dp</dimen>
     <dimen name="plus_minus_buttons_margin">18dp</dimen>
     <dimen name="touch_min_height">48dp</dimen>
+    <dimen name="instrument_spinner_item_horizontal_padding">4dp</dimen>
 </resources>
