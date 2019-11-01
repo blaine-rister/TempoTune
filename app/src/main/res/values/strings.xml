@@ -1,4 +1,4 @@
-<!DOCTYPE resources [<!ENTITY appname "MetroDrone"><!ENTITY version "1.0.0"><!ENTITY year "2019">]>
+<!DOCTYPE resources [<!ENTITY appname "MetroDrone"><!ENTITY year "2019">]>
 
 <resources>
     <string name="app_name">&appname;</string>
@@ -68,19 +68,21 @@
     <string name="duration_header">Duration</string>
     <string name="velocity_header">Volume</string>
     <string name="credits">
-        \n &appname; version &version;\n\n
-        Copyright © &year; Blaine Rister, all rights reserved. Please direct questions to
-        <a href="mailto:blaine@stanford.edu">blaine@stanford.edu</a>.\n\n
-        Thanks to the developers of
-        <a href="http://www.fluidsynth.org/" tile="FluidSynth">FluidSynth</a>, on which the sound
-        synthesis is based.\n\n
-        Thanks to the following authors from
-        <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a> for some of the
-        icons in this app:\n
-        \t<a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a>
-        \t<a href="https://www.flaticon.com/authors/xnimrodx" title="Xnimrodx">Xnimrodx</a>
-        \t<a href="https://www.flaticon.com/authors/eucalyp" title="Eucalyp">Eucalyp</a>
-        \t<a href="https://www.flaticon.com/authors/smashicons" title="Smashicons">Smashicons</a>
+        \n &appname; version %s\n\n
+        &lt;p>Copyright © &year; Blaine Rister, all rights reserved. Please direct questions to
+        &lt;a href="mailto:blaine@stanford.edu">blaine@stanford.edu&lt;/a>.&lt;/p>
+
+        &lt;p>Thanks to the developers of
+        &lt;a href="http://www.fluidsynth.org/" tile="FluidSynth">FluidSynth&lt;/a>, on which the sound
+        synthesis is based.&lt;/p>
+
+        &lt;p>Thanks to the following authors from
+        &lt;a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com&lt;/a> for some of the
+        icons in this app:&lt;/p>
+        \t&lt;a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik&lt;/a>
+        \t&lt;a href="https://www.flaticon.com/authors/xnimrodx" title="Xnimrodx">Xnimrodx&lt;/a>
+        \t&lt;a href="https://www.flaticon.com/authors/eucalyp" title="Eucalyp">Eucalyp&lt;/a>
+        \t&lt;a href="https://www.flaticon.com/authors/smashicons" title="Smashicons">Smashicons&lt;/a>
     </string>
     <string name="title_coresounds">Core Sounds</string>
 

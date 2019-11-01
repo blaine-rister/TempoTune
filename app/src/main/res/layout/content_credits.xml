@@ -10,7 +10,6 @@
         android:id="@+id/creditsTextView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:text="@string/credits"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
 
 </FrameLayout>
