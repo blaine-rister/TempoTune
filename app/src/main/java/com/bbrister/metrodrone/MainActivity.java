@@ -356,12 +356,12 @@ public class MainActivity extends DroneActivity {
             case FAILED:
             case NOT_REQUESTED:
                 // Allow the user to start installation. Do not set the new soundfont.
-                module.promptInstallation(this, getSupportFragmentManager());
+                module.promptInstallation();
                 return false;
             case PENDING:
                 // Print a message
                 //TODO make this an alert dialog
-                DynamicModule.updateToast(this,
+                DynamicModuleRequest.updateToast(this,
                         String.format(
                                 getString(R.string.download_ongoing),
                                 soundfont.displayName
@@ -391,7 +391,7 @@ public class MainActivity extends DroneActivity {
             });
 
             // Begin installation. We need to request the module even it's previously installed
-            module.installQuiet(this);
+            module.installQuiet();
         }
 
         return true;

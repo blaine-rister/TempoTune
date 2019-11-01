@@ -42,6 +42,14 @@
     <string name="install_fatal_error">We\'re sorry, but there was an unanticipated error installing
         the module %s. Please contact the app developers to troubleshoot this issue.\n\nDetails:\n%s
     </string>
+    <string name="install_canceling">Cancelling installation for module %s...</string>
+    <string name="install_canceled">Canceled installation for module %s</string>
+    <string name="install_confirmation_failed">Received exception when attempting install
+        confirmation: %s</string>
+    <string name="install_failed">Installation failed for module %s. Please retry the installation.
+    </string>
+    <string name="install_pending">Installation pending for module %s...</string>
+    <string name="install_unknown">Unknown install status for module %s</string>
 
     <string name="query_purchases_fail">Failed to query existing purchases.\n\nReason:\n%s\n
         \nPremium features are unavailable. We apologize for the inconvenience.</string>

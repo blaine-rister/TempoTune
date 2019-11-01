@@ -1,12 +1,12 @@
 package com.bbrister.metrodrone;
 
-import android.content.Context;
+import androidx.appcompat.app.AppCompatActivity;
 
 /**
  * Shortcut to instantiate a DyanamicModule using a Soundfont.
  */
 public class SoundfontModule extends DynamicModule {
-    public SoundfontModule(Context context, Soundfont soundfont) {
-        super(context, soundfont.moduleName, soundfont.displayName, soundfont.isFree);
+    public SoundfontModule(AppCompatActivity activity, Soundfont soundfont) {
+        super(activity, soundfont.moduleName, soundfont.displayName);
     }
 }

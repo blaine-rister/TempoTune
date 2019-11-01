@@ -1,22 +1,11 @@
 package com.bbrister.metrodrone;
 
-import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
-import android.widget.Toast;
 
-import androidx.fragment.app.FragmentManager;
+import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.play.core.splitinstall.SplitInstallException;
 import com.google.android.play.core.splitinstall.SplitInstallManager;
 import com.google.android.play.core.splitinstall.SplitInstallManagerFactory;
-import com.google.android.play.core.splitinstall.SplitInstallRequest;
-import com.google.android.play.core.splitinstall.SplitInstallSessionState;
-import com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListener;
-import com.google.android.play.core.splitinstall.model.SplitInstallErrorCode;
-import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus;
-import com.google.android.play.core.tasks.OnFailureListener;
-import com.google.android.play.core.tasks.OnSuccessListener;
 
 import java.util.Set;
 
@@ -28,13 +17,12 @@ public class DynamicModule {
     };
     private InstallListener installListener;
 
-    // Constants
-    final int retryInterval = 15; // Number of seconds to wait before restarting the download
+    // Calling activity
+    AppCompatActivity activity;
 
     // Data
     protected String displayName;
     protected String moduleName;
-    protected boolean isFree;
 
     // Install state
     public enum InstallStatus {
@@ -55,246 +43,41 @@ public class DynamicModule {
         NOT_REQUESTED
     };
     DownloadStatus downloadStatus;
-    long bytesDownloaded;
-    long downloadSize;
-    int installSessionId;
 
-    public DynamicModule(Context context, String moduleName, String displayName, boolean isFree) {
+    public DynamicModule(AppCompatActivity activity, String moduleName, String displayName) {
         // Basic initialization
         installListener = null;
         this.moduleName = moduleName;
         this.displayName = displayName;
-        this.isFree = isFree;
+        this.activity = activity;
         downloadStatus = DownloadStatus.NOT_REQUESTED;
-        bytesDownloaded = 0;
-        downloadSize = 0;
 
         // Query the installed modules to see if this is already installed
-        SplitInstallManager splitInstallManager = SplitInstallManagerFactory.create(context);
+        SplitInstallManager splitInstallManager = SplitInstallManagerFactory.create(activity);
         Set<String> installedModules = splitInstallManager.getInstalledModules();
         installStatus = installedModules.contains(moduleName) ?
                 InstallStatus.INSTALLED : InstallStatus.NOT_REQUESTED;
-    }
-
-    // Check if this module requires further payment for activation
-    public boolean requiresPayment() {
-        if (isFree)
-            return true;
-
-        // TODO: try to query the billing API.
-        return false;
     }
 
     /**
      *  Download and install the module corresponding to this soundfont. Pass null fragmentManager
      *  for quiet mode.
      */
-    private void install(final Context context, final FragmentManager fragmentManager) {
-
-        //TODO refactor this into an InstallSession class, whence quiet is a member variable
-        final boolean quiet = fragmentManager == null;
-
-        // Get the install manager
-        SplitInstallManager splitInstallManager = SplitInstallManagerFactory.create(context);
-
-        // Create a listener for request status updates
-        SplitInstallStateUpdatedListener listener = new SplitInstallStateUpdatedListener() {
+    private void install(final boolean quiet) {
+        new DynamicModuleRequest(activity, moduleName, displayName, quiet) {
             @Override
-            public void onStateUpdate(SplitInstallSessionState state) {
-                if (state.sessionId() == installSessionId) {
-                    handleInstallStatus(context, state, quiet);
-                }
+            void updateInstallStatus(InstallStatus status) {
+                installStatus = status;
+            }
+            @Override
+            void updateDownloadStatus(DownloadStatus status) {
+                downloadStatus = status;
+            }
+            @Override
+            void finished(boolean success) {
+                installFinished(success);
             }
         };
-        splitInstallManager.registerListener(listener);
-
-        // Create an install request
-        SplitInstallRequest request = SplitInstallRequest.newBuilder()
-                .addModule(moduleName).build();
-
-        // Notify the user that we're starting the download
-        if (!quiet) {
-            installProgressMsg(String.format("Initiating download of module %s...", displayName),
-                    context);
-        }
-
-        // Start the installation
-        splitInstallManager.startInstall(request)
-                .addOnSuccessListener(
-                        new OnSuccessListener<Integer>() {
-                            @Override
-                            public void onSuccess(Integer sessionId) {
-                                // Record the session ID for progress monitoring
-                                installSessionId = sessionId;
-                                downloadStatus = DownloadStatus.ACTIVE;
-                            }
-                        })
-                .addOnFailureListener(
-                        new OnFailureListener() {
-                            @Override
-                            public void onFailure(Exception e) {
-                               handleInstallFailure(context, fragmentManager, e);
-                        }
-                });
-    }
-
-    // Convert bytes to MB
-    private final static long bytesPerMb = (long) Math.pow(2, 20);
-    private int byte2mb(final long bytes) {
-        return (int) (bytes / bytesPerMb);
-    }
-
-    // Handle installation status updates
-    private void handleInstallStatus(Context context, SplitInstallSessionState state,
-                                     final boolean quiet) {
-        switch (state.status()) {
-            case SplitInstallSessionStatus.DOWNLOADING:
-                // Report download progress
-                downloadSize = state.totalBytesToDownload();
-                bytesDownloaded = state.bytesDownloaded();
-                if (!quiet) {
-                    updateToast(context, String.format("Downloading module %s (%d / %d MB)",
-                            displayName, byte2mb(bytesDownloaded), byte2mb(downloadSize)));
-                }
-                return;
-            case SplitInstallSessionStatus.DOWNLOADED:
-                // Signal that the download is finished
-                downloadStatus = DownloadStatus.COMPLETED;
-                if (!quiet) {
-                    updateToast(context, "Finished downloading module " + displayName);
-                }
-                return;
-            case SplitInstallSessionStatus.INSTALLING:
-                // Signal that the download is finished and installation has begun
-                downloadStatus = DownloadStatus.COMPLETED;
-                if (!quiet) {
-                    updateToast(context, "Installing module " + displayName);
-                }
-                return;
-            case SplitInstallSessionStatus.INSTALLED:
-                // Signal that both the download and installation are finished
-                downloadStatus = DownloadStatus.COMPLETED;
-                installStatus = InstallStatus.INSTALLED;
-                bytesDownloaded = downloadSize;
-                installFinished(true);
-                if (!quiet) {
-                    updateToast(context, "Finished installing module " + displayName);
-                }
-                return;
-        }
-    }
-
-    // Show a toast updating the user on installation status
-    public static void updateToast(Context context, String msg) {
-        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
-    }
-
-    // Handle installation failure
-    private void handleInstallFailure(final Context context, FragmentManager fragmentManager,
-                                      Exception e) {
-
-        // Check for quiet mode
-        final boolean quiet = fragmentManager == null;
-
-        // If this is not a SplitInstallException, just print the message
-        if (!(e instanceof SplitInstallException)) {
-            if (BuildConfig.DEBUG_EXCEPTIONS) {
-                throw new RuntimeException(e);
-            }
-            installFailureMsg(e.getLocalizedMessage(), context, fragmentManager);
-        }
-
-        // Handle the SplitInstallException
-        switch (((SplitInstallException) e).getErrorCode()) {
-            case SplitInstallErrorCode.API_NOT_AVAILABLE:
-
-                //TODO notfiy the user that the play API is not available on
-                // this device
-                //TODO merge this with R.string.download_api_level_fail
-                installFailureMsg("We're sorry, but downloading new " +
-                        "features is not supported on this " +
-                        "device. Please upgrade to at least " +
-                        "Android version 5.0", context, fragmentManager);
-                //TODO: provide this help link here: https://support.google.com/googleplay/answer/7513003
-                break;
-            case SplitInstallErrorCode.NETWORK_ERROR:
-                // Display a message that requests the user to establish a
-                // network connection.
-                installFailureMsg("Failed to connect to the Google Play " +
-                        "server. Please establish a network " +
-                        "connection.", context, fragmentManager);
-                //TODO notify the user to establish an internet connection
-                //TODO: provide this help link here: https://support.google.com/googleplay/answer/7513003
-                break;
-            case SplitInstallErrorCode.ACTIVE_SESSIONS_LIMIT_EXCEEDED:
-            case SplitInstallErrorCode.SERVICE_DIED:
-            case SplitInstallErrorCode.INCOMPATIBLE_WITH_EXISTING_SESSION:
-            case SplitInstallErrorCode.ACCESS_DENIED:
-                //TODO notify the user that we will try again. Retry after a set
-                // number of seconds. Something like "Download rejected. Trying again in 5 seconds..."
-                // probably in a snackbar.
-                if (!quiet) {
-                    installProgressMsg(String.format("Download rejected " +
-                            "by the server. Trying again in %d " +
-                            "seconds...", retryInterval), context);
-                }
-                downloadStatus = DownloadStatus.PENDING;
-                delayedRestartInstall(context, fragmentManager);
-                return; // Do not break--we are not finished yet
-            case SplitInstallErrorCode.INSUFFICIENT_STORAGE:
-                installFailureMsg("Insufficient storage. Please "+
-                        "free up space on your device.", context, fragmentManager);
-                break;
-            case SplitInstallErrorCode.MODULE_UNAVAILABLE:
-            case SplitInstallErrorCode.SESSION_NOT_FOUND:
-            case SplitInstallErrorCode.INVALID_REQUEST:
-            default:
-                installFailureMsg(String.format(
-                        context.getString(R.string.install_fatal_error),
-                        moduleName,
-                        e.getLocalizedMessage()
-                        ),
-                        context, fragmentManager);
-                break;
-        }
-
-        installFinished(false);
-    }
-
-    // Retry the installation after a set waiting period
-    private void delayedRestartInstall(final Context context,
-                                       final FragmentManager fragmentManager) {
-        updateToast(context, String.format("Restarting download of module %s...", displayName));
-        Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                install(context, fragmentManager);
-            }
-        }, retryInterval * 1000);
-    }
-
-    // Display a message showing the progress of the ongoing installation
-    private void installProgressMsg(String msg, Context context) {
-        Toast.makeText(context, msg, Toast.LENGTH_LONG).show();
-    }
-
-    /**
-     * Display a message showing that installation was not able to succeed. Pass fragmentManager as
-     * null to disable.
-     */
-    private void installFailureMsg(String msg, Context context, FragmentManager fragmentManager) {
-        // Check for quiet mode
-        if (fragmentManager == null)
-            return;
-
-        // Add some decoration text.
-        msg = String.format("Installation failed for module %s.\n\nReason:\n%s\n\nPlease " +
-                "see https://support.google.com/googleplay/answer/7513003 for troubleshooting " +
-                "advice.", displayName, msg);
-
-        // Display an alert dialog
-        AlertDialogFragment.showDialog(fragmentManager, msg);
     }
 
     /**
@@ -312,20 +95,20 @@ public class DynamicModule {
     /**
      * Install in "quiet" mode. Does not report any text. Use this for already-installed modules.
      */
-    public void installQuiet(final Context context) {
-        install(context, null);
+    public void installQuiet() {
+        install(true);
     }
 
     /**
      * Ask the user whether they wish to install this module. If yes, begins installation.
      */
-    public void promptInstallation(final Context context, final FragmentManager fragmentManager) {
+    public void promptInstallation() {
 
         // Create the callback interface
         YesNoDialogListener listener = new YesNoDialogListener() {
             @Override
             public void onYes() {
-                install(context, fragmentManager);
+                install(false);
             }
         };
 
@@ -339,7 +122,7 @@ public class DynamicModule {
         dialog.setArguments(arguments);
 
         // Show the dialog
-        dialog.show(fragmentManager, FragmentTags.downloadDialogTag);
+        dialog.show(activity.getSupportFragmentManager(), FragmentTags.downloadDialogTag);
     }
 
     // Set callbacks for installation--for internal use
