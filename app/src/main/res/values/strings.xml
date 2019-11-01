@@ -52,6 +52,9 @@
         unlock the new content.</string>
     <string name="purchase_fail">Failed to purchase product %s\n\nReason:\n%s</string>
     <string name="billing_flow_fail">Failed to start the billing flow. Reason:\n%s</string>
+    <string name="purchase_invalid_signature">A purchase of premium mode was found, but we failed to
+        verify its signature. Premium mode will be disabled. Please contact the app developers to
+        troubleshoot this issue.</string>
 
     <string name="instrument_header">Instrument</string>
     <string name="duration_header">Duration</string>

@@ -121,7 +121,8 @@ public class PremiumManager implements PurchasesUpdatedListener {
         }
     }
 
-    private Purchase completeQueryPurchases(Purchase.PurchasesResult purchasesResult) {
+    private Purchase completeQueryPurchases(final Purchase.PurchasesResult purchasesResult,
+                                            final boolean quiet) {
 
         // Check the error code
         BillingResult billingResult = purchasesResult.getBillingResult();
@@ -134,12 +135,26 @@ public class PremiumManager implements PurchasesUpdatedListener {
             return null;
 
         // Iterate through all purchases
+        boolean invalidSignature = false;
         for (Purchase purchase : purchasesList) {
             // Check if this is the same product
             if (!purchase.getSku().equalsIgnoreCase(productName))
                 continue;
 
+            // Check the signature
+            if (!Security.verifyPurchase(purchase)) {
+                invalidSignature = true;
+                continue;
+            }
+
             return purchase;
+        }
+
+        // Alert the user if failure is due to an invalid signature
+        if (invalidSignature && !quiet) {
+            AlertDialogFragment.showDialog(activity.getSupportFragmentManager(),
+                    activity.getString(R.string.purchase_invalid_signature)
+            );
         }
 
         // Return null if nothing was found
@@ -165,7 +180,10 @@ public class PremiumManager implements PurchasesUpdatedListener {
      * cannot be queried. Only sends an alert if acknowledgment fails.
      */
     public void acknowledgeAll() {
-        new QueryPurchasesRequest(activity, this, true) {
+
+        final boolean quiet = true;
+
+        new QueryPurchasesRequest(activity, this, quiet) {
             @Override
             public void finished(Purchase.PurchasesResult purchasesResult) {
                 // Do nothing if querying fails
@@ -173,7 +191,7 @@ public class PremiumManager implements PurchasesUpdatedListener {
                     return;
 
                 // Else check for the desired purchase
-                Purchase purchase = completeQueryPurchases(purchasesResult);
+                Purchase purchase = completeQueryPurchases(purchasesResult, quiet);
                 if (purchase == null)
                     return;
 
@@ -209,7 +227,7 @@ public class PremiumManager implements PurchasesUpdatedListener {
                                     final PurchaseListener listener) {
 
         // Finish querying for the purchase
-        Purchase purchase = completeQueryPurchases(purchasesResult);
+        Purchase purchase = completeQueryPurchases(purchasesResult, false);
 
         // Return false if no matching purchase was found
         if (purchase == null) {
