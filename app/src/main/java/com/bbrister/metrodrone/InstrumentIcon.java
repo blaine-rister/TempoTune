@@ -11,7 +11,7 @@ import java.util.List;
 public class InstrumentIcon {
 
     // Settings
-    final private static int defaultDrawableId = R.drawable.ic_treble_clef; //TODO
+    final private static int defaultDrawableId = R.drawable.ic_treble_clef_small;
 
     // Persistent data
     private String packageName;

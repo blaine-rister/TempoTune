@@ -10,7 +10,9 @@
 	<ImageView
 		android:id="@+id/instrumentIcon"
 		android:layout_width="wrap_content"
-		android:layout_height="wrap_content" />
+		android:layout_height="wrap_content"
+		android:minWidth="@dimen/instrument_icon_min_size"
+		android:minHeight="@dimen/instrument_icon_min_size" />
 
 	<include layout="@layout/instrument_name" />
 
