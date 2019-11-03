@@ -709,7 +709,7 @@ getProgramKeyRangeJNI(JNIEnv *env,
     jboolean *const range = (*env)->GetBooleanArrayElements(env, jRange, &isCopy);
 
     // Query on the C side
-    assert(sizeof(jboolean) == sizeof(unt8_t));
+    assert(sizeof(jboolean) == sizeof(uint8_t));
     int result = getProgramKeyRange((uint8_t *) range);
 
     // Release the output array (possibly) copy, writing back changes
