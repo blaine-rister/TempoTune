@@ -44,6 +44,7 @@
 #include <string.h>
 
 #include <fluidlite.h>
+#include <fluidsynth/types.h>
 
 // Private headers
 #include "global.h"
@@ -173,30 +174,22 @@ static int changeProgram(const uint8_t programNum) {
     return result;
 }
 
-// Get the key range for the currently selected program. Can substitue NULL for either arugment.
-static jboolean getProgramRange(int *min, int *max) {
+/* Get the key range for the currently selected program. On success, range contains the bit mask for
+ * the key range.
+ */
+static int getProgramKeyRange(uint8_t *const range) {
 
-    if (!isInitialized("getProgramRange"))
-        return JNI_FALSE;
+    if (!isInitialized("getProgramKeyRange"))
+        return -1;
 
     // Get the preset
     const fluid_preset_t *const preset = fluid_synth_get_channel_preset(fluidSynth, midiChannel);
     if (preset == NULL)
-        return JNI_FALSE;
+        return -1;
 
-    preset->get_range(preset, min, max);
+    preset->get_range(preset, range);
 
-    return JNI_TRUE;
-}
-
-// Convenience wrappers for getProgramRange
-static int getProgramKeyMin(void) {
-    int min;
-    return getProgramRange(&min, NULL) == JNI_TRUE ? min : -1;
-}
-static int getProgramKeyMax(void) {
-    int max;
-    return getProgramRange(NULL, &max) == JNI_TRUE ? max : -1;
+    return 0;
 }
 
 // Mute all existing notes, including the release phase
@@ -410,6 +403,8 @@ static int render(const struct sound_settings settings, float *const buffer) {
     float *noteEndPosition, *decayEndPosition;
     int i;
 
+    uint8_t key_range[FLUID_MIDI_NUM_KEYS];
+
     // Shortcuts
     const jbyte *const pitches = settings.pitches;
     const long noteDurationMs = settings.noteDurationMs;
@@ -445,9 +440,7 @@ static int render(const struct sound_settings settings, float *const buffer) {
         return -1;
 
     // Get the range of allowable pitches
-    const int keyMin = getProgramKeyMin();
-    const int keyMax = getProgramKeyMax();
-    if (keyMin < 0 || keyMax < 0 || keyMin > keyMax) {
+    if (getProgramKeyRange(key_range)) {
         LOG_E(LOG_TAG, "Failed to retrieve the pitch range for the current program.");
         return -1;
     }
@@ -456,9 +449,8 @@ static int render(const struct sound_settings settings, float *const buffer) {
     for (i = 0; i < numPitches; i++) {
         const uint8_t pitch = (uint8_t) pitches[i];
 
-        if (pitch < keyMin || pitch > keyMax) {
-            LOG_E(LOG_TAG, "Key %u is outside the range [%d, %d] of the current program.", pitch,
-                  keyMin, keyMax);
+        if (!key_range[pitch]) {
+            LOG_E(LOG_TAG, "Key %u is outside the range of the current program.", pitch);
             return -1;
         }
     }
@@ -703,32 +695,34 @@ Java_com_bbrister_mididriver_MidiDriver_B(JNIEnv *env, jobject jobj) {
     return getMaxVoicesJNI();
 }
 
-// Get the minimum allowed key for the currently selected program
+// Get the key range as a byte mask
 static
-jint
-getProgramKeyMinJNI(void) {
-    return getProgramKeyMin();
+jbooleanArray
+getProgramKeyRangeJNI(JNIEnv *env,
+                    jobject jobj) {
+
+    jboolean isCopy;
+
+    // Create a new java array
+    //TODO can this return null on OOM?
+    const jbooleanArray jRange = (*env)->NewBooleanArray(env, FLUID_MIDI_NUM_KEYS);
+    jboolean *const range = (*env)->GetBooleanArrayElements(env, jRange, &isCopy);
+
+    // Query on the C side
+    assert(sizeof(jboolean) == sizeof(unt8_t));
+    int result = getProgramKeyRange((uint8_t *) range);
+
+    // Release the output array (possibly) copy, writing back changes
+    (*env)->ReleaseBooleanArrayElements(env, jRange, range, 0);
+
+    return result ? NULL : jRange;
 }
 
 // Obfuscated JNI wrapper for the former
 JNIEXPORT
-jint Java_com_bbrister_mididriver_MidiDriver_D(JNIEnv *env,
-                                                            jobject jobj) {
-    return getProgramKeyMinJNI();
-}
-
-// Get the maximum allowed key for the currently selected program
-static
-jint
-getProgramKeyMaxJNI(void) {
-    return getProgramKeyMax();
-}
-
-// Obfuscated JNI wrapper for the former
-JNIEXPORT
-jint Java_com_bbrister_mididriver_MidiDriver_E(JNIEnv *env,
-                                                            jobject jobj) {
-    return getProgramKeyMaxJNI();
+jbooleanArray Java_com_bbrister_mididriver_MidiDriver_D(JNIEnv *env,
+                                               jobject jobj) {
+    return getProgramKeyRangeJNI(env, jobj);
 }
 
 // Render and then start looping
@@ -761,6 +755,7 @@ renderJNI(JNIEnv *env,
     const size_t renderFloats = getNumPcm(getRenderFrames(settings));
 
     // Create a java array to hold the recording
+    //TODO can this return null on OOM?
     jfloatArray jRecording = (*env)->NewFloatArray(env, renderFloats);
     jfloat *const jData = (*env)->GetFloatArrayElements(env, jRecording, &isCopy);
 

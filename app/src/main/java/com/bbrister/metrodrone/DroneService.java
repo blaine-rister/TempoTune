@@ -86,6 +86,7 @@ public class DroneService extends Service {
         List<Integer> getNoteHandles() { return settings.getNoteHandles(); }
         int getPitch(int handle) { return settings.getPitch(handle); }
         int getOctave(int handle) { return settings.getOctave(handle); }
+        List<Integer> getPitchChoices() { return settings.getPitchChoices(); }
         List<Integer> getOctaveChoices(int handle) { return settings.getOctaveChoices(handle); }
         int getNumReverbPresets() { return midi.getNumReverbPresets(); }
         int getReverbPreset() { return settings.getReverbPreset(); }
@@ -121,9 +122,9 @@ public class DroneService extends Service {
         // Get the currently running program
         final int currentProgram = midi.getProgram();
 
-        // Change the program and set the key limits
+        // Change the program and set the key range
         midi.changeProgram((byte) instrument);
-        settings.setKeyLimits(midi.getKeyMin(), midi.getKeyMax());
+        settings.setKeyRange(midi.getKeyRange());
 
         // Update the sound only if this is a new program
         if (instrument != currentProgram) {

@@ -1,5 +1,6 @@
 package com.bbrister.metrodrone;
 
+import com.bbrister.mididriver.MidiDriver;
 import com.bbrister.mididriver.RenderSettings;
 
 import java.util.ArrayList;
@@ -25,8 +26,7 @@ public abstract class SoundSettings {
             defaultoctave);
 
     // Sound metadata--parameters for acceptable values of the latter
-    private int keyLimitLo = 0;
-    private int keyLimitHi = 127;
+    private boolean[] keyRange;
     private int maxReverbPreset;
 
     // Sound data--updates the sound when it's changed
@@ -54,6 +54,12 @@ public abstract class SoundSettings {
         final double defaultVelocity = 1.0;
         final double defaultDuration = 0.95;
 
+        // Initialize the key range to dummy values
+        keyRange = new boolean[MidiDriverHelper.keyMax + 1];
+        for (int i = 0; i < keyRange.length; i++) {
+            keyRange[i] = true;
+        }
+
         // Set up the callback interface
         updateInterface = new UpdateInterface() {
             @Override
@@ -61,13 +67,13 @@ public abstract class SoundSettings {
                 onSoundChanged();
             }
         };
-        reverbPreset = new UpdateValue<>(defaultReverbPreset, updateInterface);
 
-        // Initialize the data to defaults
+        // Initialize the update data to defaults
         boostVolume = new UpdateValue<>(defaultBoostVolume, updateInterface);
         bpm = new UpdateValue<>(defaultBpm, updateInterface);
         velocity = new UpdateValue<>(defaultVelocity, updateInterface);
         duration = new UpdateValue<>(defaultDuration, updateInterface);
+        reverbPreset = new UpdateValue<>(defaultReverbPreset, updateInterface);
 
         // Initialize the reverb limits, possibly overriding defaults
         maxReverbPreset = numReverbPresets - 1;
@@ -104,7 +110,7 @@ public abstract class SoundSettings {
         freeHandles.remove(0);
 
         // Update the note pitch, which also updates the sound
-        setKeyRounded(handle, defaultKey);
+        roundKey(handle, defaultKey);
 
         return handle;
     }
@@ -165,6 +171,31 @@ public abstract class SoundSettings {
 
     public int getReverbPreset() { return reverbPreset.get(); }
 
+    // Check if this key is available
+    public boolean haveKey(final byte key) {
+        return keyRange[key];
+    }
+
+    // Check if this pitch is available at any octave
+    private boolean havePitch(final int pitch) {
+        return !getOctaveChoices(pitch).isEmpty();
+    }
+
+    // Get the possible pitch choices, at any octave
+    public List<Integer> getPitchChoices() {
+        // Iterate through all pitches
+        List<Integer> possiblePitches = new ArrayList<>();
+        for (int pitch = 0; pitch < pitchMax; pitch++) {
+            // Check if this pitch has any possible octaves
+            if (!havePitch(pitch))
+                continue;
+
+            possiblePitches.add(pitch);
+        }
+
+        return possiblePitches;
+    }
+
     // Get the possible octave choices for a given key
     public List<Integer> getOctaveChoices(final int pitchClass) {
 
@@ -172,7 +203,7 @@ public abstract class SoundSettings {
         List<Integer> possibleOctaves = new ArrayList<>();
         for (int octave = 0; octave < octaveMax; octave++) {
             final int key = MidiDriverHelper.encodePitch(pitchClass, octave);
-            if (key < keyLimitLo || key > keyLimitHi)
+            if (!keyRange[key])
                 continue;
 
             possibleOctaves.add(octave);
@@ -240,18 +271,58 @@ public abstract class SoundSettings {
         getNote(handle).set(key);
     }
 
-    // Like setKey, but pass the key through roundOctave using the current limits
-    private void setKeyRounded(final int handle, final byte desiredKey) {
-        setKey(handle, roundOctave(desiredKey));
+    /**
+     * Select the nearest key to the current.
+     */
+    public void roundKey(final int handle, final byte desiredKey) {
+
+        // Search forward
+        byte forwardMatch = -1;
+        for (int key = desiredKey; key <= MidiDriverHelper.keyMax; key++) {
+
+            final byte keyByte = (byte) key; // Do this to avoid overflow in the loop counter!
+
+            if (haveKey(keyByte)) {
+                forwardMatch = keyByte;
+                break;
+            }
+        }
+
+        // Search backward at least this many steps
+        final boolean haveForward = forwardMatch >= 0;
+        final int backwardLimit = haveForward ? Math.max(0, desiredKey - forwardMatch + 1) : 0;
+        byte backwardMatch = -1;
+        for (byte key = desiredKey; key >= backwardLimit; key--) {
+            if (haveKey(key)) {
+                backwardMatch = key;
+                break;
+            }
+        }
+
+        // Ensure there is some match
+        final boolean haveBackward = backwardMatch >= 0;
+        if (!haveForward && !haveBackward) {
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
+                    "Failed to find any valid key!") : new DefaultException();
+        }
+
+        // Pick the closer match. By the limited search, this is the backward one
+        setKey(handle, haveBackward ? backwardMatch : forwardMatch);
     }
 
+    /**
+     * Set the pitch. Throws an exception if it's not available.
+     */
     public void setPitch(final int handle, final int desiredPitch) {
-        // Get the possible pitch classes, see if there's a conflict
-        //TODO
+        // Check if the pitch is supported
+        if (!havePitch(desiredPitch)) {
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
+                    "Missing pitch: %d", desiredPitch)) : new DefaultException();
+        }
 
         // Update the octave, in case we are out of range
         final byte desiredKey = MidiDriverHelper.encodePitch(desiredPitch, getOctave(handle));
-        setKeyRounded(handle, desiredKey);
+        setKey(handle, roundOctave(desiredKey));
     }
 
     public void setOctave(final int handle, final int desiredOctave) {
@@ -259,33 +330,25 @@ public abstract class SoundSettings {
         final byte desiredKey = MidiDriverHelper.encodePitch(getPitch(handle), desiredOctave);
 
         // Check for conflict
-        if (desiredKey < keyLimitLo || desiredKey > keyLimitHi)
+        if (!keyRange[desiredKey])
             throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
-                    "Invalid key: %d key limits: [%d, %d]", desiredKey, keyLimitLo, keyLimitHi)) :
+                    "Missing key: %d]", desiredKey)) :
                     new DefaultException();
 
         // Update the key
         setKey(handle, desiredKey);
     }
 
-    public void setKeyLimits(final int lo, final int hi) {
-        if (lo > MidiDriverHelper.keyMax || hi < 0 || hi < lo)
+    public void setKeyRange(final boolean[] keyRange) {
+        if (keyRange.length > MidiDriverHelper.keyMax + 1)
             throw BuildConfig.DEBUG_EXCEPTIONS ?  new DebugException(String.format(
-                    "Invalid key limits: [%d, %d]", lo, hi)) : new DefaultException();
+                    "Invalid key range: size %d", keyRange.length)) : new DefaultException();
 
-        keyLimitLo = Math.max(0, lo);
-        keyLimitHi = Math.min(hi, MidiDriverHelper.keyMax);
+        this.keyRange = keyRange;
 
-        // Assume we have at least a full octave, otherwise the pitch adapter must be changed
-        final int numPitches = keyLimitHi - keyLimitLo;
-        if (numPitches < pitchMax)
-            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
-                    "Must have at least one full octave of pitches. Received %d", numPitches)) :
-                    new DefaultException();
-
-        // Update the octaves, in case we are now out of range
+        // Round the pitch
         for (Integer handle : occupiedHandles) {
-            setKeyRounded(handle, getKey(handle));
+            roundKey(handle, getKey(handle));
         }
     }
 

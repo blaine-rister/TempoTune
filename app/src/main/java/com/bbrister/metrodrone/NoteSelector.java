@@ -5,10 +5,6 @@ import android.content.Context;
 import android.view.View;
 
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
-
-import java.util.List;
 
 // Class for the user interface for selecting a note
 public class NoteSelector {
@@ -21,8 +17,8 @@ public class NoteSelector {
     static String[] pitchLookup;
 
     // UI items
-    public Spinner pitchSpinner;
-    public Spinner octaveSpinner;
+    public PitchSpinner pitchSpinner;
+    public OctaveSpinner octaveSpinner;
 
     // Remove this note from the model
     public void destroy() {
@@ -31,39 +27,16 @@ public class NoteSelector {
     }
 
     // Update the UI
-    public void update() {
-        pitchSpinner.setSelection(droneBinder.getPitch(handle), true); // Calls updateOctave()
-        updateOctave(); // Just in case--spinners are unreliable
-    }
-
-    private void updateOctave() {
-        List<Integer> possibleOctaves = updateOctaveChoices();
-        octaveSpinner.setSelection(droneBinder.getOctave(handle) - possibleOctaves.get(0), true);
-    }
-
-    // Query for the possible octaves for this note
-    private List<Integer> getOctaveChoices() {
-        return droneBinder.getOctaveChoices(handle);
-    }
-
-    // Update the UI, based on the available octave choices.
-    private List<Integer> updateOctaveChoices() {
-        // Update the data of the octave array adapter
-        ArrayAdapter<Integer> octaveAdapter = (ArrayAdapter<Integer>) octaveSpinner.getAdapter();
-        octaveAdapter.clear();
-        List<Integer> possibleOctaves = getOctaveChoices();
-        octaveAdapter.addAll(possibleOctaves);
-
-        return possibleOctaves;
+    public void update(final boolean displaySharps) {
+        pitchSpinner.update(displaySharps); // Calls updateOctave()
+        octaveSpinner.update(); // Just in case--spinners are unreliable
     }
 
     // Create a new note, using existing spinners
     public NoteSelector(Context context,
                         final DroneService.DroneBinder droneBinder,
                         final int handle,
-                        Spinner pitchSpinner,
-                        final ArrayAdapter<NameValPair> pitchAdapter,
-                        Spinner octaveSpinner) {
+                        final boolean displaySharps) {
 
         // Initialize the drone interface
         this.droneBinder = droneBinder;
@@ -71,21 +44,11 @@ public class NoteSelector {
 
         // ---Initialize UI elements---
 
-        // Set up pitch spinner
-        this.pitchSpinner = pitchSpinner;
-        pitchSpinner.setAdapter(pitchAdapter);
-
-        // Create an adapter for the octave spinner
-        ArrayAdapter<Integer> octaveAdapter = new ArrayAdapter<>(context,
-                R.layout.pitch_spinner_item, getOctaveChoices());
-        octaveAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
-        // Set up octave spinner
-        this.octaveSpinner = octaveSpinner;
-        octaveSpinner.setAdapter(octaveAdapter);
+        pitchSpinner = new PitchSpinner(context, droneBinder, handle);
+        octaveSpinner = new OctaveSpinner(context, droneBinder, handle);
 
         // Update the UI. Called before listeners are installed, to avoid triggering them
-        update();
+        update(displaySharps);
 
         // Install the pitch spinner listener
         pitchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -94,7 +57,7 @@ public class NoteSelector {
                                        long id) {
                 droneBinder.setPitch(handle,
                         ((NameValPair<Integer>) adapterView.getItemAtPosition(pos)).val);
-                updateOctave();
+                octaveSpinner.update();
             }
 
             @Override

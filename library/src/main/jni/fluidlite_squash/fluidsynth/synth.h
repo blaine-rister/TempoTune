@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+/* Public constants */
+#define FLUID_MIDI_NUM_KEYS 128 
 
   /**   Embedded synthesizer
    *  

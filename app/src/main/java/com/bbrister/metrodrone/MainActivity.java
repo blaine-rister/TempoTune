@@ -139,27 +139,10 @@ public class MainActivity extends DroneActivity {
             }
         });
 
-        // Create the pitch adapter
-        final ArrayAdapter<NameValPair> pitchAdapter = new ArrayAdapter<>(this,
-                R.layout.pitch_spinner_item, getPitchChoices(displaySharps));
-        pitchAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
-        // Toggle sharps/flats switch
-        Switch sharpSwitch = findViewById(R.id.sharpSwitch);
-        sharpSwitch.setChecked(displaySharps);
-        sharpSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                displaySharps = isChecked;
-                pitchAdapter.clear();
-                pitchAdapter.addAll(getPitchChoices(isChecked));
-            }
-        });
-
         // Add the existing notes to the UI
         final List<Integer> handles = droneBinder.getNoteHandles();
         for (Iterator<Integer> it = handles.iterator(); it.hasNext(); ) {
-            addNote(it.next(), pitchAdapter);
+            addNote(it.next());
         }
 
         // Add note button
@@ -172,7 +155,7 @@ public class MainActivity extends DroneActivity {
                 if (droneBinder.notesFull())
                     return;
 
-                addNote(droneBinder.addNote(), pitchAdapter);
+                addNote(droneBinder.addNote());
             }
         });
 
@@ -196,8 +179,21 @@ public class MainActivity extends DroneActivity {
 
                 // Remove the note from the UI layout
                 LinearLayout layout = findViewById(R.id.pitchLayout);
-                layout.removeView(noteToRemove.octaveSpinner);
-                layout.removeView(noteToRemove.pitchSpinner);
+                layout.removeView(noteToRemove.octaveSpinner.spinner);
+                layout.removeView(noteToRemove.pitchSpinner.spinner);
+            }
+        });
+
+        // Toggle sharps/flats switch
+        Switch sharpSwitch = findViewById(R.id.sharpSwitch);
+        sharpSwitch.setChecked(displaySharps);
+        sharpSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                displaySharps = isChecked;
+                for (NoteSelector noteSelector : noteSelectors) {
+                    noteSelector.update(isChecked);
+                }
             }
         });
 
@@ -489,26 +485,20 @@ public class MainActivity extends DroneActivity {
     }
 
     // Add a new note the GUI
-    public void addNote(final int handle, final ArrayAdapter<NameValPair> pitchAdapter) {
+    public void addNote(final int handle) {
         // Get the pitch layout
         LinearLayout layout = findViewById(R.id.pitchLayout);
 
-        // Inflate new spinners
-        LayoutInflater inflater = LayoutInflater.from(layout.getContext());
-        Spinner pitchSpinner = (Spinner) inflater.inflate(R.layout.pitch_spinner, null);
-        Spinner octaveSpinner = (Spinner) inflater.inflate(R.layout.octave_spinner, null);
-
         // Add a new note
         NoteSelector noteSelector = new NoteSelector(layout.getContext(), droneBinder, handle,
-                pitchSpinner, pitchAdapter, octaveSpinner);
+                displaySharps);
         noteSelectors.add(noteSelector);
-        updateUI();
 
         // Put the new spinners in the UI layout
         final LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        layout.addView(noteSelector.pitchSpinner, params);
-        layout.addView(noteSelector.octaveSpinner, params);
+        layout.addView(noteSelector.pitchSpinner.spinner, params);
+        layout.addView(noteSelector.octaveSpinner.spinner, params);
     }
 
     // Tell the service to start playing sound
@@ -526,7 +516,7 @@ public class MainActivity extends DroneActivity {
     protected void updateUI() {
         receiveBpm();
         for (int i = 0; i < noteSelectors.size(); i++) {
-            noteSelectors.get(i).update();
+            noteSelectors.get(i).update(displaySharps);
         }
     }
 
@@ -576,22 +566,6 @@ public class MainActivity extends DroneActivity {
     protected void onResume() {
         super.onResume();
         if (uiReady) updateUI();
-    }
-
-    // Get a string list of pitch choices
-    private List<NameValPair> getPitchChoices(boolean isSharp) {
-
-        // Extract the pitch strings
-        final int resourceId = isSharp ? R.array.pitches_sharp_array : R.array.pitches_flat_array;
-        final String[] pitchStrings = getResources().getStringArray(resourceId);
-
-        // Convert to a list of (name, value) pairs
-        List<NameValPair> pitchNameVals = new ArrayList<>();
-        for (int i = 0; i < pitchStrings.length; i++) {
-            pitchNameVals.add(new NameValPair(pitchStrings[i], i));
-        }
-
-        return pitchNameVals;
     }
 
     /**

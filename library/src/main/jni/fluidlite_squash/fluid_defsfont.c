@@ -250,9 +250,9 @@ int fluid_defpreset_preset_get_num(fluid_preset_t* preset)
   return fluid_defpreset_get_num((fluid_defpreset_t*) preset->data);
 }
 
-void fluid_defpreset_preset_get_range(const fluid_preset_t *const preset, int *const min,
-        int *const max) {
-  return fluid_defpreset_get_range((const fluid_defpreset_t *const) preset->data, min, max);
+void fluid_defpreset_preset_get_range(const fluid_preset_t *const preset, 
+	uint8_t *const range) {
+  return fluid_defpreset_get_range((const fluid_defpreset_t *const) preset->data, range);
 }
 
 int fluid_defpreset_preset_noteon(fluid_preset_t* preset, fluid_synth_t* synth,
@@ -712,17 +712,18 @@ fluid_defpreset_next(fluid_defpreset_t* preset)
 }
 
 /*
- * Return the key range of a defpreset. Can substitute NULL for min or max.
+ * Return the key range of a defpreset. range must be an array of length 
+ * FLUID_MIDI_NUM_KEYS. 
  */
-void fluid_defpreset_get_range(const fluid_defpreset_t *const preset, int *const min,
-        int *const max) {
+void fluid_defpreset_get_range(const fluid_defpreset_t *const preset, 
+	uint8_t *const range) {
 
     fluid_preset_zone_t *preset_zone;
 
-    const int midi_byte_max = 127;
+    const int key_max = FLUID_MIDI_NUM_KEYS - 1;
 
-      if (min != NULL) *min = INT_MAX;
-      if (max != NULL) *max = INT_MIN;
+    /* Initialize the bit mask */
+    memset(range, 0, FLUID_MIDI_NUM_KEYS);
 
       /* run through all the zones of this preset */
       for (preset_zone = fluid_defpreset_get_zone((fluid_defpreset_t *) preset);
@@ -732,7 +733,7 @@ void fluid_defpreset_get_range(const fluid_defpreset_t *const preset, int *const
           fluid_inst_zone_t *inst_zone;
 
           /* Need to go through instrument zones--Fluid does not seem to set preset key ranges
-           * correctly. */
+           * correctly. This is probably because instrument zones may not be contiguous. */
 
           /* Get the instrument for this preset zone */
           const fluid_inst_t *const inst = fluid_preset_zone_get_inst(preset_zone);
@@ -742,26 +743,20 @@ void fluid_defpreset_get_range(const fluid_defpreset_t *const preset, int *const
                inst_zone != NULL;
                inst_zone = fluid_inst_zone_next(inst_zone)) {
 
+	    int i;
 #define FLUID_MIN(a, b) ((a) < (b) ? a : b)
 #define FLUID_MAX(a, b) ((a) > (b) ? a : b)
 
-            // Take the maximum and minimum instrument key ranges, bounded by the preset zone ranges
-            if (min != NULL) {
-                const int zonelo = (FLUID_MAX(inst_zone->keylo, preset_zone->keylo));
-                *min = FLUID_MIN(*min, zonelo);
+            // Bound the instrument key ranges by the preset zone ranges
+	    const int zonelo = FLUID_MAX(FLUID_MAX(inst_zone->keylo, 
+				    preset_zone->keylo), 0);
+	    const int zonehi = FLUID_MIN(FLUID_MIN(inst_zone->keyhi, 
+				    preset_zone->keyhi), key_max);
 
-                // Early termination
-                if (*min == 0 && (max == NULL || *max == midi_byte_max))
-                  return;
-            }
-            if (max != NULL) {
-                const int zonehi = (FLUID_MIN(inst_zone->keyhi, preset_zone->keyhi));
-                *max = FLUID_MAX(*max, zonehi);
-
-              // Early termination
-              if (*max == midi_byte_max && (min == NULL || *min == 0))
-                return;
-            }
+	    // Set the byte mask
+	    for (i = zonelo; i <= zonehi; i++) {
+		range[i] = 0x1;
+	    }
         }
       }
 #undef FLUID_MIN

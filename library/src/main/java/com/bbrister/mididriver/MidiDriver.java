@@ -145,25 +145,14 @@ public class MidiDriver
     }
 
     /**
-     * Get the minimum key for the current program.
+     * Get the key range for the current program, as a byte mask.
      */
-    public byte getKeyMin() {
-        final int keyMin = getKeyMinJNI();
-        if (keyMin < 0)
+    public boolean[] getKeyRange() {
+        final boolean[] keyRange = getKeyRangeJNI();
+        if (keyRange == null)
             throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ?
-                    "Failed to get the minimum key" : "");
-        return toByte(keyMin);
-    }
-
-    /**
-     * Get the maximum key for the current program.
-     */
-    public byte getKeyMax() {
-        final int keyMax = getKeyMaxJNI();
-        if (keyMax < 0)
-            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ?
-                    "Failed to get the maximum key" : "");
-        return toByte(keyMax);
+                    "Failed to get the key range" : "");
+        return keyRange;
     }
 
     /**
@@ -213,22 +202,13 @@ public class MidiDriver
     private native int B();
 
     /**
-     * Get the minimum key for the current program.
-     * @return The key value, or -1 on error.
+     * Get the key range for the current program, as a byte mask.
+     * @return The key range, or null on error.
      */
-    private int getKeyMinJNI() {
+    private boolean[] getKeyRangeJNI() {
         return D();
     }
-    private native int D();
-
-    /**
-     * Get the maximum key for the current program.
-     * @return The key value, or -1 on error.
-     */
-    private int getKeyMaxJNI() {
-        return E();
-    }
-    private native int E();
+    private native boolean[] D();
 
     /**
      * Renders an audio signal, then loops it.

@@ -471,8 +471,7 @@ int fluid_defpreset_preset_delete(fluid_preset_t* preset);
 char* fluid_defpreset_preset_get_name(fluid_preset_t* preset);
 int fluid_defpreset_preset_get_banknum(fluid_preset_t* preset);
 int fluid_defpreset_preset_get_num(fluid_preset_t* preset);
-void fluid_defpreset_preset_get_range(const fluid_preset_t *const preset, int *const min,
-                                      int *const max);
+void fluid_defpreset_preset_get_range(const fluid_preset_t *const preset, uint8_t *const range);
 int fluid_defpreset_preset_noteon(fluid_preset_t* preset, fluid_synth_t* synth, int chan, int key, int vel);
 
 
@@ -531,8 +530,7 @@ fluid_preset_zone_t* fluid_defpreset_get_global_zone(fluid_defpreset_t* preset);
 int fluid_defpreset_get_banknum(fluid_defpreset_t* preset);
 int fluid_defpreset_get_num(fluid_defpreset_t* preset);
 char* fluid_defpreset_get_name(fluid_defpreset_t* preset);
-void fluid_defpreset_get_range(const fluid_defpreset_t *const preset, int *const min,
-                               int *const max);
+void fluid_defpreset_get_range(const fluid_defpreset_t *const preset, uint8_t *const range);
 int fluid_defpreset_noteon(fluid_defpreset_t* preset, fluid_synth_t* synth, int chan, int key, int vel);
 
 /*
