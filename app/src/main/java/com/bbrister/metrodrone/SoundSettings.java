@@ -185,7 +185,7 @@ public abstract class SoundSettings {
     public List<Integer> getPitchChoices() {
         // Iterate through all pitches
         List<Integer> possiblePitches = new ArrayList<>();
-        for (int pitch = 0; pitch < pitchMax; pitch++) {
+        for (int pitch = 0; pitch <= pitchMax; pitch++) {
             // Check if this pitch has any possible octaves
             if (!havePitch(pitch))
                 continue;
