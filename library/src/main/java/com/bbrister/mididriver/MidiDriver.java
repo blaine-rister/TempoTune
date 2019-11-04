@@ -38,6 +38,9 @@ package com.bbrister.mididriver;
 import android.content.Context;
 import android.content.res.AssetManager;
 
+import java.io.IOException;
+import java.util.Arrays;
+
 /**
  * MidiDriver class
  */
@@ -83,7 +86,21 @@ public class MidiDriver
         // Get the assets
         AssetManager assetManager = context.getAssets();
 
-        // Load the soundfonts
+        // Ensure the asset exists
+        String[] assets = null;
+        try {
+            assets = assetManager.list("");
+        } catch (IOException e) {
+            if (BuildConfig.DEBUG_EXCEPTIONS) {
+                throw new RuntimeException("Failed to query assets");
+            }
+        }
+        if (assets == null || !Arrays.asList(assets).contains(filename)) {
+            throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ? String.format(
+                    "Failed to locate asset %s", filename) : "");
+        }
+
+        // Load the soundfont
         if (!loadSoundfontJNI(assetManager, filename)) {
             throw new RuntimeException(BuildConfig.DEBUG_EXCEPTIONS ? String.format(
                     "Failed to load soundfont %s", filename) : "");
