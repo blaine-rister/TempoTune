@@ -10,7 +10,6 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
-import android.view.LayoutInflater;
 import android.view.inputmethod.InputMethodManager;
 
 import android.widget.AdapterView;
@@ -31,24 +30,66 @@ public class MainActivity extends DroneActivity {
 
     // Constants
     final private static String displaySharpsKey = "DISPLAY_SHARPS";
+    final private static String defaultSoundfontPath = "basic.sf2";
+
+    // Internal interface for asynchornous processes
+    private interface FinishedListener {
+        void onFinish();
+    }
 
     // Dynamic UI items
     List<NoteSelector> noteSelectors = new ArrayList<>(); // Stores the pitches to be played
 
     // State
-    String curSoundfontPath;
     boolean uiReady;
     boolean displaySharps;
 
     // Persistent UI items
     TextView bpmTextView;
-    ArrayAdapter<Soundfont> familyAdapter;
 
     // Initialize the UI when the drone is connected
     @Override
     protected void onDroneConnected() {
         super.onDroneConnected();
-        setupUI();
+
+        // Load the list of soundfonts
+        final List<Soundfont> soundfonts = querySoundfonts();
+
+        // Query the soundfont. If there is none, load the default one
+        if (!droneBinder.haveSoundfont()) {
+            // Search the list for the default soundfont
+            Soundfont defaultSoundfont = null;
+            for (Soundfont soundfont : soundfonts) {
+                if (soundfont.path.equals(defaultSoundfontPath)) {
+                    defaultSoundfont = soundfont;
+                    break;
+                }
+            }
+
+            // Ensure we found it
+            if (defaultSoundfont == null) {
+                throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("Failed to find the " +
+                    "default soundfont " + defaultSoundfontPath) : new RuntimeException();
+            }
+
+            // Request the soundfont then load it in the drone service
+            defaultSoundfont.request(new DynamicModule.InstallListener() {
+                @Override
+                public void onInstallFinished(boolean success) {
+                    if (!success) {
+                        throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("Failed to " +
+                                "request the default soundfont") : new RuntimeException();
+                    }
+
+                    droneBinder.loadSounds(defaultSoundfontPath);
+
+                    // Populate UI elements using information from the drone service
+                    setupUI(soundfonts);
+                }
+            });
+        } else {
+            setupUI(soundfonts);
+        }
     }
 
     // Update the UI when drone parameters are changed by the parent class
@@ -94,8 +135,51 @@ public class MainActivity extends DroneActivity {
         }
     }
 
+    /**
+     * Read the list of soundfonts from the CSV file and query their installation statuses.
+     */
+    private List<Soundfont> querySoundfonts() {
+        // Read the list of all possible soundfonts from the CSV file
+        CsvReader csvReader = new CsvReader(getResources());
+        List<String[]> csvLines = csvReader.read(R.raw.sounds_list);
+
+        // Verify the format of the CSV file
+        final int pathIdx = 0;
+        final int moduleIdx = 1;
+        final int isFreeIdx = 2;
+        final int isInstantIdx = 3;
+        CsvReader.verifyHeader(csvLines, new String[] {"path", "module", "is_free", "is_instant"});
+
+        // Verify that we have at least one soundfont
+        if (csvLines.size() < 2) {
+            throw BuildConfig.DEBUG_EXCEPTIONS ?
+                    new DebugException("Need at least one soundfont!") : new DefaultException();
+        }
+
+        // Parse the CSV to build the list of soundfonts
+        List<Soundfont> soundfonts = new ArrayList<>();
+        for (int i = 1; i < csvLines.size(); i++) {
+            String[] csvLine = csvLines.get(i);
+
+            // Ignore instant soundfonts
+            final boolean isInstant = str2bool(csvLine[isInstantIdx]);
+            if (isInstant) {
+                continue;
+            }
+
+            // Parse the "IS_FREE" entry
+            final boolean isFree = str2bool(csvLine[isFreeIdx]);
+
+            // Create the soundfont object
+            soundfonts.add(new Soundfont(this, csvLine[pathIdx], csvLine[moduleIdx],
+                    isFree));
+        }
+
+        return soundfonts;
+    }
+
     // Set the behavior of the UI components. Called after the service is bound.
-    protected void setupUI() {
+    protected void setupUI(final List<Soundfont> soundfonts) {
 
         // BPM text
         EditText editBpm = findViewById(R.id.editBpm);
@@ -242,41 +326,6 @@ public class MainActivity extends DroneActivity {
             }
         });
 
-        // Read the list of all possible soundfonts from the CSV file
-        CsvReader csvReader = new CsvReader(getResources());
-        List<String[]> csvLines = csvReader.read(R.raw.sounds_list);
-
-        // Verify the format of the CSV file
-        final int pathIdx = 0;
-        final int moduleIdx = 1;
-        final int isFreeIdx = 2;
-        final int isInstantIdx = 3;
-        CsvReader.verifyHeader(csvLines, new String[] {"path", "module", "is_free", "is_instant"});
-
-        // Verify that we have at least one soundfont
-        if (csvLines.size() < 2) {
-            throw BuildConfig.DEBUG_EXCEPTIONS ?
-                    new DebugException("Need at least one soundfont!") : new DefaultException();
-        }
-
-        // Parse the CSV to build the list of soundfonts
-        List<Soundfont> soundfonts = new ArrayList<>();
-        for (int i = 1; i < csvLines.size(); i++) {
-            String[] csvLine = csvLines.get(i);
-
-            // Ignore instant soundfonts
-            final boolean isInstant = str2bool(csvLine[isInstantIdx]);
-            if (isInstant) {
-                continue;
-            }
-
-            // Parse the "IS_FREE" entry
-            final boolean isFree = str2bool(csvLine[isFreeIdx]);
-
-            // Create the soundfont object
-            soundfonts.add(new Soundfont(csvLine[pathIdx], csvLine[moduleIdx], isFree));
-        }
-
         // Instrument name spinner
         final Spinner instrumentSpinner = findViewById(R.id.instrumentNameSpinner);
         final InstrumentIconAdapter instAdapter = new InstrumentIconAdapter(this,
@@ -286,7 +335,7 @@ public class MainActivity extends DroneActivity {
         // Instrument family spinner
         final Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
         final ArrayAdapter<Soundfont> familyAdapter = new ArrayAdapter<>(this,
-                R.layout.instrument_name, soundfonts);
+                R.layout.instrument_name, querySoundfonts());
         familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         familySpinner.setAdapter(familyAdapter);
 
@@ -344,15 +393,14 @@ public class MainActivity extends DroneActivity {
         }
 
         // Check if this is installed
-        final DynamicModule module = new SoundfontModule(this, soundfont);
-        switch (module.installStatus) {
+        switch (soundfont.installStatus) {
             case INSTALLED:
                 // Continue on to processing the soundfont
                 break;
             case FAILED:
             case NOT_REQUESTED:
                 // Allow the user to start installation. Do not set the new soundfont.
-                module.promptInstallation();
+                soundfont.promptInstallation();
                 return false;
             case PENDING:
                 // Print a message
@@ -366,37 +414,42 @@ public class MainActivity extends DroneActivity {
                 return false;
         }
 
-        // Check if this is the same soundfont as before
-        if (!soundfont.path.equals(droneBinder.getSoundfont())) {
-
-            // Create the installation listener
-            module.setInstallListener(new DynamicModule.InstallListener() {
-                @Override
-                public void onInstallFinished(final boolean success) {
-                    // Check for successful installation
-                    //TODO change this to an alert--the user can use another soundfont
-                    if (!success) {
-                        throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
-                                "Failed to request module " + module.displayName) :
-                                new DefaultException();
-                    }
-
-                    // Installation succeeded. Begin loading the soundfont
-                    loadSoundfont(soundfont, instrumentSpinner);
-                }
-            });
-
-            // Begin installation. We need to request the module even it's previously installed
-            module.installQuiet();
-        }
+        loadSoundfont(soundfont, instrumentSpinner);
 
         return true;
     }
 
     /**
+     * Request installation of the soundfont. Load it when installation finishes.
+     */
+    private void loadSoundfont(final Soundfont soundfont, final Spinner instrumentSpinner) {
+
+        // Check if this is the same soundfont as before
+        if (soundfont.path.equals(droneBinder.getSoundfont()))
+            return;
+
+        // Create the installation listener and install
+        soundfont.request(new DynamicModule.InstallListener() {
+            @Override
+            public void onInstallFinished(final boolean success) {
+                // Check for successful installation
+                //TODO change this to an alert--the user can use another soundfont
+                if (!success) {
+                    throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
+                            "Failed to request module " + soundfont.displayName) :
+                            new DefaultException();
+                }
+
+                // Installation succeeded. Begin loading the soundfont
+                finishLoadSoundfont(soundfont, instrumentSpinner);
+            }
+        });
+    }
+
+    /**
      * Load the given soundfont in the synth and update instrument choices.
      */
-    private void loadSoundfont(Soundfont soundfont, Spinner instrumentSpinner) {
+    private void finishLoadSoundfont(Soundfont soundfont, Spinner instrumentSpinner) {
         // Load the sounds in the synth
         droneBinder.loadSounds(soundfont.path);
 

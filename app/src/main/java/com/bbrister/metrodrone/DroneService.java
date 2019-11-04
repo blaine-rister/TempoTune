@@ -48,8 +48,8 @@ public class DroneService extends Service {
         // Start the midi
         midi.start(this.getApplicationContext());
 
-        // Load the default soundfont
-        loadSounds("basic.sf2");
+        // Initialize the soundfont to empty
+        soundfontName = "";
     }
 
     @Override
@@ -64,6 +64,7 @@ public class DroneService extends Service {
         void loadSounds(final String filename) {
             DroneService.this.loadSounds(filename);
         }
+        boolean haveSoundfont() {return !soundfontName.isEmpty(); }
         String getSoundfont() {
             return soundfontName;
         }

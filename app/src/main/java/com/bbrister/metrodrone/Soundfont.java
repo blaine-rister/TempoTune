@@ -1,26 +1,33 @@
 package com.bbrister.metrodrone;
 
-public class Soundfont {
+import androidx.appcompat.app.AppCompatActivity;
+
+public class Soundfont extends DynamicModule {
 
     // Constants
     final static String fileExt = ".sf2";
 
     // Data about this soundfont
     protected String path;
-    protected String displayName;
-    protected String moduleName;
     protected boolean isFree;
 
     // Provide the path and package name
-    public Soundfont(String path, String packageName, boolean isFree) {
+    public Soundfont(AppCompatActivity activity, String path, String packageName, boolean isFree) {
+        super(activity, packageName, getDisplayName(path));
         this.path = path;
-        this.moduleName = packageName;
         this.isFree = isFree;
-        displayName = getDisplayName(path);
+    }
+
+    /**
+     * Requests the dynamic module corresponding to a given soundfont.
+     */
+    public void request(final DynamicModule.InstallListener listener) {
+        setInstallListener(listener);
+        installQuiet();
     }
 
     // Format the path as a display name
-    private String getDisplayName(final String path) {
+    private static String getDisplayName(final String path) {
         // Strip the file extension
         String baseName = path.substring(0, path.length() - fileExt.length());
 
