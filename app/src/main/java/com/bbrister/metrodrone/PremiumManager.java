@@ -50,17 +50,8 @@ public class PremiumManager implements PurchasesUpdatedListener {
 
     private void completePromptPremium(final String message) {
 
-        // Create the callback interface
-        YesNoDialogListener listener = new YesNoDialogListener() {
-            @Override
-            public void onYes() {
-                purchase();
-            }
-        };
-
         // Create the argument bundle
         Bundle arguments = new Bundle();
-        arguments.putSerializable(DownloadDialogFragment.yesNoListenerKey, listener);
         arguments.putString(PremiumDialogFragment.messageKey, message);
 
         // Create the dialog and add its arguments

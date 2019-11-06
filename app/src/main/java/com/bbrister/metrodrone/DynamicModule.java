@@ -60,10 +60,9 @@ public class DynamicModule {
     }
 
     /**
-     *  Download and install the module corresponding to this soundfont. Pass null fragmentManager
-     *  for quiet mode.
+     *  Download and install the module.
      */
-    private void install(final boolean quiet) {
+    public void install(final boolean quiet) {
         new DynamicModuleRequest(activity, moduleName, displayName, quiet) {
             @Override
             void updateInstallStatus(InstallStatus status) {
@@ -104,18 +103,10 @@ public class DynamicModule {
      */
     public void promptInstallation() {
 
-        // Create the callback interface
-        YesNoDialogListener listener = new YesNoDialogListener() {
-            @Override
-            public void onYes() {
-                install(false);
-            }
-        };
-
         // Create the argument bundle
         Bundle arguments = new Bundle();
-        arguments.putString(DownloadDialogFragment.moduleNameKey, displayName);
-        arguments.putSerializable(DownloadDialogFragment.yesNoListenerKey, listener);
+        arguments.putString(DownloadDialogFragment.moduleNameKey, moduleName);
+        arguments.putString(DownloadDialogFragment.displayNameKey, displayName);
 
         // Create the dialog and add its arguments
         DownloadDialogFragment dialog = new DownloadDialogFragment();
