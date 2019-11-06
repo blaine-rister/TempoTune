@@ -170,6 +170,7 @@ fluid_preset_t* fluid_synth_find_preset(fluid_synth_t* synth,
 
 int fluid_synth_all_notes_off(fluid_synth_t* synth, int chan);
 int fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan);
+void fluid_synth_reset_effects(fluid_synth_t *const synth);
 int fluid_synth_modulate_voices(fluid_synth_t* synth, int chan, int is_cc, int ctrl);
 int fluid_synth_modulate_voices_all(fluid_synth_t* synth, int chan);
 int fluid_synth_damp_voices(fluid_synth_t* synth, int chan);

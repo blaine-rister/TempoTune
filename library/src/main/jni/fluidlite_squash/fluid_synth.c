@@ -1198,13 +1198,24 @@ fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan)
   int i;
   fluid_voice_t* voice;
 
+  /* Turn off voices */
   for (i = 0; i < synth->polyphony; i++) {
     voice = synth->voice[i];
     if (_PLAYING(voice) && (voice->chan == chan)) {
       fluid_voice_off(voice);
     }
   }
+
   return FLUID_OK;
+}
+
+/* fluid_synth_reset_effects
+ *
+ * Clear all effects buffers. Use this to mute sound on all channels.
+ */
+void fluid_synth_reset_effects(fluid_synth_t *const synth) {
+  fluid_chorus_reset(synth->chorus);
+  fluid_revmodel_reset(synth->reverb);
 }
 
 /*
@@ -1230,8 +1241,7 @@ fluid_synth_system_reset(fluid_synth_t* synth)
     fluid_channel_reset(synth->channel[i]);
   }
 
-  fluid_chorus_reset(synth->chorus);
-  fluid_revmodel_reset(synth->reverb);
+  fluid_synth_reset_effects(synth);
 
   return FLUID_OK;
 }

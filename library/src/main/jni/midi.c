@@ -58,6 +58,7 @@ fluid_preset_t* fluid_synth_find_preset(fluid_synth_t* synth,
                                         unsigned int banknum,
                                         unsigned int prognum);
 int fluid_synth_all_sounds_off(fluid_synth_t* synth, int chan);
+int fluid_synth_reset_effects(fluid_synth_t *const synth);
 
 // Internal functions
 static int get_program(void);
@@ -194,7 +195,11 @@ static int getProgramKeyRange(uint8_t *const range) {
 
 // Mute all existing notes, including the release phase
 static int muteSounds() {
-    return !isInitialized("muteSounds") || fluid_synth_all_sounds_off(fluidSynth, midiChannel);
+    if (!isInitialized("muteSounds") || fluid_synth_all_sounds_off(fluidSynth, midiChannel))
+        return -1;
+
+    fluid_synth_reset_effects(fluidSynth);
+    return 0;
 }
 
 // Start a note

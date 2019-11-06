@@ -51,6 +51,8 @@ static void fluid_voice_effects (fluid_voice_t *voice, int count,
 				        fluid_real_t* dsp_right_buf,
 				        fluid_real_t* dsp_reverb_buf,
 				        fluid_real_t* dsp_chorus_buf);
+static void fluid_voice_clear_hist(fluid_voice_t *const voice);
+
 /*
  * new_fluid_voice
  */
@@ -116,6 +118,17 @@ delete_fluid_voice(fluid_voice_t* voice)
   return FLUID_OK;
 }
 
+/* fluid_voice_clear_hist
+ *
+ * Clear the IIR filter history of a voice. Needed to reset the effects.
+ */
+static
+void 
+fluid_voice_clear_hist(fluid_voice_t *const voice) {
+  voice->hist1 = 0;
+  voice->hist2 = 0;
+}
+
 /* fluid_voice_init
  *
  * Initialize the synthesis process
@@ -169,8 +182,7 @@ fluid_voice_init(fluid_voice_t* voice, fluid_sample_t* sample,
   voice->viblfo_val = 0.0f; /* Fixme: See mod lfo */
 
   /* Clear sample history in filter */
-  voice->hist1 = 0;
-  voice->hist2 = 0;
+  fluid_voice_clear_hist(voice);
 
   /* Set all the generators to their default value, according to SF
    * 2.01 section 8.1.3 (page 48). The value of NRPN messages are
@@ -1623,6 +1635,9 @@ fluid_voice_off(fluid_voice_t* voice)
   voice->modenv_section = FLUID_VOICE_ENVFINISHED;
   voice->modenv_count = 0;
   voice->status = FLUID_VOICE_OFF;
+
+  /* Clear the IIR effects filter history */
+  fluid_voice_clear_hist(voice);
 
   /* Decrement the reference count of the sample. */
   if (voice->sample) {
