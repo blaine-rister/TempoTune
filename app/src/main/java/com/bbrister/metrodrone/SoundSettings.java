@@ -1,6 +1,5 @@
 package com.bbrister.metrodrone;
 
-import com.bbrister.mididriver.MidiDriver;
 import com.bbrister.mididriver.RenderSettings;
 
 import java.util.ArrayList;
@@ -201,7 +200,7 @@ public abstract class SoundSettings {
 
         // Create the list of choices
         List<Integer> possibleOctaves = new ArrayList<>();
-        for (int octave = 0; octave < octaveMax; octave++) {
+        for (int octave = 0; octave <= octaveMax; octave++) {
             final int key = MidiDriverHelper.encodePitch(pitchClass, octave);
             if (!keyRange[key])
                 continue;
