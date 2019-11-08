@@ -393,24 +393,9 @@ public class MainActivity extends DroneActivity {
         }
 
         // Check if this is installed
-        switch (soundfont.installStatus) {
-            case INSTALLED:
-                // Continue on to processing the soundfont
-                break;
-            case FAILED:
-            case NOT_REQUESTED:
+        if (!soundfont.isInstalled()) {
                 // Allow the user to start installation. Do not set the new soundfont.
                 soundfont.promptInstallation();
-                return false;
-            case PENDING:
-                // Print a message
-                //TODO make this an alert dialog
-                DynamicModuleRequest.updateToast(this,
-                        String.format(
-                                getString(R.string.download_ongoing),
-                                soundfont.displayName
-                        )
-                );
                 return false;
         }
 

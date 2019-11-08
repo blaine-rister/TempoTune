@@ -41,8 +41,6 @@ public abstract class DynamicModuleRequest {
     int installSessionId;
 
     // Callbacks for status updates
-    abstract void updateInstallStatus(DynamicModule.InstallStatus status);
-    abstract void updateDownloadStatus(DynamicModule.DownloadStatus status);
     abstract void finished(boolean success);
 
     public DynamicModuleRequest(final AppCompatActivity activity, final String moduleName,
@@ -93,7 +91,6 @@ public abstract class DynamicModuleRequest {
                             public void onSuccess(Integer sessionId) {
                                 // Record the session ID for progress monitoring
                                 installSessionId = sessionId;
-                                updateDownloadStatus(DynamicModule.DownloadStatus.ACTIVE);
                             }
                         })
                 .addOnFailureListener(
@@ -125,22 +122,18 @@ public abstract class DynamicModuleRequest {
                 return;
             case SplitInstallSessionStatus.DOWNLOADED:
                 // Signal that the download is finished
-                updateDownloadStatus(DynamicModule.DownloadStatus.COMPLETED);
                 if (!quiet) {
                     updateToast(activity, "Finished downloading module " + displayName);
                 }
                 return;
             case SplitInstallSessionStatus.INSTALLING:
                 // Signal that the download is finished and installation has begun
-                updateDownloadStatus(DynamicModule.DownloadStatus.COMPLETED);
                 if (!quiet) {
                     updateToast(activity, "Installing module " + displayName);
                 }
                 return;
             case SplitInstallSessionStatus.INSTALLED:
                 // Signal that both the download and installation are finished
-                updateDownloadStatus(DynamicModule.DownloadStatus.COMPLETED);
-                updateInstallStatus(DynamicModule.InstallStatus.INSTALLED);
                 finished(true);
                 if (!quiet) {
                     updateToast(activity, "Finished installing module " + displayName);
@@ -254,7 +247,6 @@ public abstract class DynamicModuleRequest {
                 installProgressMsg(String.format("Download rejected " +
                         "by the server. Trying again in %d " +
                         "seconds...", retryInterval));
-                updateDownloadStatus(DynamicModule.DownloadStatus.PENDING);
                 delayedRestartInstall();
                 return; // Do not break--we are not finished yet
             case SplitInstallErrorCode.INSUFFICIENT_STORAGE:
