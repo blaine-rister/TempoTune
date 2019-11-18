@@ -2,13 +2,19 @@ package com.bbrister.metrodrone;
 
 /**
  * Singleton class for passing around the audio data stream. We need this since Intent has a data
- * size limit.
+ * size limit. (Note: this is not exactly a singleton because it allows for persistence of old
+ * instances, but only one is queryable at a given time. Is there a name for this?)
  */
 public class AudioData {
 
     private static AudioData instance = null;
 
     private float[] data;
+
+    /**
+     * Prevents instantiation.
+     */
+    private AudioData() {};
 
     /**
      * Internal method of setting the data.
