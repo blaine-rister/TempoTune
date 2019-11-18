@@ -30,19 +30,19 @@ public class PlaybackService extends Service {
     // Data
     private PlaybackDriver driver;
 
-    // Create a bass intent for this service
-    private static Intent getBaseIntent(Context context) {
-        return new Intent(context, PlaybackService.class);
+    // Create an intent for this service
+    private static Intent getIntent(Context context, final String action) {
+        return new Intent(context, PlaybackService.class).setAction(action);
     }
 
     // Create a start action intent
     public static Intent getStartIntent(Context context) {
-        return getBaseIntent(context).setAction(startAction);
+        return getIntent(context, startAction);
     }
 
     // Create a stop action intent
     public static Intent getStopIntent(Context context) {
-        return getBaseIntent(context).setAction(stopAction);
+        return getIntent(context, stopAction);
     }
 
     // Return null from binding attempts--this is strictly a started service
