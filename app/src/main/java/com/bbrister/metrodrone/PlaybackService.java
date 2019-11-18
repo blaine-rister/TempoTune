@@ -36,10 +36,8 @@ public class PlaybackService extends Service {
     }
 
     // Create a start action intent
-    public static Intent getStartIntent(Context context, float[] sound) {
-        return getBaseIntent(context)
-                .setAction(startAction)
-                .putExtra(PlaybackService.soundTag, sound);
+    public static Intent getStartIntent(Context context) {
+        return getBaseIntent(context).setAction(startAction);
     }
 
     // Create a stop action intent
@@ -82,11 +80,18 @@ public class PlaybackService extends Service {
                         intent.getAction()) : new DefaultException();
         }
 
-        // Retrieve the sound data
-        final float[] sound = intent.getFloatArrayExtra(soundTag);
+        // Retrieve the sound data from the singleton
+        AudioData audioData = AudioData.getInstance();
+        if (audioData == null) {
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("No audio data available") :
+                    new DefaultException();
+        }
 
         // Play the sound
-        driver.play(this.getApplicationContext(), sound);
+        driver.play(this.getApplicationContext(), audioData.getData());
+
+        // Release our reference to the sound memory
+        audioData.release();
 
         // Create a notification channel, for android O+ devices
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

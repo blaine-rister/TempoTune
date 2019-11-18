@@ -157,11 +157,11 @@ public class DroneService extends Service {
         // Render the sound
         float[] sound = midi.renderNotes(settings.getRenderSettings());
 
-        // Create the launching intent, with extra data
-        Intent intent = PlaybackService.getStartIntent(this, sound);
+        // Save the sound to the singleton class
+        AudioData.setData(sound);
 
         // Launch a new playback service
-        startService(intent);
+        startService(PlaybackService.getStartIntent(this));
         isPlaying = true;
     }
 
