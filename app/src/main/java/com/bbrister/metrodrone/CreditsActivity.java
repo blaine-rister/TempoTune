@@ -1,9 +1,10 @@
 package com.bbrister.metrodrone;
 
 import android.os.Bundle;
-import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.widget.TextView;
+
+import androidx.core.text.HtmlCompat;
 
 public class CreditsActivity extends DroneActivity {
     @Override
@@ -18,10 +19,13 @@ public class CreditsActivity extends DroneActivity {
 
         // Construct the text and parse the HTML links
         TextView textView = findViewById(R.id.creditsTextView);
-        textView.setText(Html.fromHtml(String.format(
+        textView.setText(HtmlCompat.fromHtml(
+            String.format(
                 getString(R.string.credits),
                 BuildConfig.VERSION_NAME
-        )));
+            ),
+            HtmlCompat.FROM_HTML_MODE_LEGACY
+        ));
 
         // Enable links in the textView
         textView.setMovementMethod(LinkMovementMethod.getInstance());
