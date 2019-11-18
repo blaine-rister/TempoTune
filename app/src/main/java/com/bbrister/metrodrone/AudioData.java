@@ -12,7 +12,7 @@ public class AudioData {
     private float[] data;
 
     /**
-     * Prevents instantiation.
+     * Prevents instantiation outside this class.
      */
     private AudioData() {};
 
