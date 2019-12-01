@@ -15,13 +15,14 @@
 
 #include "global.h"
 
+// Constants
+const int bufferQueueSize = 2;
+
 // Static function declarations
+static SLresult enqueueBuffer(void);
 static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
 static int idle(void);
 static void shutdownAudio(void);
-
-// Constants
-static const int pauseDurationMs = 10;
 
 // engine interfaces
 static SLObjectItf engineObject = NULL;
@@ -111,7 +112,7 @@ static SLresult createBufferQueueAudioPlayer(int sampleRate, int deviceBufferSiz
     // configure audio source
     SLDataLocator_AndroidSimpleBufferQueue loc_bufq =
             {
-                    SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2
+                    SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, bufferQueueSize
             };
     SLDataFormat_PCM format_pcm =
             {
@@ -144,6 +145,29 @@ static SLresult createBufferQueueAudioPlayer(int sampleRate, int deviceBufferSiz
           bufferSizeMono);
 
     // LOG_D(LOG_TAG, "Audio player created");
+
+    // Get the Android configuration interface, if it exists. If so, enable low power mode. This
+    // will fail on Android versions prior to API level 25
+    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_ANDROIDCONFIGURATION,
+                                             &configItf);
+    if (result == SL_RESULT_SUCCESS) {
+
+        const SLuint32 desiredMode = SL_ANDROID_PERFORMANCE_POWER_SAVING;
+
+        LOG_I(LOG_TAG, "Successfully received Android audio configItf");
+
+        // Set the performance mode
+        result = (*configItf)->SetConfiguration(configItf, SL_ANDROID_KEY_PERFORMANCE_MODE,
+                                                &desiredMode, sizeof(desiredMode));
+        if (result == SL_RESULT_SUCCESS) {
+            LOG_I(LOG_TAG, "Set audio performance mode.");
+        } else {
+            LOG_W(LOG_TAG, "Failed to set audio performance mode (code %d).", result);
+        }
+    } else {
+        LOG_W(LOG_TAG, "Failed to get the configuration controls (code %d). Audio performance mode "
+                       "will not be set.", result);
+    }
 
     // realize the player
     result = (*bqPlayerObject)->Realize(bqPlayerObject, SL_BOOLEAN_FALSE);
@@ -184,49 +208,6 @@ static SLresult createBufferQueueAudioPlayer(int sampleRate, int deviceBufferSiz
         LOG_W(LOG_TAG, "Failed to get the volume controls (code %d). The app will not control the "
                        "OpenSL ES player volume.", result);
     }
-
-#if 0
-    // Get the Android configuration interface, if it exists. If so, enable low power mode. This
-    // will fail on Android versions prior to API level 25
-    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_ANDROIDCONFIGURATION,
-                                             &configItf);
-    if (result == SL_RESULT_SUCCESS) {
-
-        const char *modeStr;
-        SLuint32 defaultMode;
-
-        const SLuint32 desiredMode = SL_ANDROID_PERFORMANCE_POWER_SAVING;
-
-        // Get the current (default) performance mode
-        (*configItf)->GetConfiguration(configItf, SL_ANDROID_KEY_PERFORMANCE_MODE,
-                                       &defaultMode, sizeof(defaultMode));
-        switch (defaultMode) {
-            case SL_ANDROID_PERFORMANCE_NONE:
-                modeStr = "none";
-            case SL_ANDROID_PERFORMANCE_LATENCY:
-                modeStr = "latency";
-            case SL_ANDROID_PERFORMANCE_LATENCY_EFFECTS:
-                modeStr = "latency_effects";
-            case SL_ANDROID_PERFORMANCE_POWER_SAVING:
-                modeStr = "power_saving";
-            default:
-                modeStr = "unrecognized"; // This happens on API level < 25
-        }
-
-        // Set the performance mode.
-        result = (*configItf)->SetConfiguration(configItf, SL_ANDROID_KEY_PERFORMANCE_MODE,
-                                                &desiredMode, sizeof(desiredMode));
-        if (result == SL_RESULT_SUCCESS) {
-            LOG_I(LOG_TAG, "Set audio to low-power mode.");
-        } else {
-            LOG_W(LOG_TAG, "Failed to set audio to low-power mode (code %d).", result);
-            LOG_I(LOG_TAG, "Audio defaulted to performance mode: %s", modeStr);
-        }
-    } else {
-        LOG_W(LOG_TAG, "Failed to get the configuration controls (code %d). Low-power audio mode "
-                       "will not be enabled.", result);
-    }
-#endif
 
     // get the buffer queue interface
     result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_BUFFERQUEUE,
@@ -283,10 +264,7 @@ int init(const int sampleRate, const int bufferSizeMono) {
 static int play(int sampleRate, int bufferSizeMono) {
 
     SLresult result;
-
-    // Initialize the sound player
-    if (init(sampleRate, bufferSizeMono))
-        return -1;
+    int i;
 
     // Set the playback pointer
     if (record_buffer == NULL) {
@@ -295,15 +273,27 @@ static int play(int sampleRate, int bufferSizeMono) {
     }
     playback_position = record_buffer;
 
+    // Initialize the sound player
+    if (init(sampleRate, bufferSizeMono))
+        return -1;
+
     // Set the state to playing
     result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PLAYING);
-    if (SL_RESULT_SUCCESS != result)
+    if (SL_RESULT_SUCCESS != result) {
+        LOG_E(LOG_TAG, "playback failed: failed to set play state");
         return -1;
+    }
 
     state = PLAYING;
 
-    // call the callback to start playing
-    bqPlayerCallback(bqPlayerBufferQueue, NULL);
+    // Fill the queue with buffers, starting playback
+    for (i = 0; i < bufferQueueSize; i++) {
+        if (enqueueBuffer() != SL_RESULT_SUCCESS) {
+            LOG_E(LOG_TAG, "playback failed: failed to enqueue buffer");
+            return -1;
+        }
+    }
+    LOG_I(LOG_TAG, "created %d audio buffers", bufferQueueSize);
 
     return 0;
 }
@@ -376,45 +366,34 @@ static int idle(void) {
 }
 
 
-static void enqueueBuffer(const output_t *const data) {
+static SLresult enqueueBuffer(void) {
 
     SLresult result;
 
-    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, data,
-                                             getNumPcm(bufferSizeMono) * sizeof(output_t));
-    switch (result) {
-        case SL_RESULT_SUCCESS:
-        case SL_RESULT_OPERATION_ABORTED:
-            return;
-        default:
-            /* Could get SL_RESULT_BUFFER_INSUFFICIENT (code 7) if the buffer is full. This
-            * shouldn't happen because we are supposed to wait for the buffer to clear before
-            * starting a new render. */
-            LOG_E(LOG_TAG, "Error code from OpenSL ES enqueue buffer: %d", result);
-            assert(0);
-    }
-    // the most likely other result is SL_RESULT_BUFFER_INSUFFICIENT,
-    // which for this code example would indicate a programming error
-    assert(SL_RESULT_SUCCESS == result);
-
-}
-
-// this callback handler is called every time a buffer finishes
-// playing
-static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
-
-    int i, j;
-
     const size_t bufferSizePcm = getNumPcm(bufferSizeMono);
 
-    assert(bq == bqPlayerBufferQueue);
-    assert(NULL == context);
+    // Enqueue playback
+    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, playback_position,
+                                             bufferSizePcm * sizeof(output_t));
 
     // Update the playback position circularly
     playback_position += bufferSizePcm;
     if (playback_position >= recording_position) {
         playback_position = record_buffer + (playback_position - recording_position);
     }
+
+    return result;
+}
+
+// this callback handler is called every time a buffer finishes
+// playing
+static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
+
+    SLresult result;
+    int i, j;
+
+    assert(bq == bqPlayerBufferQueue);
+    assert(NULL == context);
 
     switch (state) {
         case IDLE:
@@ -441,7 +420,18 @@ static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
             // Falls through to playback
         case PLAYING:
             // Enqueue playback of a buffer's portion of the recording
-            enqueueBuffer(playback_position);
+            result = enqueueBuffer();
+            switch (result) {
+                case SL_RESULT_SUCCESS:
+                case SL_RESULT_OPERATION_ABORTED:
+                    return;
+                default:
+                    /* Could get SL_RESULT_BUFFER_INSUFFICIENT (code 7) if the buffer is full. This
+                     * shouldn't happen because we are supposed to wait for the buffer to clear
+                     * before starting a new render. */
+                    LOG_E(LOG_TAG, "Error code from OpenSL ES enqueue buffer: %d", result);
+                    assert(0);
+            }
             return;
     }
 }
@@ -555,7 +545,12 @@ playJNI(JNIEnv *env,
         return JNI_FALSE;
 
     // Play sound
-    return (play(deviceSampleRate, deviceBufferSizeMono) == 0) ? JNI_TRUE : JNI_FALSE;
+    if (play(deviceSampleRate, deviceBufferSizeMono)) {
+        cleanup();
+        return JNI_FALSE;
+    }
+
+    return JNI_TRUE;
 }
 
 // Obfuscated JNI wrapper for the former
