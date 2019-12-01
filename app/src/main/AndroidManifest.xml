@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:dist="http://schemas.android.com/apk/distribution"
-    package="com.bbrister.metrodrone">
+    package="com.bbrister.tempodrone">
 
     <application
         android:allowBackup="true"
@@ -31,7 +31,7 @@
             android:theme="@style/AppTheme.NoActionBar"></activity>
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-5040365596623384~5072587493" />
+            android:value="ca-app-pub-5040365596623384~8747289727" />
         <service
             android:name=".DroneService"
             android:enabled="true"

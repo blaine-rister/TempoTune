@@ -1,4 +1,4 @@
-package com.bbrister.metrodrone;
+package com.bbrister.tempodrone;
 
 /* Manage application-wide settings related to notifications */
 public class Notifications {

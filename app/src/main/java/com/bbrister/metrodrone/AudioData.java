@@ -1,4 +1,4 @@
-package com.bbrister.metrodrone;
+package com.bbrister.tempodrone;
 
 /**
  * Singleton class for passing around the audio data stream. We need this since Intent has a data
