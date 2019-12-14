@@ -12,8 +12,9 @@ public class Soundfont extends DynamicModule {
     protected boolean isFree;
 
     // Provide the path and package name
-    public Soundfont(AppCompatActivity activity, String path, String packageName, boolean isFree) {
-        super(activity, packageName, getDisplayName(path));
+    public Soundfont(AppCompatActivity activity, String path, String packageName, boolean isFree,
+            boolean isInstant) {
+        super(activity, packageName, getDisplayName(path), isInstant);
         this.path = path;
         this.isFree = isFree;
     }

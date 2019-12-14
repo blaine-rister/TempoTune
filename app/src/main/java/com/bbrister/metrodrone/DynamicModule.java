@@ -23,15 +23,23 @@ public class DynamicModule {
     // Data
     protected String displayName;
     protected String moduleName;
+    private boolean isInstant;
 
-    public DynamicModule(AppCompatActivity activity, String moduleName, String displayName) {
-        // Basic initialization
+    public DynamicModule(AppCompatActivity activity, String moduleName, String displayName,
+                         boolean isInstant) {
         installListener = null;
         this.moduleName = moduleName;
         this.displayName = displayName;
         this.activity = activity;
+        this.isInstant = isInstant;
     }
 
+    /**
+     * Check if this is instant or not.
+     */
+    public boolean isInstant() {
+        return isInstant;
+    }
 
     /**
      * Query the installed modules to see if this is installed.

@@ -34,6 +34,9 @@
     <string name="upgrade">UPGRADE</string>
     <string name="not_now">NOT NOW</string>
 
+    <string name="instant_change_sounds">Please install the full version of the app to access
+        additional instruments.</string>
+
     <string name="google_play_failure">Failed to connect to the Google Play service.</string>
     <string name="network_failure">Failed to connect to the network service.</string>
     <string name="unexpected_error">Unexpected error.</string>

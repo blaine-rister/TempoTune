@@ -96,6 +96,7 @@ static const int numReverbPresets = sizeof(reverb_presets) / sizeof(struct rever
 
 // MIDI info
 const uint8_t velocityMax = 127; // Maximum allowed velocity in MIDI
+const uint8_t programMax = 127; // Maximum possible MIDI program number
 
 // Constants
 static const int midiChannel = 0;
@@ -598,6 +599,9 @@ static int initFluid(const int sampleRate) {
 // Load a soundfont. Unloads whichever is currently loaded.
 static int load_soundfont(const char *soundfontFilename) {
 
+    int current_program, program_available;
+    uint8_t program;
+
     if (!isInitialized("load_soundfont")) {
         return -1;
     }
@@ -619,7 +623,40 @@ static int load_soundfont(const char *soundfontFilename) {
         return -1;
     }
 
-    return 0;
+    // Get the current program number
+    current_program = get_program();
+    if (current_program < 0)
+        return -1;
+
+    // Check if this program number is available
+    if (queryProgram(current_program, &program_available))
+        return -1;
+
+    // Return if this program is available
+    if (program_available)
+        return 0;
+
+    // If unavailable, select the first available program
+    LOG_I(LOG_TAG, "Failed to find program %d in soundfont %s", current_program, soundfontFilename);
+    program = 0;
+    do {
+        program++;
+
+        // Query program availability
+        if (queryProgram(program, &program_available))
+            return -1;
+
+        // Try to set the program
+        if (program_available) {
+            LOG_I(LOG_TAG, "Defaulting to first available program %d", program);
+            return changeProgram(program);
+        }
+
+    } while (program != programMax); // Avoid overflow
+
+    // No programs found
+    LOG_E(LOG_TAG, "Unable to find a valid program in soundfont %s", soundfontFilename);
+    return -1;
 }
 
 /*

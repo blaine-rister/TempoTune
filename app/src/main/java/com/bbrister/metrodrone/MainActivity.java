@@ -30,22 +30,40 @@ public class MainActivity extends DroneActivity {
 
     // Constants
     final private static String displaySharpsKey = "DISPLAY_SHARPS";
-    final private static String defaultSoundfontPath = "basic.sf2";
+    final private static String basicSoundfontPath = "basic.sf2";
+    final private static String instantSoundfontPath = "instant.sf2";
 
-    // Internal interface for asynchornous processes
-    private interface FinishedListener {
-        void onFinish();
-    }
+    // Read-only configuration
+    private boolean instantMode;
+    private String defaultSoundfontPath;
 
     // Dynamic UI items
     List<NoteSelector> noteSelectors = new ArrayList<>(); // Stores the pitches to be played
 
     // State
-    boolean uiReady;
-    boolean displaySharps;
+    private boolean uiReady;
+    private boolean displaySharps;
 
     // Persistent UI items
     TextView bpmTextView;
+
+    /**
+     * Check if this is an instant app or the full install.
+     */
+    private boolean isInstant() {
+        // Get the all the soundfonts
+        List<Soundfont> soundfonts = querySoundfonts(false);
+
+        // Search for an instant one and see if it's installed
+        for (Soundfont soundfont : soundfonts) {
+            if (soundfont.isInstant()) {
+                return soundfont.isInstalled();
+            }
+        }
+
+        // If there are no instant soundfonts, we're not in instant mode
+        return false;
+    }
 
     // Initialize the UI when the drone is connected
     @Override
@@ -53,10 +71,11 @@ public class MainActivity extends DroneActivity {
         super.onDroneConnected();
 
         // Load the list of soundfonts
-        final List<Soundfont> soundfonts = querySoundfonts();
+        final List<Soundfont> soundfonts = querySoundfonts(!instantMode);
 
         // Query the soundfont. If there is none, load the default one
         if (!droneBinder.haveSoundfont()) {
+
             // Search the list for the default soundfont
             Soundfont defaultSoundfont = null;
             for (Soundfont soundfont : soundfonts) {
@@ -110,6 +129,10 @@ public class MainActivity extends DroneActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Check if this is in instant mode. Configure the default soundfont accordingly
+        instantMode = isInstant();
+        defaultSoundfontPath = instantMode ? instantSoundfontPath : basicSoundfontPath;
+
         // If the activity is being re-created, restore the previous UI state
         final boolean restoreState = savedInstanceState != null;
         displaySharps = restoreState ? savedInstanceState.getBoolean(displaySharpsKey) : false;
@@ -126,9 +149,8 @@ public class MainActivity extends DroneActivity {
     protected void onReceivePremiumMode(final boolean isPurchased, final boolean firstTime) {
         super.onReceivePremiumMode(isPurchased, firstTime);
 
-        // Handle premium mode
+        // Prompt the user to upgrade to premium
         if (!isPurchased && firstTime) {
-            // Prompt the user to upgrade to premium
             (new PremiumManager(this)).promptPremium(
                     getString(R.string.premium_prompt_full)
             );
@@ -137,8 +159,9 @@ public class MainActivity extends DroneActivity {
 
     /**
      * Read the list of soundfonts from the CSV file and query their installation statuses.
+     * Ignores instants if 'ignoreInstant' is true.
      */
-    private List<Soundfont> querySoundfonts() {
+    private List<Soundfont> querySoundfonts(final boolean ignoreInstant) {
         // Read the list of all possible soundfonts from the CSV file
         CsvReader csvReader = new CsvReader(getResources());
         List<String[]> csvLines = csvReader.read(R.raw.sounds_list);
@@ -161,9 +184,9 @@ public class MainActivity extends DroneActivity {
         for (int i = 1; i < csvLines.size(); i++) {
             String[] csvLine = csvLines.get(i);
 
-            // Ignore instant soundfonts
+            // Ignore soundfonts based on instant-mode
             final boolean isInstant = str2bool(csvLine[isInstantIdx]);
-            if (isInstant) {
+            if (ignoreInstant && isInstant) {
                 continue;
             }
 
@@ -172,7 +195,7 @@ public class MainActivity extends DroneActivity {
 
             // Create the soundfont object
             soundfonts.add(new Soundfont(this, csvLine[pathIdx], csvLine[moduleIdx],
-                    isFree));
+                    isFree, isInstant));
         }
 
         return soundfonts;
@@ -335,7 +358,7 @@ public class MainActivity extends DroneActivity {
         // Instrument family spinner
         final Spinner familySpinner = findViewById(R.id.instrumentFamilySpinner);
         final ArrayAdapter<Soundfont> familyAdapter = new ArrayAdapter<>(this,
-                R.layout.instrument_name, querySoundfonts());
+                R.layout.instrument_name, soundfonts);
         familyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         familySpinner.setAdapter(familyAdapter);
 
@@ -384,6 +407,13 @@ public class MainActivity extends DroneActivity {
      */
     public boolean setSoundfont(final Soundfont soundfont, final Spinner instrumentSpinner) {
 
+        // Cannot change sounds in instant mode
+        if (instantMode) {
+            AlertDialogFragment.showDialog(getSupportFragmentManager(),
+                    getString(R.string.instant_change_sounds));
+            return false;
+        }
+
         // Check if premium mode is required. If so, prompt premium purchase
         if (!havePremium() && !soundfont.isFree) {
             (new PremiumManager(this)).promptPremium(
@@ -418,11 +448,13 @@ public class MainActivity extends DroneActivity {
             @Override
             public void onInstallFinished(final boolean success) {
                 // Check for successful installation
-                //TODO change this to an alert--the user can use another soundfont
                 if (!success) {
-                    throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(
-                            "Failed to request module " + soundfont.displayName) :
-                            new DefaultException();
+                    if (BuildConfig.DEBUG_EXCEPTIONS) {
+                        throw new DebugException("Failed to request module " +
+                                soundfont.displayName);
+                    } else {
+                        return; // Hope that installation provides an error message
+                    }
                 }
 
                 // Installation succeeded. Begin loading the soundfont
@@ -439,9 +471,8 @@ public class MainActivity extends DroneActivity {
         droneBinder.loadSounds(soundfont.path);
 
         // Update the instruments. Don't rely on the spinner to do it, this is unreliable
-        updateInstrumentChoices((InstrumentIconAdapter) instrumentSpinner.getAdapter());
-        instrumentSpinner.setSelection(0, true);
-        setInstrument((NameValPair<Integer>) instrumentSpinner.getSelectedItem());
+        updateInstrumentSelection(instrumentSpinner,
+                (InstrumentIconAdapter) instrumentSpinner.getAdapter());
     }
 
     // Update the list of instrument choices
@@ -503,11 +534,13 @@ public class MainActivity extends DroneActivity {
     private void updateInstrumentSelection(Spinner instrumentSpinner,
                                            ArrayAdapter<NameValPair<Integer>> adapter){
 
-        // Update the spinner choices
+        // Record the current program before we change the spinner
+        final int currentProgram = droneBinder.getProgram();
+
+        // Update the spinner choices. This might trigger a program change
         updateInstrumentChoices(adapter);
 
-        // Look for the current program in the instruments. If found, set the spinners
-        final int currentProgram = droneBinder.getProgram();
+        // Look for the current program in the instruments. If found, set the spinner to this
         for (int i = 0; i < adapter.getCount(); i++) {
             if (adapter.getItem(i).val == currentProgram) {
                 instrumentSpinner.setSelection(i, true);

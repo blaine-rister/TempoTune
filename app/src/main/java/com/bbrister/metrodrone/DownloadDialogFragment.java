@@ -28,7 +28,7 @@ public class DownloadDialogFragment extends YesNoDialogFragment {
         final String displayName = arguments.getString(displayNameKey);
 
         // Create a new DynamicModule and install it
-        new DynamicModule((AppCompatActivity) getActivity(), moduleName, displayName)
+        new DynamicModule((AppCompatActivity) getActivity(), moduleName, displayName, false)
                 .install(false);
     }
 
