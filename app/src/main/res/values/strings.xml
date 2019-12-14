@@ -15,6 +15,8 @@
 
     <string name="bpm_header">BPM</string>
     <string name="pitch_header">Pitch</string>
+    <string name="add_pitch_button_text">Add</string>
+    <string name="remove_pitch_button_text">Remove</string>
 
     <string name="download_prompt">Download module "%s"?</string>
     <string name="download_ongoing">Module "%s" is currently awaiting installation...</string>

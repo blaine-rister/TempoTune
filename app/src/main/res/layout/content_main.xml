@@ -132,7 +132,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/pitchScrollView"
-        android:text="Add" />
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:text="@string/add_pitch_button_text" />
 
     <Button
         android:id="@+id/removePitchButton"
@@ -141,7 +142,8 @@
         android:layout_below="@id/pitchScrollView"
         android:layout_toRightOf="@id/addPitchButton"
         android:layout_toEndOf="@id/addPitchButton"
-        android:text="Remove" />
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:text="@string/remove_pitch_button_text" />
 
     <TextView
         android:id="@+id/instrumentTextView"
