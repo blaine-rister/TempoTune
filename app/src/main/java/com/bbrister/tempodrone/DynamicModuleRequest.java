@@ -188,9 +188,6 @@ public abstract class DynamicModuleRequest {
      * mode.
      */
     private void fatalInstallErrorDialog(Exception e) {
-        if (BuildConfig.DEBUG_EXCEPTIONS) {
-            throw new RuntimeException(e);
-        }
         installFailureMsg(String.format(
                 activity.getString(R.string.install_fatal_error),
                 displayName,

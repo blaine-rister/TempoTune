@@ -15,9 +15,9 @@
 
 package com.bbrister.tempodrone;
 
+import android.content.Context;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.util.Log;
 
 import com.android.billingclient.api.Purchase;
 
@@ -40,17 +40,26 @@ import java.security.spec.X509EncodedKeySpec;
  * purchases as verified.
  */
 public class Security {
-    private static final String TAG = "Security";
 
+    /* Constants */
+    private static final String TAG = "Security";
     private static final String KEY_FACTORY_ALGORITHM = "RSA";
     private static final String SIGNATURE_ALGORITHM = "SHA1withRSA";
 
-    private static final String BASE_64_ENCODED_PUBLIC_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu+hGsruU+wSDIEHGrStl3pAUufOpbQn+O7UdbhfemkEyfU8lEOeLQLID/rmgOkBJcLcoGCfW/8+U20IB9C0Mx2fmBIE7D47h+Y/7V2AmS1UMdp49MHSooY3ND8C+vQjpz7zazMF9nUKGIHe2VKvAFKi+a7jZ8Uvfh7+5HTnKNLizDu5F8iUoGm9gJcUHnK6oDR/fgILBII7/jze/RDltG5IVNO1IZ3Tt6MoScQc+460KRfpMalLwl8A2fpbxT+SXbIsGxXj+vhWh9RQFAY7W0YutiEHu4gX/iIP66LJtou8XXgKoDDa9nQoArr9gJssQqmBTPF+cE4AKZRdAV2NSVwIDAQAB";
+    /* Configuration */
+    private String BASE_64_ENCODED_PUBLIC_KEY;
+
+    /**
+     * Takes in the context, to get the public key from resources.
+     */
+    public Security(final Context context) {
+        BASE_64_ENCODED_PUBLIC_KEY = context.getString(R.string.public_key);
+    }
 
     /**
      * Convenience wrapper for verifyValidSignature.
      */
-    public static boolean verifyPurchase(final Purchase purchase) {
+    public boolean verifyPurchase(final Purchase purchase) {
         return verifyValidSignature(purchase.getOriginalJson(), purchase.getSignature());
     }
 
@@ -60,13 +69,11 @@ public class Security {
      * replace this method with "constant true" if they decompile/rebuild your app.
      * </p>
      */
-    private static boolean verifyValidSignature(String signedData, String signature) {
+    private boolean verifyValidSignature(String signedData, String signature) {
         try {
-            return Security.verifyPurchase(BASE_64_ENCODED_PUBLIC_KEY, signedData, signature);
+            return verifyValidSignatureHelper(signedData, signature);
         } catch (Exception e) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "Got an exception trying to validate a purchase: " + e);
-            }
+            DebugLog.e(TAG, "Got an exception trying to validate a purchase: " + e);
             return false;
         }
     }
@@ -76,13 +83,11 @@ public class Security {
      * the verified purchase. The data is in JSON format and signed
      * with a private key. The data also contains the {@link PurchaseState}
      * and product ID of the purchase.
-     * @param base64PublicKey the base64-encoded public key to use for verifying.
      * @param signedData the signed JSON string (signed, not encrypted)
      * @param signature the signature for the data, signed with the private key
      */
-    private static boolean verifyPurchase(String base64PublicKey, String signedData,
-                                         String signature) {
-        if (TextUtils.isEmpty(signedData) || TextUtils.isEmpty(base64PublicKey) ||
+    private boolean verifyValidSignatureHelper(String signedData, String signature) {
+        if (TextUtils.isEmpty(signedData) || TextUtils.isEmpty(BASE_64_ENCODED_PUBLIC_KEY) ||
                 TextUtils.isEmpty(signature)) {
             if (BuildConfig.DEBUG_EXCEPTIONS) {
                 throw new DebugException("Purchase verification failed: missing data.");
@@ -90,7 +95,7 @@ public class Security {
             return false;
         }
 
-        PublicKey key = generatePublicKey(base64PublicKey);
+        PublicKey key = generatePublicKey(BASE_64_ENCODED_PUBLIC_KEY);
         return Security.verify(key, signedData, signature);
     }
 
@@ -109,9 +114,7 @@ public class Security {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         } catch (InvalidKeySpecException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "Invalid key specification.");
-            }
+            DebugLog.e(TAG, "Invalid key specification.");
             throw new IllegalArgumentException(e);
         }
     }
@@ -130,9 +133,7 @@ public class Security {
         try {
             signatureBytes = Base64.decode(signature, Base64.DEFAULT);
         } catch (IllegalArgumentException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "Base64 decoding failed.");
-            }
+            DebugLog.e(TAG, "Base64 decoding failed.");
             throw e;
         }
         try {
@@ -140,24 +141,16 @@ public class Security {
             sig.initVerify(publicKey);
             sig.update(signedData.getBytes());
             if (!sig.verify(signatureBytes)) {
-                if (BuildConfig.DEBUG) {
-                    Log.e(TAG, "Signature verification failed.");
-                }
+                DebugLog.e(TAG, "Signature verification failed.");
                 return false;
             }
             return true;
         } catch (NoSuchAlgorithmException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "NoSuchAlgorithmException.");
-            }
+            DebugLog.e(TAG, "NoSuchAlgorithmException.");
         } catch (InvalidKeyException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "Invalid key specification.");
-            }
+            DebugLog.e(TAG, "Invalid key specification.");
         } catch (SignatureException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "Signature exception.");
-            }
+            DebugLog.e(TAG, "Signature exception.");
         }
         return false;
     }

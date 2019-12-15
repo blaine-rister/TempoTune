@@ -115,10 +115,15 @@ public class PremiumManager implements PurchasesUpdatedListener {
     private Purchase completeQueryPurchases(final Purchase.PurchasesResult purchasesResult,
                                             final boolean quiet) {
 
+        // Initialize the security library
+        Security security = new Security(activity.getApplicationContext());
+
+        /**
+         * TODO: Is this needed?
         // Check the error code
         BillingResult billingResult = purchasesResult.getBillingResult();
-        //switch (purchasesResult.getBillingResult()) {
-        //TODO
+        switch (billingResult.getResponseCode()) {
+         */
 
         // Check if there are any purchases
         List<Purchase> purchasesList = purchasesResult.getPurchasesList();
@@ -133,7 +138,7 @@ public class PremiumManager implements PurchasesUpdatedListener {
                 continue;
 
             // Check the signature
-            if (!Security.verifyPurchase(purchase)) {
+            if (!security.verifyPurchase(purchase)) {
                 invalidSignature = true;
                 continue;
             }

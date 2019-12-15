@@ -141,4 +141,6 @@
     <string name="sharpsContentDescription">Toggle flats or sharps.</string>
     <string name="durationContentDescription">Change the note duration.</string>
     <string name="volumeContentDescription">Change the note volume.</string>
+
+    <string name="public_key">MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAisOtaaetqHSZ6u/ZFQwxwf+n7VxovErL3e3id21CrenM8d2OVkpgNTluEpzQCU9fGX0/ZercNmCpQXjiaoJJcd8hGiTjT13vw+ig+Frqbfr4d7uGLcqewT1ttV2R2Y/YuQlejEJEMHCdcFSExRfe9zUkEEwcD25eu6AfhduO673HWN7AzLwDq+fmbo29qrdYgZ5wmb5JpjKktge+6BmRqskOfRQUBdyd8GQn9PLpKqoCDxefFxcCe5IDDH4X19FiGsArKJary6MUpESK17Y5lK11/1hUed6jfhl23X/NJ/SjruFRTN7qvaK7OM0Yy8EwRqvJleDW1VNz8kIH2ouZqwIDAQAB</string>
 </resources>
