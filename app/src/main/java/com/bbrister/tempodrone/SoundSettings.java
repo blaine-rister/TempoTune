@@ -18,11 +18,12 @@ public abstract class SoundSettings {
     final static int bpmMax = 512;
     final static int bpmMin = 20;
 
-    // Private constants
-    final private static int defaultPitch = 0;
-    final private static int defaultoctave = 3;
-    final private static byte defaultKey = MidiDriverHelper.encodePitch(defaultPitch,
-            defaultoctave);
+    // Starting defaults
+    final private static int defaultStartPitch = 0;
+    final private static int defaultStartOctave = 3;
+
+    // Key default. This is changed throughout the program
+    private byte defaultKey;
 
     // Sound metadata--parameters for acceptable values of the latter
     private boolean[] keyRange;
@@ -47,6 +48,7 @@ public abstract class SoundSettings {
     public SoundSettings(final int maxNumNotes, final int numReverbPresets) {
 
         // Defaults
+        defaultKey = MidiDriverHelper.encodePitch(defaultStartPitch, defaultStartOctave);
         final int defaultReverbPreset = 1;
         final boolean defaultBoostVolume = true;
         final int defaultBpm = 80;
@@ -265,9 +267,12 @@ public abstract class SoundSettings {
         duration.set(desiredDuration);
     }
 
-    // Set the key at the given handle
+    /**
+     * Set the key at the given handle. Updates the default key.
+     */
     private void setKey(final int handle, final byte key) {
         getNote(handle).set(key);
+        defaultKey = key;
     }
 
     /**
