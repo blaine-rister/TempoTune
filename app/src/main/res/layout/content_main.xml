@@ -90,19 +90,12 @@
         android:layout_below="@id/bpmPanel"
         android:text="@string/pitch_header" />
 
-
-    <HorizontalScrollView
-        android:id="@+id/pitchScrollView"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/pitchTextView"
-        android:fadeScrollbars="false"
-        android:fillViewport="true">
-
-        <LinearLayout
+    <com.google.android.flexbox.FlexboxLayout
             android:id="@+id/pitchLayout"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_below="@id/pitchTextView"
+            app:flexWrap="wrap" >
 
             <Switch
                 android:id="@+id/sharpSwitch"
@@ -123,15 +116,13 @@
                 android:layout_gravity="center_vertical"
                 android:contentDescription="@null"
                 app:srcCompat="@drawable/ic_treble_clef" />
-        </LinearLayout>
-
-    </HorizontalScrollView>
+    </com.google.android.flexbox.FlexboxLayout>
 
     <Button
         android:id="@+id/addPitchButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/pitchScrollView"
+        android:layout_below="@id/pitchLayout"
         style="@style/Widget.AppCompat.Button.Colored"
         android:text="@string/add_pitch_button_text" />
 
@@ -139,7 +130,7 @@
         android:id="@+id/removePitchButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/pitchScrollView"
+        android:layout_below="@id/pitchLayout"
         android:layout_toRightOf="@id/addPitchButton"
         android:layout_toEndOf="@id/addPitchButton"
         style="@style/Widget.AppCompat.Button.Colored"

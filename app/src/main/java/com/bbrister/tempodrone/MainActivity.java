@@ -17,7 +17,6 @@ import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Spinner;
@@ -25,6 +24,8 @@ import android.widget.SeekBar;
 import android.widget.Button;
 
 import android.content.Context;
+
+import com.google.android.flexbox.FlexboxLayout;
 
 public class MainActivity extends DroneActivity {
 
@@ -285,9 +286,8 @@ public class MainActivity extends DroneActivity {
                 noteSelectors.remove(removeIdx);
 
                 // Remove the note from the UI layout
-                LinearLayout layout = findViewById(R.id.pitchLayout);
-                layout.removeView(noteToRemove.octaveSpinner.spinner);
-                layout.removeView(noteToRemove.pitchSpinner.spinner);
+                FlexboxLayout layout = findViewById(R.id.pitchLayout);
+                layout.removeView(noteToRemove.layout);
             }
         });
 
@@ -558,7 +558,7 @@ public class MainActivity extends DroneActivity {
     // Add a new note the GUI
     public void addNote(final int handle) {
         // Get the pitch layout
-        LinearLayout layout = findViewById(R.id.pitchLayout);
+        FlexboxLayout layout = findViewById(R.id.pitchLayout);
 
         // Add a new note
         NoteSelector noteSelector = new NoteSelector(layout.getContext(), droneBinder, handle,
@@ -566,10 +566,9 @@ public class MainActivity extends DroneActivity {
         noteSelectors.add(noteSelector);
 
         // Put the new spinners in the UI layout
-        final LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+        final FlexboxLayout.LayoutParams params = new FlexboxLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        layout.addView(noteSelector.pitchSpinner.spinner, params);
-        layout.addView(noteSelector.octaveSpinner.spinner, params);
+        layout.addView(noteSelector.layout);
     }
 
     // Tell the service to start playing sound

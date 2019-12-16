@@ -4,7 +4,9 @@ import android.content.Context;
 
 import android.view.View;
 
+import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.LinearLayout;
 
 // Class for the user interface for selecting a note
 public class NoteSelector {
@@ -17,8 +19,9 @@ public class NoteSelector {
     static String[] pitchLookup;
 
     // UI items
-    public PitchSpinner pitchSpinner;
-    public OctaveSpinner octaveSpinner;
+    public LinearLayout layout;
+    private PitchSpinner pitchSpinner;
+    private OctaveSpinner octaveSpinner;
 
     // Remove this note from the model
     public void destroy() {
@@ -44,8 +47,16 @@ public class NoteSelector {
 
         // ---Initialize UI elements---
 
+        // Create the spinners
         pitchSpinner = new PitchSpinner(context, droneBinder, handle);
         octaveSpinner = new OctaveSpinner(context, droneBinder, handle);
+
+        // Initialize the LinearLayout and put the spinners in it
+        layout = new LinearLayout(context);
+        final LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        layout.addView(pitchSpinner.spinner, layoutParams);
+        layout.addView(octaveSpinner.spinner, layoutParams);
 
         // Update the UI. Called before listeners are installed, to avoid triggering them
         update(displaySharps);
