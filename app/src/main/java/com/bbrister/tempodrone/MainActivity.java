@@ -24,6 +24,7 @@ import android.widget.SeekBar;
 import android.widget.Button;
 
 import android.content.Context;
+import android.widget.Toast;
 
 import com.google.android.flexbox.FlexboxLayout;
 
@@ -260,8 +261,11 @@ public class MainActivity extends DroneActivity {
             public void onClick(View view) {
 
                 // Check if we have reached the note limit
-                if (droneBinder.notesFull())
+                if (droneBinder.notesFull()) {
+                    Toast.makeText(view.getContext(), R.string.max_notes, Toast.LENGTH_SHORT)
+                            .show();
                     return;
+                }
 
                 addNote(droneBinder.addNote());
             }

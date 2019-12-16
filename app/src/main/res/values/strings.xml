@@ -18,6 +18,8 @@
     <string name="add_pitch_button_text">Add</string>
     <string name="remove_pitch_button_text">Remove</string>
 
+    <string name="max_notes">Maximum number of notes exceeded</string>
+
     <string name="download_prompt">Download module "%s"?</string>
     <string name="download_ongoing">Module "%s" is currently awaiting installation...</string>
     <string name="download_api_level_fail">Downloading modules is not supported on this version of
