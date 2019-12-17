@@ -28,7 +28,7 @@
         android:orientation="horizontal"
         android:layout_below="@id/bpmTextView" >
 
-        <ImageButton
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/bpmIncreaseButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -38,9 +38,11 @@
             android:layout_toLeftOf="@id/editBpm"
             android:layout_toStartOf="@id/editBpm"
             android:background="@android:color/transparent"
-            android:tint="@color/colorPrimary"
+            android:tint="@color/colorWhite"
+            android:scaleType="fitXY"
             android:contentDescription="@string/plusContentDescription"
-            app:srcCompat="@drawable/ic_transparent_plus_circle" />
+            app:srcCompat="@drawable/ic_transparent_plus_circle"
+            app:maxImageSize="@dimen/tempo_increase_fab_image_size" />
 
         <EditText
             android:id="@+id/editBpm"
@@ -66,7 +68,7 @@
             android:singleLine="true"
             android:textAppearance="@style/TextAppearance.AppCompat.Display1" />
 
-        <ImageButton
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/bpmDecreaseButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -76,9 +78,11 @@
             android:layout_toRightOf="@id/editBpm"
             android:layout_toEndOf="@id/editBpm"
             android:background="@android:color/transparent"
+            android:backgroundTint="@color/colorWhite"
             android:contentDescription="@string/minusContentDescription"
-            app:srcCompat="@drawable/ic_minus_with_circle"
-            android:tint="@color/colorPrimary" />
+            app:srcCompat="@drawable/ic_transparent_minus_circle_bigger_minus"
+            android:tint="@color/colorPrimary"
+            app:maxImageSize="@dimen/tempo_decrease_fab_image_size" />
 
     </RelativeLayout>
 
