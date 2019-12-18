@@ -575,10 +575,10 @@ public class MainActivity extends DroneActivity {
         layout.addView(noteSelector.layout);
     }
 
-    // Tell the service to start playing sound
-    protected void play() {
+    // Toggle play/pause state
+    protected void playPause() {
         sendDisplayedBpm(bpmTextView); // In case the user never pressed "done" on the keyboard
-        super.play();
+        super.playPause();
     }
 
     // Receives the BPM from the service and updates the UI

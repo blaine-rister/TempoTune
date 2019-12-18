@@ -134,8 +134,7 @@
         <item>Ab</item>
     </string-array>
 
-    <string name="playContentDescription">Play sound.</string>
-    <string name="pauseContentDescription">Pause sound.</string>
+    <string name="playPauseContentDescription">Play or pause sound.</string>
     <string name="tapperContentDescription">Tap the desired tempo.</string>
     <string name="reverbContentDescription">Change the reverberation level.</string>
     <string name="plusContentDescription">Increase the tempo.</string>

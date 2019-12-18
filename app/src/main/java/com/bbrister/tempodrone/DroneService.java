@@ -12,20 +12,20 @@ import java.util.List;
 public class DroneService extends Service {
 
     // Constants
-    final static int programMax = 127;
+    final public static int programMax = 127;
 
     // State
-    boolean isPlaying;
+    private boolean isPlaying;
 
     // Sound parameters
-    SoundSettings settings;
-    String soundfontName;
+    private SoundSettings settings;
+    private String soundfontName;
 
     // Create midi driver
-    protected MidiDriverHelper midi;
+    private MidiDriverHelper midi;
 
     // Create binder to return on binding
-    final IBinder droneBinder = new DroneBinder();
+    private final IBinder droneBinder = new DroneBinder();
 
     @Override
     public void onCreate() {
@@ -62,6 +62,7 @@ public class DroneService extends Service {
 
     // Interface for drone activities
     public class DroneBinder extends Binder {
+        boolean isPlaying() { return isPlaying; }
         void loadSounds(final String filename) {
             DroneService.this.loadSounds(filename);
         }
@@ -69,10 +70,7 @@ public class DroneService extends Service {
         String getSoundfont() {
             return soundfontName;
         }
-        void play() { DroneService.this.play(); }
-        void pause() {
-            DroneService.this.pause();
-        }
+        void playPause() { DroneService.this.playPause(); }
         void stop() { DroneService.this.stop(); }
         boolean queryProgram(int instrument) { return midi.queryProgram((byte) instrument); }
         String getProgramName(int instrument) { return midi.getProgramName((byte) instrument); }
@@ -141,6 +139,15 @@ public class DroneService extends Service {
 
         // Shut down the service
         stopSelf();
+    }
+
+    // Toggle play/pause state
+    public void playPause() {
+        if (isPlaying) {
+            pause();
+        } else {
+            play();
+        }
     }
 
     // Start playing the sound, according to the current settings

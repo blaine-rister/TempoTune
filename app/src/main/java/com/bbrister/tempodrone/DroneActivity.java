@@ -240,14 +240,16 @@ public abstract class DroneActivity extends AppCompatActivity {
         invalidateOptionsMenu();
     }
 
-    // Tell the service to start playing sound
-    protected void play() {
-        droneBinder.play();
+    // Toggle play/pause state
+    protected void playPause() {
+        droneBinder.playPause();
+        updatePlayPause();
     }
 
-    // Tell the service to stop playing sound
-    protected void pause() {
-        droneBinder.pause();
+    // Update the play/pause button icon
+    protected void updatePlayPause() {
+        ((ImageButton) findViewById(R.id.playPauseButton)).setImageResource(
+                droneBinder.isPlaying() ? R.drawable.ic_pause_button : R.drawable.ic_play_button);
     }
 
     // Set up the UI items shared across all drone activities, using the bound service
@@ -257,21 +259,13 @@ public abstract class DroneActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        // Play button
-        ImageButton playButton = findViewById(R.id.playButton);
-        playButton.setOnClickListener(new View.OnClickListener() {
+        // Play/pause button
+        updatePlayPause();
+        final ImageButton playPauseButton = findViewById(R.id.playPauseButton);
+        playPauseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                play();
-            }
-        });
-
-        // Pause button
-        ImageButton pauseButton = findViewById(R.id.pauseButton);
-        pauseButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                pause();
+                playPause();
             }
         });
 
