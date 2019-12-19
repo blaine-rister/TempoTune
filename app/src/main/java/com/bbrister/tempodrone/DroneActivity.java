@@ -50,7 +50,9 @@ public abstract class DroneActivity extends AppCompatActivity {
 
     // This is called when the service is somehow updated. Subclasses should override it to update
     // their UI.
-    protected void onDroneChanged() {}
+    protected void onDroneChanged() {
+        updatePlayPause();
+    }
 
     // Service interface
     protected DroneService.DroneBinder droneBinder;

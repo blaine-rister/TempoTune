@@ -288,6 +288,11 @@ public class MainActivity extends DroneActivity {
                 // Remove the note from the UI layout
                 FlexboxLayout layout = findViewById(R.id.pitchLayout);
                 layout.removeView(noteToRemove.layout);
+
+                // Update the UI for the parent class, which contains play/pause
+                //TODO: could simplify this with a callback listener in the Service. However, this
+                // would require registering/unregistering the listeners on activity death
+                onDroneChanged();
             }
         });
 
