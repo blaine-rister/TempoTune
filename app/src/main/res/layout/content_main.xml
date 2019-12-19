@@ -98,6 +98,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@id/pitchTextView"
+            android:layout_marginStart="@dimen/content_indent"
+            android:layout_marginLeft="@dimen/content_indent"
             app:flexWrap="wrap" >
 
             <Switch
@@ -126,6 +128,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/pitchLayout"
+        android:layout_marginStart="@dimen/content_indent"
+        android:layout_marginLeft="@dimen/content_indent"
         style="@style/Widget.AppCompat.Button.Colored"
         android:text="@string/add_pitch_button_text" />
 
@@ -152,6 +156,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/instrumentTextView"
+        android:layout_marginStart="@dimen/content_indent"
+        android:layout_marginLeft="@dimen/content_indent"
         android:paddingTop="@dimen/spinner_padding"
         android:paddingBottom="@dimen/spinner_padding" />
 
