@@ -46,9 +46,6 @@ public class MainActivity extends DroneActivity {
     private boolean uiReady;
     private boolean displaySharps;
 
-    // Persistent UI items
-    TextView bpmTextView;
-
     /**
      * Check if this is an instant app or the full install.
      */
@@ -207,9 +204,8 @@ public class MainActivity extends DroneActivity {
     protected void setupUI(final List<Soundfont> soundfonts) {
 
         // BPM text
-        EditText editBpm = findViewById(R.id.editBpm);
-        bpmTextView = editBpm;
-        receiveBpm(); // Requires bpmTextView is initialized
+        final EditText editBpm = findViewById(R.id.editBpm);
+        receiveBpm(editBpm);
         editBpm.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -229,7 +225,7 @@ public class MainActivity extends DroneActivity {
         });
 
         // BPM increase button
-        ImageButton bpmIncreaseButton = findViewById(R.id.bpmIncreaseButton);
+        final ImageButton bpmIncreaseButton = findViewById(R.id.bpmIncreaseButton);
         bpmIncreaseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -239,7 +235,7 @@ public class MainActivity extends DroneActivity {
         });
 
         // BPM decrease button
-        ImageButton bpmDecreaseButton = findViewById(R.id.bpmDecreaseButton);
+        final ImageButton bpmDecreaseButton = findViewById(R.id.bpmDecreaseButton);
         bpmDecreaseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -272,7 +268,7 @@ public class MainActivity extends DroneActivity {
         });
 
         // Remove pitch button
-        Button removeNoteButton = findViewById(R.id.removePitchButton);
+        final Button removeNoteButton = findViewById(R.id.removePitchButton);
         removeNoteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -296,7 +292,7 @@ public class MainActivity extends DroneActivity {
         });
 
         // Toggle sharps/flats switch
-        Switch sharpSwitch = findViewById(R.id.sharpSwitch);
+        final Switch sharpSwitch = findViewById(R.id.sharpSwitch);
         sharpSwitch.setChecked(displaySharps);
         sharpSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -309,7 +305,7 @@ public class MainActivity extends DroneActivity {
         });
 
         // Velocity bar
-        SeekBar velocitySeekBar = findViewById(R.id.velocitySeekBar);
+        final SeekBar velocitySeekBar = findViewById(R.id.velocitySeekBar);
         velocitySeekBar.setProgress((int) Math.floor(droneBinder.getVelocity() *
                 velocitySeekBar.getMax()));
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -332,7 +328,7 @@ public class MainActivity extends DroneActivity {
         });
 
         // Duration bar
-        SeekBar durationSeekBar = findViewById(R.id.durationSeekBar);
+        final SeekBar durationSeekBar = findViewById(R.id.durationSeekBar);
         durationSeekBar.setProgress((int) Math.floor(droneBinder.getDuration() *
                 durationSeekBar.getMax()));
         durationSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -577,13 +573,18 @@ public class MainActivity extends DroneActivity {
 
     // Toggle play/pause state
     protected void playPause() {
-        sendDisplayedBpm(bpmTextView); // In case the user never pressed "done" on the keyboard
+        sendDisplayedBpm(); // In case the user never pressed "done" on the keyboard
         super.playPause();
     }
 
     // Receives the BPM from the service and updates the UI
     protected void receiveBpm() {
-        displayBpm(droneBinder.getBpm());
+        receiveBpm((TextView) findViewById(R.id.editBpm));
+    }
+
+    // Like the latter, avoids findViewById
+    protected  void receiveBpm(final TextView textView) {
+        textView.setText(Integer.toString(droneBinder.getBpm()));
     }
 
     // Retrieves the settings and updates the UI
@@ -600,8 +601,14 @@ public class MainActivity extends DroneActivity {
         updateUI();
     }
 
+    // Like the latter, but calls findViewById
+    public void sendDisplayedBpm() {
+        sendDisplayedBpm((TextView) findViewById(R.id.editBpm));
+    }
+
     // Sends the currently-displayed BPM to the model, and updates the UI if the model changes it
-    public void sendDisplayedBpm(final TextView textView) {
+    public void sendDisplayedBpm(TextView textView) {
+
         // Send the new BPM to the model, query the final setting
         droneBinder.setBpm(readBpm(textView));
         updateUI(); // In case the BPM is out of bounds
@@ -627,12 +634,6 @@ public class MainActivity extends DroneActivity {
     public int readBpm(final TextView textView) {
         final String text = textView.getText().toString();
         return text.isEmpty() ? 0 : Integer.valueOf(text);
-    }
-
-    // Displays the current BPM
-    protected void displayBpm(final int bpm) {
-
-        bpmTextView.setText(Integer.toString(bpm));
     }
 
     // Update the UI in case another activity has changed the drone service
