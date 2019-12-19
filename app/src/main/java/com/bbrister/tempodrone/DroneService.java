@@ -2,14 +2,22 @@ package com.bbrister.tempodrone;
 
 import android.app.Service;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.IBinder;
 import android.os.Binder;
 
+import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 // Responsible for playing sound through the MIDI driver //
 public class DroneService extends Service {
+
+    // Callback interface
+    public interface UpdateListener {
+        void onSoundChanged();
+    }
+    Map<Integer, UpdateListener> updateListeners; // Store the registered listeners
+    int nextListenerHandle; // Return a handle to deactivate them
 
     // Constants
     final public static int programMax = 127;
@@ -30,6 +38,10 @@ public class DroneService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        // Initialize the listeners
+        nextListenerHandle = 0;
+        updateListeners = new LinkedHashMap<>();
 
         // Initialize the sound driver
         midi = new MidiDriverHelper();
@@ -91,6 +103,10 @@ public class DroneService extends Service {
         int getNumReverbPresets() { return midi.getNumReverbPresets(); }
         int getReverbPreset() { return settings.getReverbPreset(); }
         boolean getVolumeBoost() { return settings.getVolumeBoost(); }
+        int registerListener(UpdateListener listener) {
+            return DroneService.this.registerListener(listener);
+        }
+        void unregisterListener(int handle) { DroneService.this.unregisterListener(handle); }
         int setBpm(int bpm) {
             return settings.setBpm(bpm);
         }
@@ -109,6 +125,25 @@ public class DroneService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return droneBinder;
+    }
+
+    // Register an update listener. Return the handle.
+    private int registerListener(final UpdateListener listener) {
+        final int handle = nextListenerHandle++;
+        updateListeners.put(handle, listener);
+        return handle;
+    }
+
+    // Un-register an update listener, given the handle.
+    private void unregisterListener(final int handle) {
+        updateListeners.remove(handle);
+    }
+
+    // Call all the callbacks
+    private void callListeners() {
+        for (UpdateListener listener : updateListeners.values()) {
+            listener.onSoundChanged();
+        }
     }
 
     // Load the sounds and remember the soundfont name
@@ -143,15 +178,20 @@ public class DroneService extends Service {
 
     // Toggle play/pause state
     public void playPause() {
+
+        // Toggle the play state
         if (isPlaying) {
             pause();
         } else {
             play();
         }
+
+        // Update the play/pause UI
+        callListeners();
     }
 
     // Start playing the sound, according to the current settings
-    public void play() {
+    private void play() {
 
         // Reset the state, cancelling existing playback
         pause();
@@ -173,15 +213,20 @@ public class DroneService extends Service {
     }
 
     // Pause playing
-    public void pause() {
+    private void pause() {
         // Stop playing
         stopService(new Intent(this, PlaybackService.class));
         isPlaying = false;
     }
 
-    // Update the sound if we are playing
+    // Update the sound if we are playing. Update the UI to reflect new parameters.
     public void updateSound() {
-        if (isPlaying)
+        // Re-play the sound
+        if (isPlaying) {
             play();
+        }
+
+        // Update the UI
+        callListeners();
     }
 }

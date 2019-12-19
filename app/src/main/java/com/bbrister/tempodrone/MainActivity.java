@@ -213,6 +213,7 @@ public class MainActivity extends DroneActivity {
                     case EditorInfo.IME_ACTION_DONE:
                         // Read the text and update BPM, closing the keyboard
                         sendDisplayedBpm(textView);
+                        updateUI(); // In case an invalid value was entered
 
                         /* Return false to close the keyboard, in case "done" is actually working.
                          * Returning true does not seem to prevent "enter" from jittering the
@@ -230,7 +231,6 @@ public class MainActivity extends DroneActivity {
             @Override
             public void onClick(View view) {
                 droneBinder.setBpm(droneBinder.getBpm() + 1);
-                updateUI();
             }
         });
 
@@ -240,7 +240,6 @@ public class MainActivity extends DroneActivity {
             @Override
             public void onClick(View view) {
                 droneBinder.setBpm(droneBinder.getBpm() - 1);
-                updateUI();
             }
         });
 
@@ -282,17 +281,12 @@ public class MainActivity extends DroneActivity {
                 NoteSelector noteToRemove = noteSelectors.get(removeIdx);
 
                 // Remove the note from the sounding pitches
-                noteToRemove.destroy();
                 noteSelectors.remove(removeIdx);
+                noteToRemove.destroy(); // Must call AFTER removing from noteSelectors
 
                 // Remove the note from the UI layout
                 FlexboxLayout layout = findViewById(R.id.pitchLayout);
                 layout.removeView(noteToRemove.layout);
-
-                // Update the UI for the parent class, which contains play/pause
-                //TODO: could simplify this with a callback listener in the Service. However, this
-                // would require registering/unregistering the listeners on activity death
-                onDroneChanged();
             }
         });
 
@@ -603,7 +597,6 @@ public class MainActivity extends DroneActivity {
     // Sets the instrument to be played
     public void setInstrument(NameValPair<Integer> instrument){
         droneBinder.changeProgram(instrument.val);
-        updateUI();
     }
 
     // Like the latter, but calls findViewById
@@ -616,7 +609,6 @@ public class MainActivity extends DroneActivity {
 
         // Send the new BPM to the model, query the final setting
         droneBinder.setBpm(readBpm(textView));
-        updateUI(); // In case the BPM is out of bounds
 
         // Close the keyboard
         try {

@@ -33,6 +33,7 @@ public abstract class DroneActivity extends AppCompatActivity {
 
     // Read-only configuration settings
     private boolean premiumMode;
+    private int listenerHandle; // For the drone callback
 
     // Customization
     Set<Integer> hiddenActions;
@@ -61,7 +62,18 @@ public abstract class DroneActivity extends AppCompatActivity {
         @Override
         public void onServiceConnected(ComponentName className,
                                        IBinder service) {
+            // Save the binder
             droneBinder = (DroneService.DroneBinder) service;
+
+            // Create a callback interface and record the handle
+            listenerHandle = droneBinder.registerListener(new DroneService.UpdateListener() {
+                @Override
+                public void onSoundChanged() {
+                    onDroneChanged();
+                }
+            });
+
+            // Set up the UI
             setupUI();
             onDroneConnected();
         }
@@ -188,6 +200,7 @@ public abstract class DroneActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        droneBinder.unregisterListener(listenerHandle);
         unbindService(droneConnection);
     }
 
