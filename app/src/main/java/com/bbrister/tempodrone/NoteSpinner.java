@@ -2,6 +2,7 @@ package com.bbrister.tempodrone;
 
 import android.content.Context;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
@@ -10,10 +11,11 @@ import java.util.List;
 
 public abstract class NoteSpinner<T> {
 
-    Spinner spinner;
-    ArrayAdapter<T> adapter;
-    DroneService.DroneBinder droneBinder;
-    int handle;
+    private Spinner spinner;
+    private ArrayAdapter<T> adapter;
+
+    protected DroneService.DroneBinder droneBinder;
+    protected int handle;
 
     abstract List<Integer> getChoices(); // Get the integer choices
     abstract Integer getChoice(); // Get the current integer choice
@@ -51,5 +53,10 @@ public abstract class NoteSpinner<T> {
     // To set a listener for the underlying spinner
     public void setOnItemSelectedListener(AdapterView.OnItemSelectedListener listener) {
         spinner.setOnItemSelectedListener(listener);
+    }
+
+    // Return the view for layout purposes
+    public View getView() {
+        return spinner;
     }
 }

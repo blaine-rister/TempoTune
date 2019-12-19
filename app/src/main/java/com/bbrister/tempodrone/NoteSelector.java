@@ -55,8 +55,8 @@ public class NoteSelector {
         layout = new LinearLayout(context);
         final LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        layout.addView(pitchSpinner.spinner, layoutParams);
-        layout.addView(octaveSpinner.spinner, layoutParams);
+        layout.addView(pitchSpinner.getView(), layoutParams);
+        layout.addView(octaveSpinner.getView(), layoutParams);
 
         // Update the UI. Called before listeners are installed, to avoid triggering them
         update(displaySharps);
