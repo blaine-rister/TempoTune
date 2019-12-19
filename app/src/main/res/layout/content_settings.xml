@@ -10,7 +10,8 @@
         android:id="@+id/volumeTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Volume" />
+        android:text="Volume"
+        style="@style/AppTheme.sectionTitleTextStyle" />
 
     <CheckBox
         android:id="@+id/volumeBoostBox"
@@ -25,7 +26,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/volumeBoostBox"
-        android:text="Reverberation" />
+        android:text="Reverberation"
+        style="@style/AppTheme.sectionTitleTextStyle" />
 
     <SeekBar
         android:id="@+id/reverbSeekBar"

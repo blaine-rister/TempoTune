@@ -17,9 +17,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:gravity="left"
         android:text="@string/bpm_header"
-        android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+        style="@style/AppTheme.sectionTitleTextStyle" />
 
     <RelativeLayout
         android:id="@+id/bpmPanel"
@@ -90,9 +89,9 @@
         android:id="@+id/pitchTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="left"
         android:layout_below="@id/bpmPanel"
-        android:text="@string/pitch_header" />
+        android:text="@string/pitch_header"
+        style="@style/AppTheme.sectionTitleTextStyle" />
 
     <com.google.android.flexbox.FlexboxLayout
             android:id="@+id/pitchLayout"
@@ -145,8 +144,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/addPitchButton"
-        android:gravity="left"
-        android:text="@string/instrument_header" />
+        android:text="@string/instrument_header"
+        style="@style/AppTheme.sectionTitleTextStyle" />
 
     <Spinner
         android:id="@+id/instrumentFamilySpinner"
@@ -163,8 +162,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/instrumentNameSpinner"
-        android:gravity="left"
-        android:text="@string/duration_header" />
+        android:text="@string/duration_header"
+        style="@style/AppTheme.sectionTitleTextStyle" />
 
     <SeekBar
         android:id="@+id/durationSeekBar"
@@ -180,8 +179,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/durationSeekBar"
-        android:gravity="left"
-        android:text="@string/velocity_header" />
+        android:text="@string/velocity_header"
+        style="@style/AppTheme.sectionTitleTextStyle" />
 
     <SeekBar
         android:id="@+id/velocitySeekBar"
