@@ -75,7 +75,7 @@
     <string name="duration_header">Duration</string>
     <string name="velocity_header">Volume</string>
     <string name="credits">
-        \n &appname; version %s\n\n
+        \n &appname;™ version %s\n\n
         &lt;p>Copyright © &year; Blaine Rister, all rights reserved. Please direct questions to
         &lt;a href="mailto:blaine@stanford.edu">blaine@stanford.edu&lt;/a>.&lt;/p>
 
