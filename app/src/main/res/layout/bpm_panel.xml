@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/bpmTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/bpm_header"
+        style="@style/AppTheme.sectionTitleTextStyle" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" >
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/bpmIncreaseButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="@dimen/plus_minus_buttons_margin"
+            android:layout_marginEnd="@dimen/plus_minus_buttons_margin"
+            android:layout_toLeftOf="@id/editBpm"
+            android:layout_toStartOf="@id/editBpm"
+            android:background="@android:color/transparent"
+            android:tint="@color/colorWhite"
+            android:scaleType="fitXY"
+            android:contentDescription="@string/plusContentDescription"
+            app:srcCompat="@drawable/ic_transparent_plus_circle"
+            app:maxImageSize="@dimen/tempo_increase_fab_image_size" />
+
+        <EditText
+            android:id="@+id/editBpm"
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_centerVertical="true"
+            android:gravity="center"
+            android:ems="10"
+            android:focusableInTouchMode="true"
+            android:fadeScrollbars="false"
+            android:freezesText="true"
+            android:hapticFeedbackEnabled="true"
+            android:imeOptions="actionDone"
+            android:inputType="number"
+            android:linksClickable="false"
+            android:longClickable="false"
+            android:saveEnabled="true"
+            android:scrollbarAlwaysDrawHorizontalTrack="false"
+            android:scrollbarAlwaysDrawVerticalTrack="false"
+            android:scrollHorizontally="false"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:textAppearance="@style/TextAppearance.AppCompat.Display1" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/bpmDecreaseButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="@dimen/plus_minus_buttons_margin"
+            android:layout_marginStart="@dimen/plus_minus_buttons_margin"
+            android:layout_toRightOf="@id/editBpm"
+            android:layout_toEndOf="@id/editBpm"
+            android:background="@android:color/transparent"
+            android:backgroundTint="@color/colorWhite"
+            android:contentDescription="@string/minusContentDescription"
+            app:srcCompat="@drawable/ic_transparent_minus_circle_bigger_minus"
+            android:tint="@color/colorPrimary"
+            app:maxImageSize="@dimen/tempo_decrease_fab_image_size" />
+
+    </RelativeLayout>
+
+</LinearLayout>

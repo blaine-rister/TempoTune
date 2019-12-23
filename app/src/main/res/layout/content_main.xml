@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/context_main_layout"
@@ -8,192 +8,30 @@
     android:layout_height="wrap_content"
     android:focusable="true"
     android:focusableInTouchMode="true"
+    android:orientation="vertical"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context=".MainActivity"
     tools:showIn="@layout/activity_main">
 
-    <TextView
-        android:id="@+id/bpmTextView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:text="@string/bpm_header"
-        style="@style/AppTheme.sectionTitleTextStyle" />
-
-    <RelativeLayout
+    <include layout="@layout/bpm_panel"
         android:id="@+id/bpmPanel"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_below="@id/bpmTextView" >
+        android:layout_height="wrap_content" />
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/bpmIncreaseButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_marginRight="@dimen/plus_minus_buttons_margin"
-            android:layout_marginEnd="@dimen/plus_minus_buttons_margin"
-            android:layout_toLeftOf="@id/editBpm"
-            android:layout_toStartOf="@id/editBpm"
-            android:background="@android:color/transparent"
-            android:tint="@color/colorWhite"
-            android:scaleType="fitXY"
-            android:contentDescription="@string/plusContentDescription"
-            app:srcCompat="@drawable/ic_transparent_plus_circle"
-            app:maxImageSize="@dimen/tempo_increase_fab_image_size" />
-
-        <EditText
-            android:id="@+id/editBpm"
-            android:layout_width="120dp"
-            android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
-            android:layout_centerVertical="true"
-            android:gravity="center"
-            android:ems="10"
-            android:focusableInTouchMode="true"
-            android:fadeScrollbars="false"
-            android:freezesText="true"
-            android:hapticFeedbackEnabled="true"
-            android:imeOptions="actionDone"
-            android:inputType="number"
-            android:linksClickable="false"
-            android:longClickable="false"
-            android:saveEnabled="true"
-            android:scrollbarAlwaysDrawHorizontalTrack="false"
-            android:scrollbarAlwaysDrawVerticalTrack="false"
-            android:scrollHorizontally="false"
-            android:selectAllOnFocus="true"
-            android:singleLine="true"
-            android:textAppearance="@style/TextAppearance.AppCompat.Display1" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/bpmDecreaseButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_marginLeft="@dimen/plus_minus_buttons_margin"
-            android:layout_marginStart="@dimen/plus_minus_buttons_margin"
-            android:layout_toRightOf="@id/editBpm"
-            android:layout_toEndOf="@id/editBpm"
-            android:background="@android:color/transparent"
-            android:backgroundTint="@color/colorWhite"
-            android:contentDescription="@string/minusContentDescription"
-            app:srcCompat="@drawable/ic_transparent_minus_circle_bigger_minus"
-            android:tint="@color/colorPrimary"
-            app:maxImageSize="@dimen/tempo_decrease_fab_image_size" />
-
-    </RelativeLayout>
-
-    <TextView
-        android:id="@+id/pitchTextView"
+    <include layout="@layout/pitch_panel"
+        android:id="@+id/pitchPanel"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/bpmPanel"
-        android:text="@string/pitch_header"
-        style="@style/AppTheme.sectionTitleTextStyle" />
+        android:layout_height="wrap_content" />
 
-    <com.google.android.flexbox.FlexboxLayout
-            android:id="@+id/pitchLayout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/pitchTextView"
-            android:layout_marginStart="@dimen/content_indent"
-            android:layout_marginLeft="@dimen/content_indent"
-            app:flexWrap="wrap" >
-
-            <Switch
-                android:id="@+id/sharpSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minHeight="@dimen/touch_min_height"
-                android:textAllCaps="false"
-                android:textOff="♭"
-                android:textOn="♯"
-                android:showText="true"
-                android:contentDescription="@string/sharpsContentDescription"
-            />
-
-            <ImageView
-                android:id="@+id/imageView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:contentDescription="@null"
-                app:srcCompat="@drawable/ic_treble_clef" />
-    </com.google.android.flexbox.FlexboxLayout>
-
-    <Button
-        android:id="@+id/addPitchButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/pitchLayout"
-        android:layout_marginStart="@dimen/content_indent"
-        android:layout_marginLeft="@dimen/content_indent"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:text="@string/add_pitch_button_text" />
-
-    <Button
-        android:id="@+id/removePitchButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/pitchLayout"
-        android:layout_toRightOf="@id/addPitchButton"
-        android:layout_toEndOf="@id/addPitchButton"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:text="@string/remove_pitch_button_text" />
-
-    <TextView
-        android:id="@+id/instrumentTextView"
+    <include layout="@layout/instrument_panel"
+        android:id="@+id/instrumentPanel"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/addPitchButton"
-        android:text="@string/instrument_header"
-        style="@style/AppTheme.sectionTitleTextStyle" />
+        android:layout_height="wrap_content" />
 
-    <Spinner
-        android:id="@+id/instrumentFamilySpinner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/instrumentTextView"
-        android:layout_marginStart="@dimen/content_indent"
-        android:layout_marginLeft="@dimen/content_indent"
-        android:paddingTop="@dimen/spinner_padding"
-        android:paddingBottom="@dimen/spinner_padding" />
-
-    <include layout="@layout/instrument_spinner" />
-
-    <TextView
-        android:id="@+id/durationTextView"
+    <include layout="@layout/duration_velocity_panel"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/instrumentNameSpinner"
-        android:text="@string/duration_header"
-        style="@style/AppTheme.sectionTitleTextStyle" />
+        android:layout_height="wrap_content" />
 
-    <SeekBar
-        android:id="@+id/durationSeekBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="@dimen/seekbar_padding"
-        android:paddingBottom="@dimen/seekbar_padding"
-        android:layout_below="@id/durationTextView"
-        android:contentDescription="@string/durationContentDescription" />
+    <include layout="@layout/scroll_blank" />
 
-    <TextView
-        android:id="@+id/velocityTextView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/durationSeekBar"
-        android:text="@string/velocity_header"
-        style="@style/AppTheme.sectionTitleTextStyle" />
-
-    <SeekBar
-        android:id="@+id/velocitySeekBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="@dimen/seekbar_padding"
-        android:paddingBottom="@dimen/seekbar_padding"
-        android:layout_below="@id/velocityTextView"
-        android:contentDescription="@string/volumeContentDescription" />
-</RelativeLayout>
+</LinearLayout>

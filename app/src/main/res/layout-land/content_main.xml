@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/context_main_layout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:columnCount="2"
+    android:rowCount="2"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context=".MainActivity"
+    tools:showIn="@layout/activity_main">
+
+    <View
+        android:id="@+id/centerVerticalShim"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:visibility="invisible"
+        android:layout_centerHorizontal="true" />
+
+    <include layout="@layout/bpm_panel"
+        android:id="@+id/bpmPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toLeftOf="@id/centerVerticalShim"
+        android:layout_toStartOf="@id/centerVerticalShim"
+        android:layout_above="@id/centerHorizontalShim" />
+
+    <include layout="@layout/pitch_panel"
+        android:id="@+id/pitchPanel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@id/centerVerticalShim"
+        android:layout_toEndOf="@id/centerVerticalShim"/>
+
+    <View
+        android:id="@+id/centerHorizontalShim"
+        android:layout_below="@id/pitchPanel"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="invisible"
+        />
+
+    <include layout="@layout/instrument_panel"
+        android:id="@+id/instrumentPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toLeftOf="@id/centerVerticalShim"
+        android:layout_toStartOf="@id/centerVerticalShim"
+        android:layout_below="@id/centerHorizontalShim"/>
+
+    <include layout="@layout/duration_velocity_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/centerVerticalShim"
+        android:layout_toEndOf="@id/centerVerticalShim"
+        android:layout_below="@id/centerHorizontalShim"
+        android:layout_above="@id/scrollBlank" />
+
+    <include layout="@layout/scroll_blank"
+        android:id="@+id/scrollBlank"
+        android:layout_below="@id/instrumentPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        />
+
+</RelativeLayout>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/pitchTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/pitch_header"
+        style="@style/AppTheme.sectionTitleTextStyle" />
+
+    <com.google.android.flexbox.FlexboxLayout
+        android:id="@+id/pitchLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/pitchTextView"
+        android:layout_marginStart="@dimen/content_indent"
+        android:layout_marginLeft="@dimen/content_indent"
+        app:flexWrap="wrap" >
+
+        <Switch
+            android:id="@+id/sharpSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/touch_min_height"
+            android:textAllCaps="false"
+            android:textOff="♭"
+            android:textOn="♯"
+            android:showText="true"
+            android:contentDescription="@string/sharpsContentDescription"
+            />
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:contentDescription="@null"
+            app:srcCompat="@drawable/ic_treble_clef" />
+    </com.google.android.flexbox.FlexboxLayout>
+
+    <Button
+        android:id="@+id/addPitchButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/pitchLayout"
+        android:layout_marginStart="@dimen/content_indent"
+        android:layout_marginLeft="@dimen/content_indent"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:text="@string/add_pitch_button_text" />
+
+    <Button
+        android:id="@+id/removePitchButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/pitchLayout"
+        android:layout_toRightOf="@id/addPitchButton"
+        android:layout_toEndOf="@id/addPitchButton"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:text="@string/remove_pitch_button_text" />
+
+</RelativeLayout>
