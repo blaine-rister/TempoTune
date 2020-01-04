@@ -50,7 +50,7 @@ public abstract class SoundSettings {
         // Defaults
         defaultKey = MidiDriverHelper.encodePitch(defaultStartPitch, defaultStartOctave);
         final int defaultReverbPreset = 1;
-        final boolean defaultBoostVolume = true;
+        final boolean defaultBoostVolume = false;
         final int defaultBpm = 80;
         final double defaultVelocity = 1.0;
         final double defaultDuration = 0.95;
