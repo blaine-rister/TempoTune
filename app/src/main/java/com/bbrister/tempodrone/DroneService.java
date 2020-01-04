@@ -75,21 +75,21 @@ public class DroneService extends Service {
     // Interface for drone activities
     public class DroneBinder extends Binder {
         boolean isPlaying() { return isPlaying; }
-        void loadSounds(final String filename) {
+        synchronized void loadSounds(final String filename) {
             DroneService.this.loadSounds(filename);
         }
         boolean haveSoundfont() {return !soundfontName.isEmpty(); }
         String getSoundfont() {
             return soundfontName;
         }
-        void playPause() { DroneService.this.playPause(); }
-        void stop() { DroneService.this.stop(); }
+        synchronized void playPause() { DroneService.this.playPause(); }
+        synchronized void stop() { DroneService.this.stop(); }
         boolean queryProgram(int instrument) { return midi.queryProgram((byte) instrument); }
         String getProgramName(int instrument) { return midi.getProgramName((byte) instrument); }
-        void changeProgram(int instrument) { DroneService.this.changeProgram(instrument); }
+        synchronized void changeProgram(int instrument) { DroneService.this.changeProgram(instrument); }
         int getProgram() { return midi.getProgram(); }
-        int addNote() { return settings.addNote(); }
-        void deleteNote(int handle) { settings.deleteNote(handle); }
+        synchronized int addNote() { return settings.addNote(); }
+        synchronized void deleteNote(int handle) { settings.deleteNote(handle); }
         boolean notesFull() { return settings.isFull(); }
         int getBpm() { return settings.getBpm(); }
         double getVelocity() { return settings.getVelocity(); }
@@ -107,19 +107,19 @@ public class DroneService extends Service {
             return DroneService.this.registerListener(listener);
         }
         void unregisterListener(int handle) { DroneService.this.unregisterListener(handle); }
-        int setBpm(int bpm) {
+        synchronized int setBpm(int bpm) {
             return settings.setBpm(bpm);
         }
-        void setVelocity(double velocity) { settings.setVelocity(velocity); }
-        void setDuration(double duration) { settings.setDuration(duration); }
-        void setReverbPreset(int preset) { settings.setReverbPreset(preset); }
-        void setPitch(int handle, int pitch) {
+        synchronized void setVelocity(double velocity) { settings.setVelocity(velocity); }
+        synchronized void setDuration(double duration) { settings.setDuration(duration); }
+        synchronized void setReverbPreset(int preset) { settings.setReverbPreset(preset); }
+        synchronized void setPitch(int handle, int pitch) {
             settings.setPitch(handle, pitch);
         }
-        void setOctave(int handle, int octave) {
+        synchronized void setOctave(int handle, int octave) {
             settings.setOctave(handle, octave);
         }
-        void setVolumeBoost(boolean boostVolume) { settings.setVolumeBoost(boostVolume); }
+        synchronized void setVolumeBoost(boolean boostVolume) { settings.setVolumeBoost(boostVolume); }
     }
 
     @Override
@@ -153,7 +153,7 @@ public class DroneService extends Service {
     }
 
     // Change the MIDI program
-    public void changeProgram(final int instrument) {
+    private void changeProgram(final int instrument) {
         // Get the currently running program
         final int currentProgram = midi.getProgram();
 
@@ -167,7 +167,7 @@ public class DroneService extends Service {
         }
     }
 
-    public void stop() {
+    private void stop() {
         // Stop the MIDI
         pause();
         midi.stop();
@@ -177,7 +177,7 @@ public class DroneService extends Service {
     }
 
     // Toggle play/pause state
-    public void playPause() {
+    private void playPause() {
 
         // Toggle the play state
         if (isPlaying) {
@@ -205,7 +205,7 @@ public class DroneService extends Service {
         float[] sound = midi.renderNotes(settings.getRenderSettings());
 
         // Save the sound to the singleton class
-        AudioData.setData(sound);
+        AudioData.pushData(sound);
 
         // Launch a new playback service
         startService(PlaybackService.getStartIntent(this));
@@ -220,7 +220,7 @@ public class DroneService extends Service {
     }
 
     // Update the sound if we are playing. Update the UI to reflect new parameters.
-    public void updateSound() {
+    private void updateSound() {
         // Re-play the sound
         if (isPlaying) {
             play();

@@ -14,6 +14,8 @@ import androidx.core.content.ContextCompat;
 
 import com.bbrister.mididriver.PlaybackDriver;
 
+import java.util.EmptyStackException;
+
 /* A foreground service which plays sound on loop. */
 public class PlaybackService extends Service {
 
@@ -81,17 +83,16 @@ public class PlaybackService extends Service {
         }
 
         // Retrieve the sound data from the singleton
-        AudioData audioData = AudioData.getInstance();
-        if (audioData == null) {
+        float[] data;
+        try {
+            data = AudioData.popData();
+        } catch (EmptyStackException e) {
             throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("No audio data available") :
                     new DefaultException();
         }
 
         // Play the sound
-        driver.play(this.getApplicationContext(), audioData.getData());
-
-        // Release our reference to the sound memory
-        audioData.release();
+        driver.play(this.getApplicationContext(), data);
 
         // Create a notification channel, for android O+ devices
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
