@@ -157,13 +157,19 @@ public class DroneService extends Service {
         // Get the currently running program
         final int currentProgram = midi.getProgram();
 
+        // If this is a new program, pause the sound to avoid double-updates when rounding the key
+        final boolean pauseSound = isPlaying && (instrument != currentProgram);
+        if (pauseSound) {
+            pause();
+        }
+
         // Change the program and set the key range
         midi.changeProgram((byte) instrument);
         settings.setKeyRange(midi.getKeyRange());
 
-        // Update the sound only if this is a new program
-        if (instrument != currentProgram) {
-            updateSound();
+        // Play the sound if it's been paused
+        if (pauseSound) {
+            play();
         }
     }
 
