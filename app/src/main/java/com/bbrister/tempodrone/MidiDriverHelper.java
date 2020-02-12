@@ -32,9 +32,10 @@ public class MidiDriverHelper extends MidiDriver {
         return (key - firstPitch - decodePitchClass(key)) / pitchesPerOctave;
     }
 
-    // Convert [0-1] to byte velocity
+    // Convert [0-1] to byte velocity. Values range from [1,127].
     public static byte encodeVelocity(double velocity) {
+        final double minVelocity = 1.;
         final double maxVelocity = 127.;
-        return (byte) Math.floor(velocity * maxVelocity);
+        return (byte) (Math.floor(velocity * (maxVelocity - minVelocity)) + minVelocity);
     }
 }

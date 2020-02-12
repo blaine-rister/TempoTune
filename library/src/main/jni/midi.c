@@ -440,6 +440,10 @@ static int render(const struct sound_settings settings, float *const buffer) {
         LOG_E(LOG_TAG, "Velocity %d exceeds maximum value of %d", settings.velocity, velocityMax);
         return -1;
     }
+    if (settings.velocity == 0) {
+        LOG_E(LOG_TAG, "Cannot render with velocity = 0");
+        return -1;
+    }
 
     // Verify initialization
     if (!isInitialized("render"))
