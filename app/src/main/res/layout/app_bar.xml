@@ -31,7 +31,7 @@
             android:tint="@color/colorWhite"
             android:backgroundTint="@color/colorPrimary"
             android:contentDescription="@string/tapperContentDescription"
-            app:srcCompat="@drawable/ic_hourglass_simple" />
+            app:srcCompat="@drawable/ic_clock_circular_outline" />
     </androidx.appcompat.widget.Toolbar>
 
 </com.google.android.material.appbar.AppBarLayout>
