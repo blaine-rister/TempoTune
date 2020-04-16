@@ -8,15 +8,14 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.LinearLayout;
 
+import com.bbrister.tempodrone.preferences.ReadOnlyPreference;
+
 // Class for the user interface for selecting a note
 public class NoteSelector {
 
     // Interface to underlying model
     DroneService.DroneBinder droneBinder;
     int handle;
-
-    // Lookup tables
-    static String[] pitchLookup;
 
     // UI items
     public LinearLayout layout;
@@ -30,8 +29,8 @@ public class NoteSelector {
     }
 
     // Update the UI
-    public void update(final boolean displaySharps) {
-        pitchSpinner.update(displaySharps); // Calls updateOctave()
+    public void update() {
+        pitchSpinner.update(); // Calls updateOctave()
         octaveSpinner.update(); // Just in case--spinners are unreliable
     }
 
@@ -39,7 +38,7 @@ public class NoteSelector {
     public NoteSelector(Context context,
                         final DroneService.DroneBinder droneBinder,
                         final int handle,
-                        final boolean displaySharps) {
+                        final ReadOnlyPreference<Boolean> displaySharps) {
 
         // Initialize the drone interface
         this.droneBinder = droneBinder;
@@ -48,7 +47,7 @@ public class NoteSelector {
         // ---Initialize UI elements---
 
         // Create the spinners
-        pitchSpinner = new PitchSpinner(context, droneBinder, handle);
+        pitchSpinner = new PitchSpinner(context, droneBinder, displaySharps, handle);
         octaveSpinner = new OctaveSpinner(context, droneBinder, handle);
 
         // Initialize the LinearLayout and put the spinners in it
@@ -59,7 +58,7 @@ public class NoteSelector {
         layout.addView(octaveSpinner.getView(), layoutParams);
 
         // Update the UI. Called before listeners are installed, to avoid triggering them
-        update(displaySharps);
+        update();
 
         // Install the pitch spinner listener
         pitchSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {

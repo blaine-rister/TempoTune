@@ -19,7 +19,7 @@ public abstract class NoteSpinner<T> {
 
     abstract List<Integer> getChoices(); // Get the integer choices
     abstract Integer getChoice(); // Get the current integer choice
-    abstract T getItem(Integer code, boolean displaySharps); // Get the displayed item
+    abstract T getItem(Integer code); // Get the displayed item
     abstract int getLayoutResource();
 
     public NoteSpinner(Context context, DroneService.DroneBinder binder, int handle) {
@@ -38,12 +38,12 @@ public abstract class NoteSpinner<T> {
     }
 
     // Update the data of this spinner and set the selection
-    public void update(boolean displaySharps) {
+    public void update() {
         // Update the data
         List<Integer> choices = getChoices();
         adapter.clear();
         for (Integer choice : choices) {
-            adapter.add(getItem(choice, displaySharps));
+            adapter.add(getItem(choice));
         }
 
         // Set the selection

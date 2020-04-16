@@ -5,6 +5,9 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.os.Binder;
 
+import com.bbrister.tempodrone.preferences.BytePreference;
+import com.bbrister.tempodrone.preferences.StringPreference;
+
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,15 +22,21 @@ public class DroneService extends Service {
     Map<Integer, UpdateListener> updateListeners; // Store the registered listeners
     int nextListenerHandle; // Return a handle to deactivate them
 
-    // Constants
+    // Public constants
     final public static int programMax = 127;
+    final public static String programKey = "last_program_number";
+    final public static byte defaultProgram = -1;
+
+    // Private constants
+    final private static String soundfontNameKey = "soundfont";
+    final private static String defaultSoundfont = "";
 
     // State
     private boolean isPlaying;
 
     // Sound parameters
     private SoundSettings settings;
-    private String soundfontName;
+    private StringPreference soundfontName;
 
     // Create midi driver
     private MidiDriverHelper midi;
@@ -48,21 +57,18 @@ public class DroneService extends Service {
 
         // Initialize the sound parameters
         isPlaying = false;
-        settings = new SoundSettings(midi.getMaxVoices(), midi.getNumReverbPresets()) {
+        settings = new SoundSettings(this, midi.getMaxVoices(), midi.getNumReverbPresets()) {
             @Override
             public void onSoundChanged() {
                 updateSound();
             }
         };
 
-        // Start with a single note
-        settings.addNote();
+        // Initialize the soundfont
+        soundfontName = new StringPreference(this, soundfontNameKey, defaultSoundfont);
 
         // Start the midi
         midi.start(this.getApplicationContext());
-
-        // Initialize the soundfont to empty
-        soundfontName = "";
     }
 
     @Override
@@ -78,9 +84,9 @@ public class DroneService extends Service {
         synchronized void loadSounds(final String filename) {
             DroneService.this.loadSounds(filename);
         }
-        boolean haveSoundfont() {return !soundfontName.isEmpty(); }
+        boolean haveSoundfont() {return !getSoundfont().isEmpty(); }
         String getSoundfont() {
-            return soundfontName;
+            return soundfontName.read();
         }
         synchronized void playPause() { DroneService.this.playPause(); }
         synchronized void stop() { DroneService.this.stop(); }
@@ -148,8 +154,15 @@ public class DroneService extends Service {
 
     // Load the sounds and remember the soundfont name
     private void loadSounds(final String soundfontName) {
-        this.soundfontName = soundfontName;
+        this.soundfontName.write(soundfontName);
         midi.loadSounds(getApplicationContext(), soundfontName);
+        storeProgram(); // In case this is changed when loading a soundfont
+    }
+
+    // Save the program number for future use
+    private void storeProgram() {
+        new BytePreference(this, programKey, defaultProgram)
+                .write((byte) midi.getProgram());
     }
 
     // Change the MIDI program
@@ -171,9 +184,13 @@ public class DroneService extends Service {
         if (pauseSound) {
             play();
         }
+
+        // Store the program number for future use
+        storeProgram();
     }
 
     private void stop() {
+
         // Stop the MIDI
         pause();
         midi.stop();

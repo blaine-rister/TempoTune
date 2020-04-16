@@ -3,15 +3,25 @@ package com.bbrister.tempodrone;
 import android.content.Context;
 import android.content.res.Resources;
 
+import com.bbrister.tempodrone.preferences.ReadOnlyPreference;
+
 import java.util.List;
 
 public class PitchSpinner extends NoteSpinner<NameValPair<Integer>> {
 
+    // Preferences
+    ReadOnlyPreference<Boolean> displaySharps;
+
+    // State
     private String[] sharpStrings;
     private String[] flatStrings;
 
-    public PitchSpinner(Context context, DroneService.DroneBinder binder, final int handle) {
+    public PitchSpinner(Context context, DroneService.DroneBinder binder,
+                        ReadOnlyPreference<Boolean> displaySharps, final int handle) {
         super(context, binder, handle);
+
+        // Set the preferences
+        this.displaySharps = displaySharps;
 
         // Read the pitch strings from the context
         Resources resources = context.getResources();
@@ -30,8 +40,8 @@ public class PitchSpinner extends NoteSpinner<NameValPair<Integer>> {
     }
 
     @Override
-    NameValPair<Integer> getItem(Integer code, boolean displaySharps) {
-        final String[] pitchStrings = displaySharps ? sharpStrings : flatStrings;
+    NameValPair<Integer> getItem(Integer code) {
+        final String[] pitchStrings = displaySharps.read() ? sharpStrings : flatStrings;
         return new NameValPair<>(pitchStrings[code], code);
     }
 

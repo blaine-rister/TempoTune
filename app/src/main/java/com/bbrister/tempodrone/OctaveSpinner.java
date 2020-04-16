@@ -10,11 +10,6 @@ public class OctaveSpinner extends NoteSpinner<Integer> {
         super(context, binder, handle);
     }
 
-    // Convenience wrapper, since this doesn't need sharp/flat info
-    public void update() {
-        update(false);
-    }
-
     @Override
     List<Integer> getChoices() {
         return droneBinder.getOctaveChoices(handle);
@@ -26,7 +21,7 @@ public class OctaveSpinner extends NoteSpinner<Integer> {
     }
 
     @Override
-    Integer getItem(Integer code, boolean displaySharps) {
+    Integer getItem(Integer code) {
         return code;
     }
 

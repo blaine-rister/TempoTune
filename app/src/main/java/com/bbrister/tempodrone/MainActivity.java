@@ -26,6 +26,9 @@ import android.widget.Button;
 import android.content.Context;
 import android.widget.Toast;
 
+import com.bbrister.tempodrone.preferences.BooleanPreference;
+import com.bbrister.tempodrone.preferences.BytePreference;
+import com.bbrister.tempodrone.preferences.ReadOnlyPreference;
 import com.google.android.flexbox.FlexboxLayout;
 
 public class MainActivity extends DroneActivity {
@@ -34,6 +37,7 @@ public class MainActivity extends DroneActivity {
     final private static String displaySharpsKey = "DISPLAY_SHARPS";
     final private static String basicSoundfontPath = "basic.sf2";
     final private static String instantSoundfontPath = "instant.sf2";
+    final private static boolean displaySharpsDefault = false;
 
     // Read-only configuration
     private boolean instantMode;
@@ -44,7 +48,27 @@ public class MainActivity extends DroneActivity {
 
     // State
     private boolean uiReady;
-    private boolean displaySharps;
+
+    /**
+     * Helper method to initialize a BooleanPreference obejct for DisplaySharps.
+     */
+    private BooleanPreference getDisplaySharpsPreference() {
+        return new BooleanPreference(this, displaySharpsKey, displaySharpsDefault);
+    }
+
+    /**
+     * Check if we are displaying sharps or flats.
+     */
+    private boolean getDisplaySharps() {
+        return getDisplaySharpsPreference().read();
+    }
+
+    /**
+     * Save whether to display sharps or flats.
+     */
+    private void setDisplaySharps(boolean displaySharps) {
+        getDisplaySharpsPreference().write(displaySharps);
+    }
 
     /**
      * Check if this is an instant app or the full install.
@@ -71,43 +95,69 @@ public class MainActivity extends DroneActivity {
 
         // Load the list of soundfonts
         final List<Soundfont> soundfonts = querySoundfonts(!instantMode);
-
-        // Query the soundfont. If there is none, load the default one
-        if (!droneBinder.haveSoundfont()) {
-
-            // Search the list for the default soundfont
-            Soundfont defaultSoundfont = null;
-            for (Soundfont soundfont : soundfonts) {
-                if (soundfont.path.equals(defaultSoundfontPath)) {
-                    defaultSoundfont = soundfont;
-                    break;
-                }
-            }
-
-            // Ensure we found it
-            if (defaultSoundfont == null) {
-                throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("Failed to find the " +
-                    "default soundfont " + defaultSoundfontPath) : new RuntimeException();
-            }
-
-            // Request the soundfont then load it in the drone service
-            defaultSoundfont.request(new DynamicModule.InstallListener() {
-                @Override
-                public void onInstallFinished(boolean success) {
-                    if (!success) {
-                        throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("Failed to " +
-                                "request the default soundfont") : new RuntimeException();
-                    }
-
-                    droneBinder.loadSounds(defaultSoundfontPath);
-
-                    // Populate UI elements using information from the drone service
-                    setupUI(soundfonts);
-                }
-            });
-        } else {
-            setupUI(soundfonts);
+        if (soundfonts.isEmpty()) {
+            throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("No soundsfonts found!") :
+                    new RuntimeException();
         }
+
+        // Query the last used soundfont. If there is none, use the default one
+        final String previousSoundfontPath = droneBinder.haveSoundfont() ?
+                droneBinder.getSoundfont() : defaultSoundfontPath;
+
+        // Search through the soundfont modules for this soundfont
+        Soundfont previousSoundfont = null;
+        for (Soundfont soundfont : soundfonts) {
+            if (soundfont.path.equals(previousSoundfontPath)) {
+                previousSoundfont = soundfont;
+                break;
+            }
+        }
+
+        // In debug mode, throw an exception if we haven't found it
+        if (previousSoundfont == null) {
+            if (BuildConfig.DEBUG_EXCEPTIONS) {
+                throw new DebugException("Failed to find the previous soundfont " +
+                        previousSoundfontPath);
+            }
+        }
+
+        // Otherwise default to the first available soundfont
+        final Soundfont startupSoundfont = previousSoundfont == null ? soundfonts.get(0) :
+                previousSoundfont;
+
+        // Request the soundfont then load it in the drone service
+        startupSoundfont.request(new DynamicModule.InstallListener() {
+            @Override
+            public void onInstallFinished(boolean success) {
+                // Handle installation errors
+                if (!success) {
+                    throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException("Failed to " +
+                            "request the startup soundfont") : new RuntimeException();
+                }
+
+                // Load the soundfont in the MIDI
+                droneBinder.loadSounds(startupSoundfont.path);
+
+                // Try to change to the last-used program number. Otherwise do nothing
+                final byte previousProgram = new BytePreference(getApplicationContext(),
+                        DroneService.programKey, DroneService.defaultProgram).read();
+                if (previousProgram >= 0) {
+                    try {
+                        droneBinder.changeProgram(previousProgram);
+                    } catch (RuntimeException e) {
+                        // In debug mode, pass this exception along
+                        if (BuildConfig.DEBUG_EXCEPTIONS) {
+                            throw e;
+                        }
+
+                        // In production mode, do nothing
+                    }
+                }
+
+                // Populate UI elements using information from the drone service
+                setupUI(soundfonts);
+            }
+        });
     }
 
     // Update the UI when drone parameters are changed by the parent class
@@ -117,13 +167,6 @@ public class MainActivity extends DroneActivity {
         updateUI();
     }
 
-    // Save the UI state
-    @Override
-    public void onSaveInstanceState(Bundle savedInstanceState) {
-        super.onSaveInstanceState(savedInstanceState);
-        savedInstanceState.putBoolean(displaySharpsKey, displaySharps);
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -131,10 +174,6 @@ public class MainActivity extends DroneActivity {
         // Check if this is in instant mode. Configure the default soundfont accordingly
         instantMode = isInstant();
         defaultSoundfontPath = instantMode ? instantSoundfontPath : basicSoundfontPath;
-
-        // If the activity is being re-created, restore the previous UI state
-        final boolean restoreState = savedInstanceState != null;
-        displaySharps = restoreState ? savedInstanceState.getBoolean(displaySharpsKey) : false;
 
         // Start drawing the layout in the meantime, but don't initialize the behavior
         uiReady = false;
@@ -292,13 +331,13 @@ public class MainActivity extends DroneActivity {
 
         // Toggle sharps/flats switch
         final Switch sharpSwitch = findViewById(R.id.sharpSwitch);
-        sharpSwitch.setChecked(displaySharps);
+        sharpSwitch.setChecked(getDisplaySharps());
         sharpSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                displaySharps = isChecked;
+                setDisplaySharps(isChecked);
                 for (NoteSelector noteSelector : noteSelectors) {
-                    noteSelector.update(isChecked);
+                    noteSelector.update();
                 }
             }
         });
@@ -561,7 +600,7 @@ public class MainActivity extends DroneActivity {
 
         // Add a new note
         NoteSelector noteSelector = new NoteSelector(layout.getContext(), droneBinder, handle,
-                displaySharps);
+                new ReadOnlyPreference<Boolean>(getDisplaySharpsPreference()));
         noteSelectors.add(noteSelector);
 
         // Put the new spinners in the UI layout
@@ -590,7 +629,7 @@ public class MainActivity extends DroneActivity {
     protected void updateUI() {
         receiveBpm();
         for (int i = 0; i < noteSelectors.size(); i++) {
-            noteSelectors.get(i).update(displaySharps);
+            noteSelectors.get(i).update();
         }
     }
 

@@ -1,8 +1,16 @@
 package com.bbrister.tempodrone;
 
+import android.content.Context;
+
 import com.bbrister.mididriver.RenderSettings;
+import com.bbrister.tempodrone.preferences.BooleanPreference;
+import com.bbrister.tempodrone.preferences.BytePreference;
+import com.bbrister.tempodrone.preferences.FloatPreference;
+import com.bbrister.tempodrone.preferences.IntegerPreference;
+import com.bbrister.tempodrone.preferences.UpdateInterface;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -21,6 +29,14 @@ public abstract class SoundSettings {
     // Starting defaults
     final private static int defaultStartPitch = 0;
     final private static int defaultStartOctave = 3;
+    final private static byte noteEmptyKey = -1;
+
+    // Names of the parameters in the preference files
+    final private static String boostVolumeKey = "boostVolume";
+    final private static String bpmKey = "bpm";
+    final private static String reverbKey = "reverb";
+    final private static String velocityKey = "velocity";
+    final private static String durationKey = "duration";
 
     // Key default. This is changed throughout the program
     private byte defaultKey;
@@ -30,12 +46,12 @@ public abstract class SoundSettings {
     private int maxReverbPreset;
 
     // Sound data--updates the sound when it's changed
-    private UpdateValue<Boolean> boostVolume;
-    private UpdateValue<Integer> bpm;
-    private UpdateValue<Integer> reverbPreset;
-    private UpdateValue<Double> velocity; // [0,1]
-    private UpdateValue<Double> duration; // [0,1]
-    private List<UpdateValue<Byte>> notes;
+    private BooleanPreference boostVolume;
+    private IntegerPreference bpm;
+    private IntegerPreference reverbPreset;
+    private FloatPreference velocity; // [0,1]
+    private FloatPreference duration; // [0,1]
+    private List<BytePreference> notes;
     private List<Integer> freeHandles;
     private List<Integer> occupiedHandles;
 
@@ -45,21 +61,19 @@ public abstract class SoundSettings {
     // Callback function for sound updates
     abstract void onSoundChanged();
 
-    public SoundSettings(final int maxNumNotes, final int numReverbPresets) {
+    public SoundSettings(Context context, final int maxNumNotes, final int numReverbPresets) {
 
         // Defaults
         defaultKey = MidiDriverHelper.encodePitch(defaultStartPitch, defaultStartOctave);
         final int defaultReverbPreset = 1;
         final boolean defaultBoostVolume = false;
         final int defaultBpm = 80;
-        final double defaultVelocity = 1.0;
-        final double defaultDuration = 0.95;
+        final float defaultVelocity = 1.0f;
+        final float defaultDuration = 0.95f;
 
         // Initialize the key range to dummy values
         keyRange = new boolean[MidiDriverHelper.keyMax + 1];
-        for (int i = 0; i < keyRange.length; i++) {
-            keyRange[i] = true;
-        }
+        Arrays.fill(keyRange, true);
 
         // Set up the callback interface
         updateInterface = new UpdateInterface() {
@@ -69,27 +83,49 @@ public abstract class SoundSettings {
             }
         };
 
-        // Initialize the update data to defaults
-        boostVolume = new UpdateValue<>(defaultBoostVolume, updateInterface);
-        bpm = new UpdateValue<>(defaultBpm, updateInterface);
-        velocity = new UpdateValue<>(defaultVelocity, updateInterface);
-        duration = new UpdateValue<>(defaultDuration, updateInterface);
-        reverbPreset = new UpdateValue<>(defaultReverbPreset, updateInterface);
+        // Initialize the updatable parameters with storage backed to shared preferences
+        boostVolume = new BooleanPreference(context, boostVolumeKey, defaultBoostVolume)
+                .setUpdate(updateInterface);
+        bpm = new IntegerPreference(context, bpmKey, defaultBpm).setUpdate(updateInterface);
+        velocity = new FloatPreference(context, velocityKey, defaultVelocity)
+                .setUpdate(updateInterface);
+        duration = new FloatPreference(context, durationKey, defaultDuration)
+                .setUpdate(updateInterface);
+        reverbPreset = new IntegerPreference(context, reverbKey, defaultReverbPreset)
+                .setUpdate(updateInterface);
 
-        // Initialize the reverb limits, possibly overriding defaults
+        // Apply the reverb limits, possibly overriding defaults
         maxReverbPreset = numReverbPresets - 1;
-        reverbPreset.set(Math.min(reverbPreset.get(), maxReverbPreset));
+        reverbPreset.write(Math.min(reverbPreset.read(), maxReverbPreset));
 
-        // Initialize the array, mark all spots as open
+        // Initialize the notes array, mark all spots as open
         notes = new ArrayList<>(maxNumNotes);
         freeHandles = new LinkedList<>();
         occupiedHandles = new LinkedList<>();
-        for (int i = 0; i < maxNumNotes; i++) {
-            // Mark the handle as free
-            freeHandles.add(i);
+        for (int handle = 0; handle < maxNumNotes; handle++) {
 
-            // Add a dummy note--this will be overwritten later
-            notes.add(new UpdateValue<>((byte) 0, updateInterface));
+            // Initialize the preferences object for this note, using a negative default value
+            final String lookupKey = String.format("note_%d", handle);
+            BytePreference note = new BytePreference(context, lookupKey, noteEmptyKey)
+                    .setUpdate(updateInterface);
+
+            // Add the note to the 'notes' array
+            notes.add(note);
+
+            // Mark the note as occupied or free depending on whether the note has been stored
+            // before.
+            final int previousKey = note.read();
+            if (previousKey >= 0) {
+                occupiedHandles.add(handle);
+                roundKey(handle, (byte) previousKey);
+            } else {
+                freeHandles.add(handle);
+            }
+        }
+
+        // Add a single note if there are none
+        if (occupiedHandles.isEmpty()) {
+            addNote();
         }
     }
 
@@ -119,15 +155,15 @@ public abstract class SoundSettings {
     // Delete a note, given its handle
     public void deleteNote(final int handle) {
         // Mark the note as free
-        occupiedHandles.remove((Integer) handle);
+        occupiedHandles.remove(Integer.valueOf(handle));
         freeHandles.add(handle);
 
-        // Update the sound
-        updateInterface.update();
+        // Update the underlying preference object (updates the sound)
+        notes.get(handle).write(noteEmptyKey);
     }
 
     // Get a note
-    private UpdateValue<Byte> getNote(final int handle) {
+    private BytePreference getNote(final int handle) {
         if (occupiedHandles.indexOf(handle) < 0) {
             throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
                     "No note exists at handle %d", handle)) : new DefaultException();
@@ -137,15 +173,15 @@ public abstract class SoundSettings {
 
     // Getters
     public int getBpm() {
-        return bpm.get();
+        return bpm.read();
     }
 
     public double getVelocity() {
-        return velocity.get();
+        return velocity.read();
     }
 
     public double getDuration() {
-        return duration.get();
+        return duration.read();
     }
 
     public int getNumNotes() {
@@ -157,7 +193,7 @@ public abstract class SoundSettings {
     }
 
     public byte getKey(final int handle) {
-        return getNote(handle).get();
+        return getNote(handle).read();
     }
 
     public int getPitch(final int handle) {
@@ -168,9 +204,9 @@ public abstract class SoundSettings {
         return MidiDriverHelper.decodeOctave(getKey(handle));
     }
 
-    public boolean getVolumeBoost() { return boostVolume.get(); }
+    public boolean getVolumeBoost() { return boostVolume.read(); }
 
-    public int getReverbPreset() { return reverbPreset.get(); }
+    public int getReverbPreset() { return reverbPreset.read(); }
 
     // Check if this key is available
     public boolean haveKey(final byte key) {
@@ -217,9 +253,9 @@ public abstract class SoundSettings {
     public RenderSettings getRenderSettings() {
 
         // Calculate the note and beat durations
-        final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm.get());
+        final double msPerBeat = MidiDriverHelper.getMsPerBeat(bpm.read());
         final long beatDurationMs = Math.round(msPerBeat);
-        final long noteDurationMs = Math.round(msPerBeat * duration.get());
+        final long noteDurationMs = Math.round(msPerBeat * duration.read());
 
         // Put the pitches in a set, to remove duplicates
         Set<Byte> keys = new HashSet<>();
@@ -238,40 +274,40 @@ public abstract class SoundSettings {
         // Create the settings object
         RenderSettings settings = new RenderSettings();
         settings.pitchArray = pitchArray;
-        settings.velocity = MidiDriverHelper.encodeVelocity(velocity.get());
+        settings.velocity = MidiDriverHelper.encodeVelocity(velocity.read());
         settings.noteDurationMs = noteDurationMs;
         settings.recordDurationMs = beatDurationMs;
-        settings.reverbPreset = reverbPreset.get();
-        settings.volumeBoost = boostVolume.get();
+        settings.reverbPreset = reverbPreset.read();
+        settings.volumeBoost = boostVolume.read();
 
         return settings;
     }
 
     // Setters
     public int setBpm(final int desiredBpm) {
-        bpm.set(Math.max(Math.min(desiredBpm, bpmMax), bpmMin));
-        return bpm.get();
+        bpm.write(Math.max(Math.min(desiredBpm, bpmMax), bpmMin));
+        return bpm.read();
     }
 
     public void setVelocity(final double desiredVelocity) {
         if (desiredVelocity < 0. || desiredVelocity > 1.)
             throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
-                    "Invalid velocity: %f", velocity.get())) : new DefaultException();
-        velocity.set(desiredVelocity);
+                    "Invalid velocity: %f", velocity.read())) : new DefaultException();
+        velocity.write((float) desiredVelocity);
     }
 
     public void setDuration(final double desiredDuration) {
         if (desiredDuration < 0. || desiredDuration > 1.)
             throw BuildConfig.DEBUG_EXCEPTIONS ? new DebugException(String.format(
-                    "Invalid duration: %f", duration.get())) : new DefaultException();
-        duration.set(desiredDuration);
+                    "Invalid duration: %f", duration.read())) : new DefaultException();
+        duration.write((float) desiredDuration);
     }
 
     /**
      * Set the key at the given handle. Updates the default key.
      */
     private void setKey(final int handle, final byte key) {
-        getNote(handle).set(key);
+        getNote(handle).write(key);
         defaultKey = key;
     }
 
@@ -358,7 +394,7 @@ public abstract class SoundSettings {
 
     // Choose whether or not to boost the volume with DNR compression
     public void setVolumeBoost(final boolean boostVolume) {
-        this.boostVolume.set(boostVolume);
+        this.boostVolume.write(boostVolume);
     }
 
     // Choose the reverb preset
@@ -369,7 +405,7 @@ public abstract class SoundSettings {
                     new DefaultException();
         }
 
-        reverbPreset.set(preset);
+        reverbPreset.write(preset);
     }
 
     // Given the pitch limits, round the octave choice to the nearest possible one. Input and output
