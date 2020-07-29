@@ -135,12 +135,15 @@ public class MainActivity extends DroneActivity {
                             "request the startup soundfont") : new RuntimeException();
                 }
 
+                /* Query the last-used program number, if any was saved. Note: this can be changed
+                 * when a soundfont is loaded. */
+                final byte previousProgram = new BytePreference(getApplicationContext(),
+                        DroneService.programKey, DroneService.defaultProgram).read();
+
                 // Load the soundfont in the MIDI
                 droneBinder.loadSounds(startupSoundfont.path);
 
                 // Try to change to the last-used program number. Otherwise do nothing
-                final byte previousProgram = new BytePreference(getApplicationContext(),
-                        DroneService.programKey, DroneService.defaultProgram).read();
                 if (previousProgram >= 0) {
                     try {
                         droneBinder.changeProgram(previousProgram);
