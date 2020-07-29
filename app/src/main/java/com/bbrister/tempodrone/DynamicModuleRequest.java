@@ -232,7 +232,6 @@ public abstract class DynamicModuleRequest {
                         "server. Please establish a network connection.");
                 break;
             case SplitInstallErrorCode.ACTIVE_SESSIONS_LIMIT_EXCEEDED:
-            case SplitInstallErrorCode.SERVICE_DIED:
             case SplitInstallErrorCode.INCOMPATIBLE_WITH_EXISTING_SESSION:
             case SplitInstallErrorCode.ACCESS_DENIED:
                 installProgressMsg(String.format("Download rejected " +
