@@ -216,31 +216,25 @@ public abstract class DynamicModuleRequest {
         // Handle the SplitInstallException
         switch (((SplitInstallException) e).getErrorCode()) {
             case SplitInstallErrorCode.API_NOT_AVAILABLE:
-
-                //TODO notfiy the user that the play API is not available on
-                // this device
-                //TODO merge this with R.string.download_api_level_fail
-                installFailureMsg("We're sorry, but downloading new " +
-                        "features is not supported on this " +
-                        "device. Please upgrade to at least " +
-                        "Android version 5.0");
-                //TODO: provide this help link here: https://support.google.com/googleplay/answer/7513003
+                // First check if this is due to android version
+                final int dynamicModuleVersion = 21;
+                if (BuildConfig.VERSION_CODE < dynamicModuleVersion) {
+                    installFailureMsg(activity.getString(R.string.download_api_level_fail));
+                } else {
+                    // Else could be caused by a development build, emulator, etc.
+                    installFailureMsg(activity.getString(R.string.download_api_unavailable));
+                }
                 break;
             case SplitInstallErrorCode.NETWORK_ERROR:
                 // Display a message that requests the user to establish a
                 // network connection.
                 installFailureMsg("Failed to connect to the Google Play " +
                         "server. Please establish a network connection.");
-                //TODO notify the user to establish an internet connection
-                //TODO: provide this help link here: https://support.google.com/googleplay/answer/7513003
                 break;
             case SplitInstallErrorCode.ACTIVE_SESSIONS_LIMIT_EXCEEDED:
             case SplitInstallErrorCode.SERVICE_DIED:
             case SplitInstallErrorCode.INCOMPATIBLE_WITH_EXISTING_SESSION:
             case SplitInstallErrorCode.ACCESS_DENIED:
-                //TODO notify the user that we will try again. Retry after a set
-                // number of seconds. Something like "Download rejected. Trying again in 5 seconds..."
-                // probably in a snackbar.
                 installProgressMsg(String.format("Download rejected " +
                         "by the server. Trying again in %d " +
                         "seconds...", retryInterval));

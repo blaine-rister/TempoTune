@@ -22,8 +22,10 @@
 
     <string name="download_prompt">Download module "%s"?</string>
     <string name="download_ongoing">Module "%s" is currently awaiting installation...</string>
-    <string name="download_api_level_fail">Downloading modules is not supported on this version of
-        Android. Please upgrade to at least Android version 21.</string>
+    <string name="download_api_level_fail">We\'re sorry, but downloading modules is not supported on
+        this version of Android. Please upgrade to at least Android version 5.0.</string>
+    <string name="download_api_unavailable">Downloading modules is not supported on this version of
+        the app. Is this a development build or emulated device?</string>
     <string name="yes">YES</string>
     <string name="no">NO</string>
     <string name="ok">OK</string>
