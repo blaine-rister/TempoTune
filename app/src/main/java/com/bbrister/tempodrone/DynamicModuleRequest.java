@@ -70,6 +70,13 @@ public abstract class DynamicModuleRequest {
     }
 
     /**
+     * Shortcut to query a string resource.
+     */
+    private String getString(final int resId) {
+        return activity.getString(resId);
+    }
+
+    /**
      * Create the request and start installation. Refactored to be able to restart.
      */
     private void startInstallation() {
@@ -80,7 +87,7 @@ public abstract class DynamicModuleRequest {
 
         // Notify the user that we're starting the download
         if (!quiet) {
-            installProgressMsg(String.format("Initiating download of module %s...", displayName));
+            installProgressMsg(String.format(getString(R.string.download_initiating), displayName));
         }
 
         // Start the installation
@@ -107,36 +114,43 @@ public abstract class DynamicModuleRequest {
                                      final boolean quiet) {
         switch (state.status()) {
             case SplitInstallSessionStatus.PENDING:
-                updateToast(activity, String.format(
-                        activity.getString(R.string.install_pending),
+                updateToast(String.format(
+                        getString(R.string.install_pending),
                         displayName
                 ));
                 return;
             case SplitInstallSessionStatus.DOWNLOADING:
                 // Report download progress
                 if (!quiet) {
-                    updateToast(activity, String.format("Downloading module %s (%d / %d MB)",
-                            displayName, byte2mb(state.bytesDownloaded()),
-                            byte2mb(state.totalBytesToDownload())));
+                    updateToast(String.format(
+                                getString(R.string.download_progress),
+                                displayName,
+                                byte2mb(state.bytesDownloaded()),
+                                    byte2mb(state.totalBytesToDownload())
+                            )
+                    );
                 }
                 return;
             case SplitInstallSessionStatus.DOWNLOADED:
                 // Signal that the download is finished
                 if (!quiet) {
-                    updateToast(activity, "Finished downloading module " + displayName);
+                    updateToast(String.format(
+                            getString(R.string.download_finished),
+                            displayName
+                    ));
                 }
                 return;
             case SplitInstallSessionStatus.INSTALLING:
                 // Signal that the download is finished and installation has begun
                 if (!quiet) {
-                    updateToast(activity, "Installing module " + displayName);
+                    updateToast(String.format(getString(R.string.install_started), displayName));
                 }
                 return;
             case SplitInstallSessionStatus.INSTALLED:
                 // Signal that both the download and installation are finished
                 finished(true);
                 if (!quiet) {
-                    updateToast(activity, "Finished installing module " + displayName);
+                    updateToast(String.format(getString(R.string.install_finished), displayName));
                 }
                 return;
             case SplitInstallSessionStatus.REQUIRES_USER_CONFIRMATION:
@@ -148,38 +162,41 @@ public abstract class DynamicModuleRequest {
                         throw new RuntimeException(e);
                     }
                     installFailureMsg(String.format(
-                            activity.getString(R.string.install_confirmation_failed),
+                            getString(R.string.install_confirmation_failed),
                             e.getLocalizedMessage()
                     ));
                 }
                 return;
             case SplitInstallSessionStatus.CANCELING:
-                updateToast(activity, String.format(
-                        activity.getString(R.string.install_canceling),
+                updateToast(String.format(
+                        getString(R.string.install_canceling),
                         displayName
                 ));
                 return;
             case SplitInstallSessionStatus.CANCELED:
-                updateToast(activity, String.format(
-                        activity.getString(R.string.install_canceled),
+                updateToast(String.format(
+                        getString(R.string.install_canceled),
                         displayName
                 ));
                 return;
             case SplitInstallSessionStatus.FAILED:
-                updateToast(activity, String.format(
-                        activity.getString(R.string.install_failed),
+                updateToast(String.format(
+                        getString(R.string.install_failed),
                         displayName
                 ));
                 return;
             case SplitInstallSessionStatus.UNKNOWN:
                 fatalInstallErrorDialog(new Exception(String.format(
-                        activity.getString(R.string.install_unknown),
+                        getString(R.string.install_unknown),
                         displayName
                 )));
                 return;
             default:
                 fatalInstallErrorDialog(new Exception(String.format(
-                        "Unrecognized install status: %d", state.status())));
+                        getString(R.string.install_status_unrecognized),
+                        displayName,
+                        state.status()
+                )));
         }
     }
 
@@ -189,15 +206,15 @@ public abstract class DynamicModuleRequest {
      */
     private void fatalInstallErrorDialog(Exception e) {
         installFailureMsg(String.format(
-                activity.getString(R.string.install_fatal_error),
+                getString(R.string.install_fatal_error),
                 displayName,
                 e.getLocalizedMessage()
         ));
     }
 
     // Show a toast updating the user on installation status
-    public static void updateToast(Context context, String msg) {
-        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
+    private void updateToast(final String msg) {
+        Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show();
     }
 
     // Handle installation failure
@@ -219,29 +236,30 @@ public abstract class DynamicModuleRequest {
                 // First check if this is due to android version
                 final int dynamicModuleVersion = 21;
                 if (BuildConfig.VERSION_CODE < dynamicModuleVersion) {
-                    installFailureMsg(activity.getString(R.string.download_api_level_fail));
+                    installFailureMsg(getString(R.string.download_api_level_fail));
                 } else {
                     // Else could be caused by a development build, emulator, etc.
-                    installFailureMsg(activity.getString(R.string.download_api_unavailable));
+                    installFailureMsg(getString(R.string.download_api_unavailable));
                 }
                 break;
             case SplitInstallErrorCode.NETWORK_ERROR:
                 // Display a message that requests the user to establish a
                 // network connection.
-                installFailureMsg("Failed to connect to the Google Play " +
-                        "server. Please establish a network connection.");
+                installFailureMsg(getString(R.string.download_network_fail));
                 break;
             case SplitInstallErrorCode.ACTIVE_SESSIONS_LIMIT_EXCEEDED:
             case SplitInstallErrorCode.INCOMPATIBLE_WITH_EXISTING_SESSION:
             case SplitInstallErrorCode.ACCESS_DENIED:
-                installProgressMsg(String.format("Download rejected " +
-                        "by the server. Trying again in %d " +
-                        "seconds...", retryInterval));
+                installProgressMsg(
+                        String.format(
+                            getString(R.string.download_rejected_retrying),
+                            retryInterval
+                        )
+                );
                 delayedRestartInstall();
                 return; // Do not break--we are not finished yet
             case SplitInstallErrorCode.INSUFFICIENT_STORAGE:
-                installFailureMsg("Insufficient storage. Please "+
-                        "free up space on your device.");
+                installFailureMsg(getString(R.string.download_insufficient_storage));
                 break;
             case SplitInstallErrorCode.MODULE_UNAVAILABLE:
             case SplitInstallErrorCode.SESSION_NOT_FOUND:
@@ -256,7 +274,7 @@ public abstract class DynamicModuleRequest {
 
     // Retry the installation after a set waiting period
     private void delayedRestartInstall() {
-        updateToast(activity, String.format("Restarting download of module %s...", displayName));
+        updateToast(String.format(getString(R.string.download_restart), displayName));
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
             @Override
@@ -284,9 +302,7 @@ public abstract class DynamicModuleRequest {
     private void installFailureMsg(String msg) {
 
         // Add some decoration text.
-        msg = String.format("Installation failed for module %s.\n\nReason:\n%s\n\nPlease " +
-                "see https://support.google.com/googleplay/answer/7513003 for troubleshooting " +
-                "advice.", displayName, msg);
+        msg = String.format(getString(R.string.install_trouleshooting), displayName, msg);
 
         // Display an alert dialog
         AlertDialogFragment.showDialog(activity.getSupportFragmentManager(), msg);

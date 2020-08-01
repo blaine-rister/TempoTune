@@ -22,10 +22,22 @@
 
     <string name="download_prompt">Download module "%s"?</string>
     <string name="download_ongoing">Module "%s" is currently awaiting installation...</string>
+    <string name="download_progress">Downloading module %s (%d / %d MB)</string>
+    <string name="download_initiating">Initiating download of module %s...</string>
+    <string name="download_finished">"Finished downloading module %s"</string>
+
+    <string name="download_network_fail">Failed to connect to the Google Play server. Please
+        establish a network connection.</string>
+    <string name="download_rejected_retrying">Download rejected by the server. Trying again in %d
+        seconds...</string>
+    <string name="download_restart">Restarting download of module %s...</string>
+    <string name="download_insufficient_storage">Insufficient storage. Please free up space on your
+        device.</string>
     <string name="download_api_level_fail">We\'re sorry, but downloading modules is not supported on
         this version of Android. Please upgrade to at least Android version 5.0.</string>
     <string name="download_api_unavailable">Downloading modules is not supported on this version of
         the app. Is this a development build or emulated device?</string>
+
     <string name="yes">YES</string>
     <string name="no">NO</string>
     <string name="ok">OK</string>
@@ -48,6 +60,8 @@
     <string name="unexpected_error">Unexpected error.</string>
     <string name="failed_to_find_product">Failed to find the product: %s</string>
 
+    <string name="install_started">"Installing module %s..."</string>
+    <string name="install_finished">"Finished installing module %s"</string>
     <string name="install_fatal_error">We\'re sorry, but there was an unanticipated error installing
         the module %s. Please contact the app developers to troubleshoot this issue.\n\nDetails:\n%s
     </string>
@@ -59,6 +73,15 @@
     </string>
     <string name="install_pending">Installation pending for module %s...</string>
     <string name="install_unknown">Unknown install status for module %s</string>
+    <string name="install_status_unrecognized">Unrecognized install status for module %s. Status: %d
+    </string>
+    <string name="install_trouleshooting">Installation failed for module %s.\n
+        \n
+        Reason:\n
+        %s\n
+        \n
+        Please see https://support.google.com/googleplay/answer/7513003 for troubleshooting advice.
+    </string>
 
     <string name="query_purchases_fail">Failed to query existing purchases.\n\nReason:\n%s\n
         \nPremium features are unavailable. We apologize for the inconvenience.</string>
