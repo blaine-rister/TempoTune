@@ -19,9 +19,6 @@ import java.util.EmptyStackException;
 /* A foreground service which plays sound on loop. */
 public class PlaybackService extends Service {
 
-    // Intent data tags
-    public final static String soundTag = "sound";
-
     // Intent actions
     public final static String startAction = "startPlayback";
     public final static String stopAction = "stopPlayback";
