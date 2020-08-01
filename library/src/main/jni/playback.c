@@ -23,6 +23,7 @@ static SLresult enqueueBuffer(void);
 static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
 static int idle(void);
 static void shutdownAudio(void);
+static int isPlaying(void);
 
 // engine interfaces
 static SLObjectItf engineObject = NULL;
@@ -512,6 +513,11 @@ int formatRecording(const int bufferSizeMono, const jfloat *const floatBuffer,
     return 0;
 }
 
+// Tell whether we are playing sound. For our purposes, stopping does not count.
+static int isPlaying(void) {
+    return state == PLAYING;
+}
+
 /* ------------------ JNI functions ---------------------- */
 
 // Play the given recording
@@ -578,6 +584,22 @@ jboolean
 Java_com_bbrister_mididriver_PlaybackDriver_C(JNIEnv *env,
                                           jobject obj) {
     return pauseJNI(env, obj);
+}
+
+// Tell whether we are playing sound. For our purposes, stopping does not count.
+static
+jboolean
+isPlayingJNI(JNIEnv *env,
+             jobject obj) {
+    return isPlaying() ? JNI_TRUE : JNI_FALSE;
+}
+
+// Obfuscated JNI wrapper for the former
+JNIEXPORT
+jboolean
+Java_com_bbrister_mididriver_PlaybackDriver_D(JNIEnv *env,
+                                              jobject obj) {
+    return isPlayingJNI(env, obj);
 }
 
 

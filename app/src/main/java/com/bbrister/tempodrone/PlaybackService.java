@@ -26,7 +26,7 @@ public class PlaybackService extends Service {
     // An ID unique for the playback notification
     private static final int playbackNotificationId = Notifications.getUniqueId();
 
-    // Data
+    // JNI library
     private PlaybackDriver driver;
 
     // Create an intent for this service

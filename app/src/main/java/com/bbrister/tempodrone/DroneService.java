@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.os.Binder;
 
+import com.bbrister.mididriver.PlaybackDriver;
 import com.bbrister.tempodrone.preferences.BytePreference;
 import com.bbrister.tempodrone.preferences.StringPreference;
 
@@ -56,7 +57,6 @@ public class DroneService extends Service {
         midi = new MidiDriverHelper();
 
         // Initialize the sound parameters
-        isPlaying = false;
         settings = new SoundSettings(this, midi.getMaxVoices(), midi.getNumReverbPresets()) {
             @Override
             public void onSoundChanged() {
@@ -67,15 +67,11 @@ public class DroneService extends Service {
         // Initialize the soundfont
         soundfontName = new StringPreference(this, soundfontNameKey, defaultSoundfont);
 
-        // Start the midi
+        // Start the midi synth
         midi.start(this.getApplicationContext());
-    }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-
-        stop();
+        // Query whether sound is already playing, e.g. the app is restarted
+        isPlaying = (new PlaybackDriver()).isPlaying();
     }
 
     // Interface for drone activities
@@ -89,7 +85,6 @@ public class DroneService extends Service {
             return soundfontName.read();
         }
         synchronized void playPause() { DroneService.this.playPause(); }
-        synchronized void stop() { DroneService.this.stop(); }
         boolean queryProgram(int instrument) { return midi.queryProgram((byte) instrument); }
         String getProgramName(int instrument) { return midi.getProgramName((byte) instrument); }
         synchronized void changeProgram(int instrument) { DroneService.this.changeProgram(instrument); }
@@ -187,16 +182,6 @@ public class DroneService extends Service {
 
         // Store the program number for future use
         storeProgram();
-    }
-
-    private void stop() {
-
-        // Stop the MIDI
-        pause();
-        midi.stop();
-
-        // Shut down the service
-        stopSelf();
     }
 
     // Toggle play/pause state

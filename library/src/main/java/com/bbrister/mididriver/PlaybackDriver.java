@@ -79,6 +79,13 @@ public class PlaybackDriver {
             throw new RuntimeException(BuildConfig.DEBUG ? "Failed to pause playback" : "");
     }
 
+    /*
+     * Query whether we're currently playing.
+     */
+    public boolean isPlaying() {
+        return isPlayingJNI();
+    }
+
     /**
      * Play the sound.
      * @return true on success.
@@ -96,6 +103,13 @@ public class PlaybackDriver {
         return C();
     }
     private native boolean C();
+
+    /**
+     * Query whether sound is currently playing.
+     * @return true if playing.
+     */
+    private boolean isPlayingJNI() { return D(); }
+    private native boolean D();
 
     // Load playback library
     static
