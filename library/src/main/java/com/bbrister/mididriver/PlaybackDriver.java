@@ -66,7 +66,7 @@ public class PlaybackDriver {
     /*
      * Initiate playback.
      */
-    public void play(Context context, float[] sound) {
+    public synchronized void play(Context context, float[] sound) {
         if (!playJNI(getSampleRate(context), getBufferSize(context), sound))
             throw new RuntimeException(BuildConfig.DEBUG ? "Failed to start playback" : "");
     }
@@ -74,7 +74,7 @@ public class PlaybackDriver {
     /*
      * Pause playback and check for errors.
      */
-    public void pause() {
+    public synchronized void pause() {
         if (!pauseJNI())
             throw new RuntimeException(BuildConfig.DEBUG ? "Failed to pause playback" : "");
     }
