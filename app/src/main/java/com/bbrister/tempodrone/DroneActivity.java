@@ -52,7 +52,7 @@ public abstract class DroneActivity extends AppCompatActivity {
     // This is called when the service is somehow updated. Subclasses should override it to update
     // their UI.
     protected void onDroneChanged() {
-        updatePlayPause();
+        updatePlayPauseIcon();
     }
 
     // Service interface
@@ -258,11 +258,11 @@ public abstract class DroneActivity extends AppCompatActivity {
     // Toggle play/pause state
     protected void playPause() {
         droneBinder.playPause();
-        updatePlayPause();
+        updatePlayPauseIcon();
     }
 
     // Update the play/pause button icon
-    protected void updatePlayPause() {
+    protected void updatePlayPauseIcon() {
         ((ImageButton) findViewById(R.id.playPauseButton)).setImageResource(
                 droneBinder.isPlaying() ? R.drawable.ic_pause_button : R.drawable.ic_play_button);
     }
@@ -275,7 +275,7 @@ public abstract class DroneActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         // Play/pause button
-        updatePlayPause();
+        updatePlayPauseIcon();
         final ImageButton playPauseButton = findViewById(R.id.playPauseButton);
         playPauseButton.setOnClickListener(new View.OnClickListener() {
             @Override

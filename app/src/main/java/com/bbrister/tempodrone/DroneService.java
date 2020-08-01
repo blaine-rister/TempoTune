@@ -23,8 +23,8 @@ public class DroneService extends Service {
     int nextListenerHandle; // Return a handle to deactivate them
 
     // Public constants
-    final public static int programMax = 127;
     final public static String programKey = "last_program_number";
+    final public static int programMax = 127;
     final public static byte defaultProgram = -1;
 
     // Private constants
