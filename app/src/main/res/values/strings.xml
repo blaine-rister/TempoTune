@@ -1,4 +1,10 @@
-<!DOCTYPE resources [<!ENTITY appname "Tempo Tune"><!ENTITY year "2019">]>
+<!DOCTYPE resources
+    [
+        <!ENTITY appname "Tempo Tune">
+        <!ENTITY year "2020">
+        <!ENTITY email "tempotune@protonmail.com">
+        ]
+    >
 
 <resources>
     <string name="app_name">&appname;</string>
@@ -101,8 +107,8 @@
     <string name="velocity_header">Volume</string>
     <string name="credits">
         \n &appname;™ version %s\n\n
-        &lt;p>Copyright © &year; Blaine Rister, all rights reserved. Please direct questions to
-        &lt;a href="mailto:blaine@stanford.edu">blaine@stanford.edu&lt;/a>.&lt;/p>
+        &lt;p>Copyright © 2019-&year; Blaine Rister, all rights reserved. Please direct questions to
+        &lt;a href="mailto:&email;">&email;&lt;/a>.&lt;/p>
 
         &lt;p>Thanks to the developers of
         &lt;a href="http://www.fluidsynth.org/" tile="FluidSynth">FluidSynth&lt;/a>, on which the sound
