@@ -77,15 +77,15 @@ public class MainActivity extends DroneActivity {
         // Get the all the soundfonts
         List<Soundfont> soundfonts = querySoundfonts(false);
 
-        // Search for an instant one and see if it's installed
+        // Search for a non-instant one that's installed
         for (Soundfont soundfont : soundfonts) {
-            if (soundfont.isInstant()) {
-                return soundfont.isInstalled();
+            if (!soundfont.isInstant() && soundfont.isInstalled()) {
+                return false;
             }
         }
 
-        // If there are no instant soundfonts, we're not in instant mode
-        return false;
+        // If there are only instant soundfonts, we're in instant mode
+        return true;
     }
 
     // Initialize the UI when the drone is connected
