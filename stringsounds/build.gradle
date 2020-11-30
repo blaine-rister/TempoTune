@@ -1,13 +1,13 @@
 apply plugin: 'com.android.dynamic-feature'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion rootProject.findProperty("android.compileSdkVersion") as Integer
     
 
 
     defaultConfig {
-        minSdkVersion 14
-        targetSdkVersion 29
+        minSdkVersion rootProject.findProperty("android.minSdkVersion") as Integer
+        targetSdkVersion rootProject.findProperty("android.targetSdkVersion") as Integer
         versionCode 1
         versionName "1.0"
 

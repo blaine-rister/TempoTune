@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion rootProject.findProperty("android.compileSdkVersion") as Integer
     defaultConfig {
         applicationId "com.bbrister.tempodrone"
-        minSdkVersion 14
-        targetSdkVersion 29
-        versionCode 30
-        versionName "0.3.0"
+        minSdkVersion rootProject.findProperty("android.minSdkVersion") as Integer
+        targetSdkVersion rootProject.findProperty("android.targetSdkVersion") as Integer
+        versionCode rootProject.findProperty("android.targetSdkVersion") as Integer
+        versionName "0.3.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -32,16 +32,16 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-    implementation 'com.google.android.material:material:1.0.0'
-    implementation 'com.google.android.gms:play-services-ads:18.3.0'
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation 'com.google.android.material:material:1.2.1'
+    implementation 'com.google.android.gms:play-services-ads:19.5.0'
     testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    androidTestImplementation 'androidx.test:runner:1.3.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
     implementation project(':library')
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-    implementation 'com.google.android.play:core:1.6.4'
-    implementation 'com.android.billingclient:billing:2.1.0'
+    implementation 'com.google.android.play:core:1.8.3'
+    implementation 'com.android.billingclient:billing:3.0.2'
     implementation 'com.google.android:flexbox:2.0.0'
 }
