@@ -1,35 +1,33 @@
 package com.bbrister.tempodrone;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
-
+import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
-
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
-
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Spinner;
-import android.widget.SeekBar;
-import android.widget.Button;
-
-import android.content.Context;
 import android.widget.Toast;
 
 import com.bbrister.tempodrone.preferences.BooleanPreference;
 import com.bbrister.tempodrone.preferences.BytePreference;
 import com.bbrister.tempodrone.preferences.ReadOnlyPreference;
 import com.google.android.flexbox.FlexboxLayout;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class MainActivity extends DroneActivity {
 
@@ -74,6 +72,12 @@ public class MainActivity extends DroneActivity {
      * Check if this is an instant app or the full install.
      */
     private boolean isInstant() {
+
+        // Try the package manager for API level >= O. Cannot find getPackageManagerCompat...
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return getPackageManager().isInstantApp();
+        }
+
         // Get the all the soundfonts
         List<Soundfont> soundfonts = querySoundfonts(false);
 
